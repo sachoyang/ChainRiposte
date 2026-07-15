@@ -22,5 +22,11 @@ namespace ChainRiposte.Core.Stats
 
         /// <summary>판정치 하드 캡 — 이 레벨에 도달하면 더 이상 분배할 수 없다.</summary>
         public int ParryLevelHardCap = 5;
+
+        /// <summary>공격 커밋 시간 — 이 동안 패링 불가, 끝나는 순간 타격 (리스크/리턴).</summary>
+        public float AttackCommitSeconds = 0.4f;
+
+        /// <summary>패링 헛침 후딜레이 — 연타로 판정을 도배하는 것을 막는다.</summary>
+        public float ParryWhiffLockSeconds = 0.25f;
     }
 }

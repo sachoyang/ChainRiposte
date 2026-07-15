@@ -10,7 +10,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 605fa9713fb2bd44c8ee6b7c99f4bd10, type: 3}
-  m_Name: Stage_01
+  m_Name: Stage_2_1
   m_EditorClassIdentifier: ChainRiposte.Game::ChainRiposte.Game.Config.StageDataSO
   boardRows:
   - XOOOOOX
@@ -90,5 +90,5 @@ MonoBehaviour:
   bossCountdownSeconds: 20
   bossCountdownTurns: 8
   ambushHpMultiplier: 0.5
-  bossData: {fileID: 11400000, guid: c227ecf42446f934788dc32872effdd2, type: 2}
+  bossData: {fileID: 11400000, guid: 736ae02691519a14da1aead03eb8f6e2, type: 2}
   gimmicks: 

@@ -59,6 +59,10 @@ namespace ChainRiposte.Game.Config
         [Tooltip("기습 돌입 시 시작 HP 배율 (0.5 = 반토막)")]
         [SerializeField, Range(0.1f, 1f)] private float ambushHpMultiplier = 0.5f;
 
+        [Header("전투 (7단계)")]
+        [Tooltip("이 스테이지에 난입하는 보스")]
+        [SerializeField] private BossDataSO bossData;
+
         [Header("스테이지 기믹 on/off (확장 구현 사항, GDD §3.6)")]
         [SerializeField] private GimmickType[] gimmicks = Array.Empty<GimmickType>();
 
@@ -95,6 +99,7 @@ namespace ChainRiposte.Game.Config
                 BossCountdownSeconds = bossCountdownSeconds,
                 BossCountdownTurns = bossCountdownTurns,
                 AmbushHpMultiplier = ambushHpMultiplier,
+                Boss = bossData != null ? bossData.ToConfig() : null,
                 Gimmicks = (GimmickType[])gimmicks.Clone(),
             };
         }

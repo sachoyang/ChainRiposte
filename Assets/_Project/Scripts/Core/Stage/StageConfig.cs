@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using ChainRiposte.Core.Board;
+using ChainRiposte.Core.Combat;
 
 namespace ChainRiposte.Core.Stage
 {
@@ -47,6 +48,10 @@ namespace ChainRiposte.Core.Stage
 
         /// <summary>기습 돌입 시 시작 HP 배율 (0.5 = 반토막).</summary>
         public float AmbushHpMultiplier = 0.5f;
+
+        // ── 전투 (7단계에서 사용) ──
+        /// <summary>이 스테이지에 난입하는 보스. null이면 전투 없음 (테스트/퍼즐 전용).</summary>
+        public BossConfig Boss;
 
         // ── 스테이지 기믹 (확장 구현 사항, GDD §3.6) ──
         /// <summary>이 스테이지에서 활성화되는 기믹 목록. 조합 가능.</summary>

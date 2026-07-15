@@ -30,6 +30,12 @@ namespace ChainRiposte.Game.Config
         [Tooltip("하드 캡: 이 레벨에 도달하면 더 이상 분배할 수 없다")]
         [SerializeField, Min(0)] private int parryLevelHardCap = 5;
 
+        [Header("전투 템포 (7단계)")]
+        [Tooltip("공격 커밋 시간 — 이 동안 패링 불가, 끝나는 순간 타격")]
+        [SerializeField, Min(0f)] private float attackCommitSeconds = 0.4f;
+        [Tooltip("패링 헛침 후딜레이 — 연타 방지")]
+        [SerializeField, Min(0f)] private float parryWhiffLockSeconds = 0.25f;
+
         public PlayerStatsConfig ToConfig() => new()
         {
             MaxHp = maxHp,
@@ -42,6 +48,8 @@ namespace ChainRiposte.Game.Config
             BaseParryWindowSeconds = baseParryWindowSeconds,
             ParryWindowPerLevelSeconds = parryWindowPerLevelSeconds,
             ParryLevelHardCap = parryLevelHardCap,
+            AttackCommitSeconds = attackCommitSeconds,
+            ParryWhiffLockSeconds = parryWhiffLockSeconds,
         };
     }
 }

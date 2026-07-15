@@ -10,7 +10,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 605fa9713fb2bd44c8ee6b7c99f4bd10, type: 3}
-  m_Name: Stage_01
+  m_Name: Stage_1_3
   m_EditorClassIdentifier: ChainRiposte.Game::ChainRiposte.Game.Config.StageDataSO
   boardRows:
   - XOOOOOX

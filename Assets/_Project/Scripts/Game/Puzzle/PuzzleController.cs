@@ -17,11 +17,11 @@ namespace ChainRiposte.Game.Puzzle
     public sealed class PuzzleController : MonoBehaviour
     {
         [SerializeField] private GameManager gameManager;
-        [SerializeField] private StageDataSO stageData;
         [SerializeField] private BoardView boardView;
         [SerializeField] private PuzzleInput input;
         [SerializeField] private CameraFit2D cameraFit;
         [SerializeField] private PuzzleHud hud;
+        [SerializeField] private Juice.JuiceDirector juice;
 
         private PuzzleEngine _engine;
         private IntrusionSystem _intrusion;
@@ -58,7 +58,7 @@ namespace ChainRiposte.Game.Puzzle
 
         private void BeginPuzzle()
         {
-            _stageConfig = stageData.ToConfig();
+            _stageConfig = gameManager.StageConfig;
 
             _intrusion = new IntrusionSystem(_stageConfig, () => gameManager.Session.Stats.TotalSoulsEarned);
             _engine = new PuzzleEngine(_stageConfig, _intrusion.Spawner);
@@ -71,6 +71,8 @@ namespace ChainRiposte.Game.Puzzle
             boardView.Build(_engine.Board);
             cameraFit.FitTo(boardView.WorldBounds);
             hud.Bind(gameManager.Session, _engine);
+            if (juice != null)
+                juice.BindPuzzle(boardView, _intrusion.Spawner);
             input.SetActive(true);
         }
 

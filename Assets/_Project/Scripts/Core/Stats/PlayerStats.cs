@@ -36,6 +36,12 @@ namespace ChainRiposte.Core.Stats
         public float ParryWindowSeconds =>
             _config.BaseParryWindowSeconds + _config.ParryWindowPerLevelSeconds * GetStatLevel(StatType.Parry);
 
+        /// <summary>공격 커밋 시간 — 스탯이 아닌 고정 템포 값이지만 전투가 참조하는 단일 창구를 유지한다.</summary>
+        public float AttackCommitSeconds => _config.AttackCommitSeconds;
+
+        /// <summary>패링 헛침 후딜레이.</summary>
+        public float ParryWhiffLockSeconds => _config.ParryWhiffLockSeconds;
+
         /// <summary>(현재 영혼석, 다음 레벨 요구량) — XP 바 갱신용.</summary>
         public event Action<int, int> SoulsChanged;
 

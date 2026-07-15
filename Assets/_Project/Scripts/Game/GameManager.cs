@@ -1,4 +1,5 @@
 using ChainRiposte.Core.Flow;
+using ChainRiposte.Core.Stage;
 using ChainRiposte.Game.Config;
 using UnityEngine;
 
@@ -12,18 +13,27 @@ namespace ChainRiposte.Game
     public sealed class GameManager : MonoBehaviour
     {
         [SerializeField] private PlayerStatsConfigSO statsConfig;
+        [SerializeField] private StageDataSO stageData;
 
         public GameSession Session { get; private set; }
 
+        /// <summary>이번 씬에서 플레이할 스테이지. 퍼즐/전투 컨트롤러가 공유한다.</summary>
+        public StageConfig StageConfig { get; private set; }
+
         private void Awake()
         {
-            if (statsConfig == null)
+            // 월드맵에서 선택하고 들어왔다면 그 스테이지를 우선한다
+            if (StageSelection.Selected != null)
+                stageData = StageSelection.Selected;
+
+            if (statsConfig == null || stageData == null)
             {
-                Debug.LogError($"{nameof(GameManager)}: {nameof(statsConfig)}가 비어 있습니다.", this);
+                Debug.LogError($"{nameof(GameManager)}: {nameof(statsConfig)} 또는 {nameof(stageData)}가 비어 있습니다.", this);
                 enabled = false;
                 return;
             }
 
+            StageConfig = stageData.ToConfig();
             Session = new GameSession(statsConfig.ToConfig());
             Session.PhaseChanged += OnPhaseChanged;
         }

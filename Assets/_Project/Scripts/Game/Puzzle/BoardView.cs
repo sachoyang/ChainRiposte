@@ -38,6 +38,9 @@ namespace ChainRiposte.Game.Puzzle
 
         public Bounds WorldBounds { get; private set; }
 
+        /// <summary>캐스케이드 한 단계의 파괴 연출이 시작되는 순간 — 타일 깨짐 SFX/VFX 훅 (콤보는 step.ComboIndex).</summary>
+        public event Action<CascadeStep> StepCleared;
+
         public void Build(BoardGrid board)
         {
             _board = board;
@@ -102,6 +105,7 @@ namespace ChainRiposte.Game.Puzzle
 
             foreach (CascadeStep step in result.Steps)
             {
+                StepCleared?.Invoke(step);
                 yield return PlayClear(step);
                 yield return PlayFallAndSpawn(step);
                 if (stepPause > 0f)
