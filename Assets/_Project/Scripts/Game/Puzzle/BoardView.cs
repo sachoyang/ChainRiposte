@@ -14,11 +14,19 @@ namespace ChainRiposte.Game.Puzzle
     /// </summary>
     public sealed class BoardView : MonoBehaviour
     {
-        [Header("타일 비주얼 (TileDefinitionSO 색상 매핑)")]
+        [Header("타일 비주얼 (TileDefinitionSO의 색/스프라이트 매핑)")]
         [SerializeField] private TileDefinitionSO[] tileVisuals = Array.Empty<TileDefinitionSO>();
         [SerializeField] private Color wallColor = new(0.20f, 0.17f, 0.15f);
         [SerializeField] private Color bossColor = new(0.62f, 0.08f, 0.12f);
         [SerializeField] private Color unknownColor = Color.magenta;
+
+        [Header("에셋 스왑 — 지정하면 색 사각형 대신 스프라이트로 표시")]
+        [Tooltip("벽 타일 아트 (비우면 wallColor 사각형)")]
+        [SerializeField] private Sprite wallSprite;
+        [Tooltip("보스 타일 아트 (비우면 bossColor 사각형)")]
+        [SerializeField] private Sprite bossSprite;
+        [Tooltip("배경 셀 아트 (비우면 체커 2색 사각형)")]
+        [SerializeField] private Sprite cellSprite;
 
         [Header("배경 셀 (체커 2색)")]
         [SerializeField] private Color cellColorA = new(0.16f, 0.15f, 0.19f);
@@ -32,6 +40,7 @@ namespace ChainRiposte.Game.Puzzle
 
         private readonly Dictionary<GridPos, TileView> _views = new();
         private readonly Dictionary<TileDefinition, Color> _colorByDefinition = new();
+        private readonly Dictionary<TileDefinition, Sprite> _spriteByDefinition = new();
         private BoardGrid _board;
         private Transform _tileRoot;
         private Vector2 _originLocal; // (0,0) 셀의 로컬 위치 — 보드를 중앙 정렬
@@ -199,7 +208,10 @@ namespace ChainRiposte.Game.Puzzle
 
         private TileView CreateTileView(Tile tile, GridPos pos)
         {
-            var view = TileView.Create(_tileRoot, tile, ColorFor(tile));
+            Sprite sprite = SpriteFor(tile);
+            // 스프라이트가 있으면 원색 그대로(흰 틴트), 없으면 플레이스홀더 착색
+            Color color = sprite != null ? Color.white : ColorFor(tile);
+            var view = TileView.Create(_tileRoot, tile, color, sprite);
             view.transform.localPosition = GridToLocal(pos);
             _views[pos] = view;
             return view;
@@ -216,13 +228,28 @@ namespace ChainRiposte.Game.Puzzle
             }
         }
 
+        private Sprite SpriteFor(Tile tile)
+        {
+            switch (tile.Category)
+            {
+                case TileCategory.Wall: return wallSprite;
+                case TileCategory.Boss: return bossSprite;
+                default:
+                    return _spriteByDefinition.TryGetValue(tile.Definition, out Sprite sprite) ? sprite : null;
+            }
+        }
+
         private void BuildColorTable()
         {
             _colorByDefinition.Clear();
+            _spriteByDefinition.Clear();
             foreach (TileDefinitionSO so in tileVisuals)
             {
-                if (so != null)
-                    _colorByDefinition[so.ToDefinition()] = so.PlaceholderColor;
+                if (so == null)
+                    continue;
+                _colorByDefinition[so.ToDefinition()] = so.PlaceholderColor;
+                if (so.Sprite != null)
+                    _spriteByDefinition[so.ToDefinition()] = so.Sprite;
             }
         }
 
@@ -240,8 +267,10 @@ namespace ChainRiposte.Game.Puzzle
             go.transform.localPosition = GridToLocal(pos);
 
             var renderer = go.AddComponent<SpriteRenderer>();
-            renderer.sprite = PlaceholderSprite.Square;
-            renderer.color = (pos.X + pos.Y) % 2 == 0 ? cellColorA : cellColorB;
+            renderer.sprite = cellSprite != null ? cellSprite : PlaceholderSprite.Square;
+            renderer.color = cellSprite != null
+                ? Color.white
+                : (pos.X + pos.Y) % 2 == 0 ? cellColorA : cellColorB;
             renderer.sortingOrder = -10;
         }
 

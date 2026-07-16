@@ -23,13 +23,12 @@ namespace ChainRiposte.Core.Match
                     if (!board.IsActive(pos))
                         continue;
 
+                    // 첫 타일(벽 포함)에서 중단 — 기둥 최상단의 연속된 빈 칸만 리필한다.
+                    // 기둥 중간의 빈 칸(슬라이드가 만든 구멍)은 다음 웨이브의 낙하가 채워야
+                    // 위에 있던 타일(보스 포함)이 실제로 내려온다. 중간 스폰은 낙하를 가로챈다.
                     Tile existing = board.GetTile(pos);
                     if (existing != null)
-                    {
-                        if (existing.Category == TileCategory.Wall)
-                            break;
-                        continue;
-                    }
+                        break;
 
                     var tile = new Tile(spawner.NextDefinition());
                     board.PlaceTile(pos, tile);

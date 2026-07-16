@@ -1,31 +1,6 @@
-[2026-07-15 세션 2 종료] 진행 상황: 로드맵 1~10단계 완료. 다음 세션은 이 문서를 읽고 시작할 것.
+[이관됨] 인수인계 내용은 이제 프로젝트 루트의 CLAUDE.md 로 옮겨졌습니다.
 
-## 이번 세션(세션 2)에서 끝낸 것 — 7·8·9·10단계
+CLAUDE.md 는 세션 시작 시 자동으로 읽히며, 인수인계는 그 안의
+"## 세션 인수인계" 섹션을 갱신하는 것으로 대체합니다.
 
-- 7단계 패링 전투 코어: Core/Combat/ (CombatSystem — 2버튼, 경계분할 결정적 Tick, 패링윈도우/커밋/체간/인살, TimeEpsilon 1e-4), BossDataSO, Boss_01 "The Warden"(5수 패턴), PlayerStatsConfig에 전투템포(커밋0.4/헛침잠금0.25) 추가. 테스트 42/42 초록.
-- 8단계 전투 프레젠테이션: Game/Combat/ (CombatInput ←→/마우스, CombatController, CombatScreen — 텔레그래프 링 수축=타격시점, 금색=패링가능/보라=불가), UI/ResultScreen(RESTART+MAP). GameManager가 StageDataSO 소유(StageConfig 공유), Main.unity 배선 완료.
-- 9단계 Game Juice: Game/Juice/ (JuiceDirector — 클립 슬롯 널세이프 허브, 셰이크/히트스톱(패링0.06/인살0.35)/콤보피치/크레센도(CurrentChance), CameraShaker, PostFxBootstrap — 그레인+비네팅 런타임 Volume). BoardView.StepCleared 이벤트. asmdef에 URP 참조 추가. Main.unity에 Juice GO 배선.
-- 10단계 월드맵: GDD §9 기획(NSMB식, 1-1~2-3, 월드2=배경/보스 차별+추후 기믹, §9.3 모바일 세로뷰=출시 요구사항). Game/Map/StageSelectController(코드 조립: S자 6노드, 클릭→경로 따라 자동이동→하단 정보패널+START), StageSelection 정적 홀더(GameManager 우선 사용), Stage_1_1~2_3 + Boss_02 "The Butcher"(HP160/체간120, 월드2 연결), StageSelect.unity, 빌드설정 [0]=StageSelect [1]=Main.
-
-컴파일 클린. 사용자 확인: 7~9단계는 확인 완료, 10단계 플레이 확인은 미보고 상태(다음 세션에서 이슈 여부 물어볼 것).
-
-## 사용자 워크플로 지시 (메모리에도 저장됨)
-- 세션 토큰 90% 초과 시: 하던 일 정리하고 이 문서에 ①한 일 ②다음 할 일 기록.
-- 간단한 검증/플레이 확인은 MCP 돌리지 말고 사용자에게 요청 (토큰 절약). MCP는 컴파일/테스트/씬 배선 등 꼭 필요한 것만.
-- 확인 요청은 "①②③ 확인 부탁" 형식.
-
-## 다음 세션 후보 (우선순위는 사용자에게 확인)
-① StageDataSO 씬뷰 프리뷰 — 보드 마스킹/벽 배치를 에디터에서 시각화 (기즈모/커스텀 에디터, 사용자가 직접 요청했던 항목).
-② 월드맵 진행도 잠금 + 세이브 (GDD §9.2).
-③ 스테이지 기믹 3종 (전염/시한폭탄/결박) → 월드2 스테이지에 적용 (GDD §3.6).
-④ 모바일 세로 뷰 대응 — 방향별 UI 재배치 구조 (GDD §9.3, 출시 요구사항).
-⑤ 에셋 결합 — JuiceDirector 클립 슬롯, 스프라이트/픽셀아트 교체, 월드2 전용 배경.
-
-## 알아둘 것 (다음 세션용 컨텍스트)
-- 문서: Docs/GDD.md(기획 기준), Docs/ARCHITECTURE.md(로드맵/구조), 이 파일(인수인계).
-- 구조 원칙: Core=순수 C#(UnityEngine 금지, 이벤트로만 노출), Game=어댑터, SO→ToConfig() 주입, UI는 코드 조립(에셋 단계에서 교체 예정).
-- 씬: StageSelect(월드맵) → Main(퍼즐+전투). Main 단독 실행 가능(GameManager 인스펙터 기본 스테이지).
-- 에셋: _Project/Data/ — Stage_01(기본/Main 인스펙터용), Stage_1_1~2_3, Boss_01/02, 타일 6종, PlayerStatsConfig.
-- 테스트: EditMode 42개 (Core 대상). 수정 시 Test Runner 초록 유지.
-- git 상태: 전부 미커밋 (Initial commit 이후 7~10단계 작업 전체). 커밋 여부는 사용자에게 물어볼 것.
-- Assets/Screenshots/에 스모크 테스트 스크린샷 있음(삭제 무방).
+이 txt 파일은 더 이상 갱신하지 않습니다.

@@ -1,6 +1,7 @@
 using System.Collections;
 using ChainRiposte.Core.Stage;
 using ChainRiposte.Game.Config;
+using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
@@ -12,48 +13,66 @@ namespace ChainRiposte.Game.Map
     /// <summary>
     /// NSMB식 월드맵 (GDD §9). 노드를 클릭하면 캐릭터가 경로를 따라 자동 이동하고,
     /// 도착하면 하단 패널에 스테이지 정보 + START를 띄운다.
-    /// 맵/UI 전부 코드 조립 — 에셋 단계에서 교체 예정. 진행도 잠금은 추후 (지금은 전부 선택 가능).
+    ///
+    /// 비주얼(노드/배경/캐릭터/패널)은 전부 <b>씬에 실물로 배치</b>하고 인스펙터로 참조만 받는다.
+    /// 이 컴포넌트는 "행동"(클릭 판정·이동·정보 표시)만 담당한다.
+    /// → 초기 레이아웃은 <c>Tools ▸ ChainRiposte ▸ Build StageSelect Layout</c>로 한 번 생성한 뒤
+    ///   씬 뷰에서 자유롭게 드래그·교체한다.
     /// </summary>
     public sealed class StageSelectController : MonoBehaviour
     {
-        [Tooltip("경로 순서대로 (1-1 → 2-3). 앞 3개=월드1, 뒤 3개=월드2")]
-        [SerializeField] private StageDataSO[] stages = System.Array.Empty<StageDataSO>();
+        [Header("씬 참조 — 빌더가 자동으로 채우거나 직접 드래그")]
+        [Tooltip("경로 순서대로 (1-1 → 2-3). 각 노드의 위치를 그대로 경로로 사용한다.")]
+        [SerializeField] private MapNode[] nodes = System.Array.Empty<MapNode>();
+        [SerializeField] private Transform character;
         [SerializeField] private CameraFit2D cameraFit;
+        [Tooltip("선택 사항 — 있으면 노드들을 잇는 경로선을 자동으로 채운다.")]
+        [SerializeField] private LineRenderer pathLine;
+
+        [Header("정보 패널 (Canvas)")]
+        [SerializeField] private GameObject infoPanel;
+        [SerializeField] private TMP_Text titleText;
+        [SerializeField] private TMP_Text infoText;
+        [SerializeField] private Button startButton;
+
+        [Header("동작 값")]
         [SerializeField, Min(0.5f)] private float moveSpeed = 6f;
+        [Tooltip("캐릭터가 노드보다 살짝 위에 서도록 하는 오프셋")]
+        [SerializeField] private Vector3 characterOffset = new(0f, 0.7f, 0f);
+        [Tooltip("클릭을 노드로 인정하는 반경 (월드 유닛)")]
+        [SerializeField, Min(0.1f)] private float clickRadius = 0.8f;
+        [Tooltip("카메라가 노드 전체를 담을 때 가장자리 여백")]
+        [SerializeField, Min(0f)] private float cameraPadding = 1.5f;
 
-        [Header("월드 색 (배경/노드)")]
-        [SerializeField] private Color world1Color = new(0.22f, 0.34f, 0.24f);
-        [SerializeField] private Color world2Color = new(0.30f, 0.20f, 0.36f);
-
-        /// <summary>S자 경로 — 아래(월드1)에서 위(월드2)로.</summary>
-        private static readonly Vector2[] NodePositions =
-        {
-            new(-3.0f, -3.2f), new(-0.3f, -2.6f), new(2.6f, -2.0f),  // 월드 1
-            new(2.6f, 0.4f), new(-0.3f, 1.2f), new(-3.0f, 2.0f),     // 월드 2
-        };
-
-        private readonly Transform[] _nodes = new Transform[NodePositions.Length];
         private StageConfig[] _configs;
-        private Transform _character;
         private Camera _camera;
         private int _currentIndex;
         private bool _moving;
 
-        private GameObject _panel;
-        private Text _titleText;
-        private Text _infoText;
-
         private void Awake()
         {
             _camera = Camera.main;
-            _configs = new StageConfig[stages.Length];
-            BuildMap();
-            BuildUi();
+            _configs = new StageConfig[nodes.Length];
+
+            if (nodes.Length == 0 || character == null)
+            {
+                Debug.LogError(
+                    $"{nameof(StageSelectController)}: 노드/캐릭터 참조가 비어 있습니다. " +
+                    "Tools ▸ ChainRiposte ▸ Build StageSelect Layout 을 실행하세요.", this);
+                enabled = false;
+                return;
+            }
+
+            if (startButton != null)
+                startButton.onClick.AddListener(StartStage);
+
+            RefreshPathLine();
+            character.position = NodeWorld(0) + characterOffset;
         }
 
         private void Start()
         {
-            cameraFit.FitTo(new Bounds(new Vector3(0f, -0.5f, 0f), new Vector3(9f, 9f, 0f)));
+            FitCameraToNodes();
             ShowInfo(_currentIndex);
         }
 
@@ -70,10 +89,12 @@ namespace ChainRiposte.Game.Map
 
             Vector3 world = _camera.ScreenToWorldPoint(pointer.position.ReadValue());
             int nearest = -1;
-            float best = 0.8f; // 클릭 인정 반경
-            for (int i = 0; i < _nodes.Length && i < stages.Length; i++)
+            float best = clickRadius;
+            for (int i = 0; i < nodes.Length; i++)
             {
-                float dist = Vector2.Distance(world, _nodes[i].position);
+                if (nodes[i] == null)
+                    continue;
+                float dist = Vector2.Distance(world, nodes[i].Position);
                 if (dist < best)
                 {
                     best = dist;
@@ -89,17 +110,18 @@ namespace ChainRiposte.Game.Map
         private IEnumerator MoveRoutine(int target)
         {
             _moving = true;
-            _panel.SetActive(false);
+            if (infoPanel != null)
+                infoPanel.SetActive(false);
 
             int step = target > _currentIndex ? 1 : -1;
             while (_currentIndex != target)
             {
                 int next = _currentIndex + step;
-                Vector3 destination = NodeWorld(next);
-                while ((_character.position - destination).sqrMagnitude > 0.0004f)
+                Vector3 destination = NodeWorld(next) + characterOffset;
+                while ((character.position - destination).sqrMagnitude > 0.0004f)
                 {
-                    _character.position = Vector3.MoveTowards(
-                        _character.position, destination, moveSpeed * Time.deltaTime);
+                    character.position = Vector3.MoveTowards(
+                        character.position, destination, moveSpeed * Time.deltaTime);
                     yield return null;
                 }
                 _currentIndex = next;
@@ -111,158 +133,57 @@ namespace ChainRiposte.Game.Map
 
         private void ShowInfo(int index)
         {
-            StageConfig config = _configs[index] ??= stages[index].ToConfig();
+            StageDataSO stage = nodes[index].Stage;
+            if (stage == null)
+            {
+                Debug.LogWarning($"{nameof(StageSelectController)}: 노드 {index}에 스테이지가 지정되지 않았습니다.", nodes[index]);
+                return;
+            }
+
+            StageConfig config = _configs[index] ??= stage.ToConfig();
             int width = config.ActiveMask.GetLength(0);
             int height = config.ActiveMask.GetLength(1);
 
-            _titleText.text = $"STAGE {DisplayName(index)}";
-            _infoText.text =
-                $"WORLD {index / 3 + 1}   BOARD {width}x{height}   TURNS {config.TurnLimit}\n" +
-                $"BOSS  {config.Boss?.Name ?? "???"}";
-            _panel.SetActive(true);
+            if (titleText != null)
+                titleText.text = $"STAGE {DisplayName(index)}";
+            if (infoText != null)
+                infoText.text =
+                    $"WORLD {index / 3 + 1}   BOARD {width}x{height}   TURNS {config.TurnLimit}\n" +
+                    $"BOSS  {config.Boss?.Name ?? "???"}";
+            if (infoPanel != null)
+                infoPanel.SetActive(true);
         }
 
         private void StartStage()
         {
-            StageSelection.Selected = stages[_currentIndex];
+            StageSelection.Selected = nodes[_currentIndex].Stage;
             SceneManager.LoadScene("Main");
         }
 
         private static string DisplayName(int index) => $"{index / 3 + 1}-{index % 3 + 1}";
 
-        private Vector3 NodeWorld(int index) =>
-            new(NodePositions[index].x, NodePositions[index].y, 0f);
+        private Vector3 NodeWorld(int index) => nodes[index].Position;
 
-        // ── 맵 조립 (월드 배경 2장 + 경로 + 노드 + 캐릭터) ──
-
-        private void BuildMap()
+        /// <summary>경로선(있을 때)을 노드 위치로 갱신 — 노드를 옮기면 선도 따라온다.</summary>
+        private void RefreshPathLine()
         {
-            CreateSprite("World1Bg", new Vector3(0f, -2.6f, 1f), new Vector3(10f, 4.4f, 1f), world1Color * 0.5f, 0);
-            CreateSprite("World2Bg", new Vector3(0f, 1.4f, 1f), new Vector3(10f, 4.4f, 1f), world2Color * 0.5f, 0);
-
-            for (int i = 0; i + 1 < NodePositions.Length; i++)
-                CreatePathSegment(NodeWorld(i), NodeWorld(i + 1));
-
-            for (int i = 0; i < NodePositions.Length; i++)
-            {
-                Color color = i < 3 ? world1Color : world2Color;
-                _nodes[i] = CreateSprite($"Node_{DisplayName(i)}", NodeWorld(i), Vector3.one * 0.8f, color * 1.8f, 2).transform;
-                CreateLabel(_nodes[i], DisplayName(i));
-            }
-
-            _character = CreateSprite("Character", NodeWorld(0) + Vector3.up * 0.7f,
-                new Vector3(0.5f, 0.6f, 1f), new Color(0.92f, 0.88f, 0.75f), 3).transform;
+            if (pathLine == null)
+                return;
+            pathLine.positionCount = nodes.Length;
+            for (int i = 0; i < nodes.Length; i++)
+                pathLine.SetPosition(i, nodes[i].Position);
         }
 
-        private SpriteRenderer CreateSprite(string objName, Vector3 position, Vector3 scale, Color color, int sortingOrder)
+        private void FitCameraToNodes()
         {
-            var go = new GameObject(objName);
-            go.transform.SetParent(transform, false);
-            go.transform.position = position;
-            go.transform.localScale = scale;
-            var renderer = go.AddComponent<SpriteRenderer>();
-            renderer.sprite = PlaceholderSprite.Square;
-            renderer.color = color;
-            renderer.sortingOrder = sortingOrder;
-            return renderer;
-        }
+            if (cameraFit == null || nodes.Length == 0)
+                return;
 
-        private void CreatePathSegment(Vector3 a, Vector3 b)
-        {
-            Vector3 delta = b - a;
-            SpriteRenderer segment = CreateSprite("Path", (a + b) * 0.5f,
-                new Vector3(delta.magnitude, 0.12f, 1f), new Color(0.75f, 0.70f, 0.58f, 0.85f), 1);
-            segment.transform.rotation = Quaternion.Euler(0f, 0f, Mathf.Atan2(delta.y, delta.x) * Mathf.Rad2Deg);
-        }
-
-        private static void CreateLabel(Transform node, string label)
-        {
-            var go = new GameObject("Label");
-            go.transform.SetParent(node, false);
-            go.transform.localPosition = new Vector3(0f, -1.1f, 0f);
-            go.transform.localScale = Vector3.one * 0.35f; // 부모 스케일 보정 포함
-            var mesh = go.AddComponent<TextMesh>();
-            mesh.text = label;
-            mesh.fontSize = 48;
-            mesh.characterSize = 0.1f;
-            mesh.anchor = TextAnchor.MiddleCenter;
-            mesh.color = new Color(0.92f, 0.90f, 0.85f);
-        }
-
-        // ── 정보 패널 (하단 고정 — 세로/가로 공용) ──
-
-        private static Font BuiltinFont => Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-
-        private void BuildUi()
-        {
-            var canvasGo = new GameObject("MapCanvas");
-            canvasGo.transform.SetParent(transform, false);
-            var canvas = canvasGo.AddComponent<Canvas>();
-            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-            var scaler = canvasGo.AddComponent<CanvasScaler>();
-            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-            scaler.referenceResolution = new Vector2(1080f, 1920f);
-            scaler.matchWidthOrHeight = 0.5f;
-            canvasGo.AddComponent<GraphicRaycaster>();
-
-            _panel = new GameObject("InfoPanel");
-            _panel.transform.SetParent(canvasGo.transform, false);
-            var panelRect = _panel.AddComponent<RectTransform>();
-            panelRect.anchorMin = new Vector2(0f, 0f);
-            panelRect.anchorMax = new Vector2(1f, 0f);
-            panelRect.pivot = new Vector2(0.5f, 0f);
-            panelRect.anchoredPosition = Vector2.zero;
-            panelRect.sizeDelta = new Vector2(0f, 360f);
-            var panelImage = _panel.AddComponent<Image>();
-            panelImage.color = new Color(0.10f, 0.09f, 0.13f, 0.92f);
-
-            _titleText = CreatePanelText("Title", new Vector2(50f, -30f), 64, TextAnchor.UpperLeft);
-            _titleText.fontStyle = FontStyle.Bold;
-            _infoText = CreatePanelText("Info", new Vector2(50f, -120f), 42, TextAnchor.UpperLeft);
-
-            var buttonGo = new GameObject("StartButton");
-            buttonGo.transform.SetParent(_panel.transform, false);
-            var buttonRect = buttonGo.AddComponent<RectTransform>();
-            buttonRect.anchorMin = buttonRect.anchorMax = new Vector2(1f, 0.5f);
-            buttonRect.pivot = new Vector2(1f, 0.5f);
-            buttonRect.anchoredPosition = new Vector2(-50f, 0f);
-            buttonRect.sizeDelta = new Vector2(300f, 200f);
-            var buttonImage = buttonGo.AddComponent<Image>();
-            buttonImage.color = new Color(0.55f, 0.16f, 0.18f, 1f);
-            var button = buttonGo.AddComponent<Button>();
-            button.onClick.AddListener(StartStage);
-
-            var labelGo = new GameObject("Label");
-            labelGo.transform.SetParent(buttonGo.transform, false);
-            var labelRect = labelGo.AddComponent<RectTransform>();
-            labelRect.anchorMin = Vector2.zero;
-            labelRect.anchorMax = Vector2.one;
-            labelRect.offsetMin = labelRect.offsetMax = Vector2.zero;
-            var label = labelGo.AddComponent<Text>();
-            label.font = BuiltinFont;
-            label.fontSize = 56;
-            label.fontStyle = FontStyle.Bold;
-            label.alignment = TextAnchor.MiddleCenter;
-            label.color = new Color(0.92f, 0.90f, 0.85f);
-            label.text = "START";
-            label.raycastTarget = false;
-        }
-
-        private Text CreatePanelText(string objName, Vector2 pos, int size, TextAnchor align)
-        {
-            var go = new GameObject(objName);
-            go.transform.SetParent(_panel.transform, false);
-            var rect = go.AddComponent<RectTransform>();
-            rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(0f, 1f);
-            rect.anchoredPosition = pos;
-            rect.sizeDelta = new Vector2(700f, 160f);
-            var text = go.AddComponent<Text>();
-            text.font = BuiltinFont;
-            text.fontSize = size;
-            text.alignment = align;
-            text.color = new Color(0.92f, 0.90f, 0.85f);
-            text.raycastTarget = false;
-            return text;
+            var bounds = new Bounds(nodes[0].Position, Vector3.zero);
+            for (int i = 1; i < nodes.Length; i++)
+                bounds.Encapsulate(nodes[i].Position);
+            bounds.Expand(cameraPadding * 2f);
+            cameraFit.FitTo(bounds);
         }
     }
 }

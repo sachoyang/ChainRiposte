@@ -91,6 +91,61 @@ namespace ChainRiposte.Core.Tests
         }
 
         [Test]
+        public void 리필은_기둥_중간_빈칸에_스폰하지_않는다()
+        {
+            // 최상단에 타일이 떠 있고 아래가 빈 기둥 — 중간 빈칸은 낙하 몫, 리필이 가로채면 안 된다
+            (bool[,] mask, _) = TestUtils.ParseRows("O", "O", "O");
+            var board = new BoardGrid(mask);
+            board.PlaceTile(new GridPos(0, 2), new Tile(TestUtils.Skull));
+
+            var spawns = BoardRefiller.Refill(board, new SequenceSpawner(new TileDefinition[0]));
+
+            Assert.That(spawns, Is.Empty, "첫 타일 아래로는 리필 금지");
+            Assert.That(board.GetTile(new GridPos(0, 1)), Is.Null);
+            Assert.That(board.GetTile(new GridPos(0, 0)), Is.Null);
+        }
+
+        [Test]
+        public void 벽에_얹힌_타일은_대각선_아래_빈칸으로_미끄러진다()
+        {
+            // 보스 하강 보장의 핵심 — 벽 위에서 직선 낙하가 막힌 타일은 옆으로 미끄러져 내려간다
+            (bool[,] mask, _) = TestUtils.ParseRows("OO", "OO");
+            var board = new BoardGrid(mask);
+            board.PlaceTile(new GridPos(0, 0), new Tile(new TileDefinition("Wall", TileCategory.Wall, maxHp: 2)));
+            var boss = new Tile(new TileDefinition("Boss", TileCategory.Boss));
+            board.PlaceTile(new GridPos(0, 1), boss); // 벽 위에 얹힘
+
+            GravityResolver.Settle(board, new SequenceSpawner(new TileDefinition[0]));
+
+            Assert.That(board.GetTile(new GridPos(1, 0)), Is.SameAs(boss), "벽에서 미끄러져 바닥 도달");
+        }
+
+        [Test]
+        public void 슬라이드가_만든_기둥_중간_구멍은_위_타일이_내려와_채운다()
+        {
+            // 3x3, 벽 (1,1). 그늘 칸 (1,0)으로 A가 미끄러지면 (0,1) 구멍은
+            // 새 스폰이 아니라 위 타일 B가 낙하해 채워야 한다 (보스 미하강 버그의 원형)
+            (bool[,] mask, _) = TestUtils.ParseRows("OOO", "OWO", "OOO");
+            var board = new BoardGrid(mask);
+            board.PlaceTile(new GridPos(1, 1), new Tile(new TileDefinition("Wall", TileCategory.Wall, maxHp: 2)));
+            var bottom = new Tile(TestUtils.Skull);
+            var tileA = new Tile(TestUtils.Rat);
+            var tileB = new Tile(TestUtils.Potion);
+            board.PlaceTile(new GridPos(0, 0), bottom);
+            board.PlaceTile(new GridPos(0, 1), tileA);
+            board.PlaceTile(new GridPos(0, 2), tileB);
+
+            GravityResolver.Settle(board, new SequenceSpawner(new TileDefinition[0]));
+
+            Assert.That(board.GetTile(new GridPos(1, 0)), Is.SameAs(tileA), "A는 그늘 칸으로 슬라이드");
+            Assert.That(board.GetTile(new GridPos(0, 1)), Is.SameAs(tileB), "B는 낙하로 구멍을 채움 (새 스폰 금지)");
+
+            // 벽/구멍 제외 전 칸이 채워졌는지 — "모두 채워져야 함" 요구사항
+            foreach (GridPos pos in board.ActivePositions())
+                Assert.That(board.GetTile(pos), Is.Not.Null, $"{pos} 칸이 비어 있음");
+        }
+
+        [Test]
         public void 리필은_비활성_셀을_건너뛴다()
         {
             (bool[,] mask, _) = TestUtils.ParseRows("O", "X", "O");

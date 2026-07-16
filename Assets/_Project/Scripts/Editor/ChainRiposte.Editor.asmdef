@@ -1,0 +1,21 @@
+{
+    "name": "ChainRiposte.Editor",
+    "rootNamespace": "ChainRiposte.Editor",
+    "references": [
+        "ChainRiposte.Game",
+        "ChainRiposte.Core",
+        "UnityEngine.UI",
+        "Unity.TextMeshPro"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

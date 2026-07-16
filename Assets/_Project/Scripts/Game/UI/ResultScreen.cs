@@ -1,4 +1,5 @@
 using ChainRiposte.Core.Flow;
+using TMPro;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
@@ -7,19 +8,33 @@ namespace ChainRiposte.Game.UI
 {
     /// <summary>
     /// 승리/패배 결과 화면 — 퍼즐 패배(턴 소진/기믹)와 전투 결과 모두 여기로 수렴한다.
-    /// 재시작은 씬 리로드 (컴포지션 루트가 전부 다시 조립되므로 상태 잔재가 없다).
+    /// UI는 씬에 실물로 배치(TMP)하고 이 컴포넌트는 참조만 받는다. 재시작은 씬 리로드.
+    /// 초기 레이아웃은 <c>Tools ▸ ChainRiposte ▸ Build Main Scene UI</c>로 생성 후 씬에서 편집.
     /// </summary>
     public sealed class ResultScreen : MonoBehaviour
     {
         [SerializeField] private GameManager gameManager;
 
-        private GameObject _root;
-        private Text _titleText;
+        [Header("씬 참조 (빌더가 자동 배선)")]
+        [Tooltip("결과 화면 전체 루트 — 평소엔 꺼져 있다가 승/패 시 켜진다.")]
+        [SerializeField] private GameObject panelRoot;
+        [SerializeField] private TMP_Text titleText;
+        [SerializeField] private Button restartButton;
+        [SerializeField] private Button mapButton;
 
         private void Awake()
         {
-            BuildUi();
-            _root.SetActive(false);
+            if (panelRoot == null || restartButton == null || mapButton == null)
+            {
+                Debug.LogError($"{nameof(ResultScreen)}: UI 참조가 비어 있습니다. " +
+                    "Tools ▸ ChainRiposte ▸ Build Main Scene UI 를 실행하세요.", this);
+                enabled = false;
+                return;
+            }
+
+            restartButton.onClick.AddListener(Restart);
+            mapButton.onClick.AddListener(GoToMap);
+            panelRoot.SetActive(false);
             gameManager.Session.PhaseChanged += OnPhaseChanged;
         }
 
@@ -35,9 +50,9 @@ namespace ChainRiposte.Game.UI
                 return;
 
             bool victory = next == GamePhase.Victory;
-            _titleText.text = victory ? "STAGE CLEAR" : "DEFEAT";
-            _titleText.color = victory ? new Color(0.95f, 0.83f, 0.35f) : new Color(0.85f, 0.2f, 0.25f);
-            _root.SetActive(true);
+            titleText.text = victory ? "STAGE CLEAR" : "DEFEAT";
+            titleText.color = victory ? new Color(0.95f, 0.83f, 0.35f) : new Color(0.85f, 0.2f, 0.25f);
+            panelRoot.SetActive(true);
         }
 
         private static void Restart() =>
@@ -45,74 +60,5 @@ namespace ChainRiposte.Game.UI
 
         private static void GoToMap() =>
             SceneManager.LoadScene("StageSelect");
-
-        // ── UI 조립 ──
-
-        private static Font BuiltinFont => Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-
-        private void BuildUi()
-        {
-            var canvas = gameObject.AddComponent<Canvas>();
-            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-            canvas.sortingOrder = 20; // 항상 최상단
-            var scaler = gameObject.AddComponent<CanvasScaler>();
-            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-            scaler.referenceResolution = new Vector2(1080f, 1920f);
-            scaler.matchWidthOrHeight = 0.5f;
-            gameObject.AddComponent<GraphicRaycaster>();
-
-            _root = new GameObject("Root");
-            _root.transform.SetParent(transform, false);
-            var rootRect = _root.AddComponent<RectTransform>();
-            rootRect.anchorMin = Vector2.zero;
-            rootRect.anchorMax = Vector2.one;
-            rootRect.offsetMin = rootRect.offsetMax = Vector2.zero;
-            var dim = _root.AddComponent<Image>();
-            dim.color = new Color(0f, 0f, 0f, 0.72f); // 아래 화면을 어둡게 덮고 클릭도 차단
-
-            var titleGo = new GameObject("Title");
-            titleGo.transform.SetParent(_root.transform, false);
-            var titleRect = titleGo.AddComponent<RectTransform>();
-            titleRect.anchorMin = titleRect.anchorMax = titleRect.pivot = new Vector2(0.5f, 0.5f);
-            titleRect.anchoredPosition = new Vector2(0f, 160f);
-            titleRect.sizeDelta = new Vector2(1000f, 240f);
-            _titleText = titleGo.AddComponent<Text>();
-            _titleText.font = BuiltinFont;
-            _titleText.fontSize = 120;
-            _titleText.fontStyle = FontStyle.Bold;
-            _titleText.alignment = TextAnchor.MiddleCenter;
-            _titleText.raycastTarget = false;
-
-            CreateButton("RestartButton", new Vector2(0f, -120f), "RESTART", Restart);
-            CreateButton("MapButton", new Vector2(0f, -320f), "MAP", GoToMap);
-        }
-
-        private void CreateButton(string objName, Vector2 pos, string labelText, UnityEngine.Events.UnityAction onClick)
-        {
-            var buttonGo = new GameObject(objName);
-            buttonGo.transform.SetParent(_root.transform, false);
-            var buttonRect = buttonGo.AddComponent<RectTransform>();
-            buttonRect.anchorMin = buttonRect.anchorMax = buttonRect.pivot = new Vector2(0.5f, 0.5f);
-            buttonRect.anchoredPosition = pos;
-            buttonRect.sizeDelta = new Vector2(460f, 160f);
-            var buttonImage = buttonGo.AddComponent<Image>();
-            buttonImage.color = new Color(0.22f, 0.20f, 0.26f, 0.95f);
-            var button = buttonGo.AddComponent<Button>();
-            button.onClick.AddListener(onClick);
-
-            var labelGo = new GameObject("Label");
-            labelGo.transform.SetParent(buttonGo.transform, false);
-            var labelRect = labelGo.AddComponent<RectTransform>();
-            labelRect.anchorMin = Vector2.zero;
-            labelRect.anchorMax = Vector2.one;
-            labelRect.offsetMin = labelRect.offsetMax = Vector2.zero;
-            var label = labelGo.AddComponent<Text>();
-            label.font = BuiltinFont;
-            label.fontSize = 56;
-            label.alignment = TextAnchor.MiddleCenter;
-            label.color = new Color(0.92f, 0.90f, 0.85f);
-            label.text = labelText;
-            label.raycastTarget = false;
-        }
     }
 }

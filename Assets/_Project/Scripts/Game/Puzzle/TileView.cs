@@ -15,7 +15,8 @@ namespace ChainRiposte.Game.Puzzle
 
         public long TileId { get; private set; }
 
-        public static TileView Create(Transform parent, Tile tile, Color color)
+        /// <param name="sprite">타일 아트. null이면 플레이스홀더 사각형 + color 착색으로 표시.</param>
+        public static TileView Create(Transform parent, Tile tile, Color color, Sprite sprite = null)
         {
             var go = new GameObject($"Tile_{tile.Definition.Id}_{tile.InstanceId}");
             go.transform.SetParent(parent, false);
@@ -25,7 +26,7 @@ namespace ChainRiposte.Game.Puzzle
             var view = go.AddComponent<TileView>();
             view.TileId = tile.InstanceId;
             view._renderer = go.AddComponent<SpriteRenderer>();
-            view._renderer.sprite = PlaceholderSprite.Square;
+            view._renderer.sprite = sprite != null ? sprite : PlaceholderSprite.Square;
             view._baseColor = color;
             view._maxHp = tile.Definition.MaxHp;
             view._remainingHp = tile.RemainingHp;
