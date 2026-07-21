@@ -85,6 +85,13 @@ namespace ChainRiposte.Editor
                 nodes[i] = node;
 
                 CreateWorldLabel(sr.transform, DisplayName(i));
+
+                // 잠금/클리어 배지 — 씬 오브젝트라 자물쇠·깃발 아트로 그대로 교체 가능
+                GameObject lockedBadge = CreateBadge(sr.transform, "LockedBadge", "LOCK",
+                    new Vector3(0f, 0f, -0.1f), new Color(0.85f, 0.83f, 0.80f));
+                GameObject clearedBadge = CreateBadge(sr.transform, "ClearedBadge", "CLEAR",
+                    new Vector3(0f, 0.95f, -0.1f), new Color(0.95f, 0.83f, 0.35f));
+                node.SetBadgesEditorOnly(lockedBadge, clearedBadge);
             }
 
             // ── 경로선 (노드를 잇는 LineRenderer) ──
@@ -165,6 +172,24 @@ namespace ChainRiposte.Editor
             tmp.fontSize = 6f;
             tmp.alignment = TextAlignmentOptions.Center;
             tmp.color = new Color(0.92f, 0.90f, 0.85f);
+        }
+
+        /// <summary>노드 상태 배지(잠금/클리어). 기본은 꺼진 채로 두고 런타임에 MapNode가 켠다.</summary>
+        private static GameObject CreateBadge(Transform node, string name, string text, Vector3 localPos, Color color)
+        {
+            var go = new GameObject(name);
+            Undo.RegisterCreatedObjectUndo(go, "Build StageSelect");
+            go.transform.SetParent(node, false);
+            go.transform.localPosition = localPos;
+            go.transform.localScale = Vector3.one * 0.35f;
+            var tmp = go.AddComponent<TextMeshPro>();
+            tmp.text = text;
+            tmp.fontSize = 5f;
+            tmp.alignment = TextAlignmentOptions.Center;
+            tmp.color = color;
+            tmp.fontStyle = FontStyles.Bold;
+            go.SetActive(false);
+            return go;
         }
 
         private static LineRenderer CreatePathLine(Transform parent, IReadOnlyList<MapNode> nodes)

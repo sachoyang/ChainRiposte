@@ -1,6 +1,8 @@
 using System.Collections;
+using ChainRiposte.Core.Progress;
 using ChainRiposte.Core.Stage;
 using ChainRiposte.Game.Config;
+using ChainRiposte.Game.Progress;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -45,6 +47,8 @@ namespace ChainRiposte.Game.Map
         [SerializeField, Min(0f)] private float cameraPadding = 1.5f;
 
         private StageConfig[] _configs;
+        private string[] _stageIds;
+        private StageProgress _progress;
         private Camera _camera;
         private int _currentIndex;
         private bool _moving;
@@ -66,8 +70,28 @@ namespace ChainRiposte.Game.Map
             if (startButton != null)
                 startButton.onClick.AddListener(StartStage);
 
+            // 진행도(GDD §9.2) — 아직 못 깬 스테이지는 잠기고, 캐릭터는 가장 앞선 열린 노드에서 시작한다.
+            _progress = ProgressService.Current;
+            _stageIds = new string[nodes.Length];
+            for (int i = 0; i < nodes.Length; i++)
+                _stageIds[i] = nodes[i] != null && nodes[i].Stage != null ? nodes[i].Stage.StageId : string.Empty;
+
+            RefreshNodeStates();
+            _currentIndex = _progress.HighestUnlockedIndex(_stageIds);
+
             RefreshPathLine();
-            character.position = NodeWorld(0) + characterOffset;
+            character.position = NodeWorld(_currentIndex) + characterOffset;
+        }
+
+        /// <summary>진행도에 맞춰 노드의 잠금/클리어 표시를 갱신한다.</summary>
+        private void RefreshNodeStates()
+        {
+            for (int i = 0; i < nodes.Length; i++)
+            {
+                if (nodes[i] == null)
+                    continue;
+                nodes[i].ApplyState(_progress.IsUnlocked(_stageIds, i), _progress.IsCleared(_stageIds[i]));
+            }
         }
 
         private void Start()
@@ -102,8 +126,16 @@ namespace ChainRiposte.Game.Map
                 }
             }
 
-            if (nearest >= 0 && nearest != _currentIndex)
-                StartCoroutine(MoveRoutine(nearest));
+            if (nearest < 0 || nearest == _currentIndex)
+                return;
+
+            if (nodes[nearest].IsLocked)
+            {
+                ShowLocked(nearest); // 이동하지 않고 이유만 알려준다
+                return;
+            }
+
+            StartCoroutine(MoveRoutine(nearest));
         }
 
         /// <summary>노드를 하나씩 거쳐 이동 — 경로를 따라 걷는 NSMB 느낌.</summary>
@@ -145,11 +177,29 @@ namespace ChainRiposte.Game.Map
             int height = config.ActiveMask.GetLength(1);
 
             if (titleText != null)
-                titleText.text = $"STAGE {DisplayName(index)}";
+                titleText.text = _progress.IsCleared(_stageIds[index])
+                    ? $"STAGE {DisplayName(index)}  - CLEAR"
+                    : $"STAGE {DisplayName(index)}";
             if (infoText != null)
                 infoText.text =
                     $"WORLD {index / 3 + 1}   BOARD {width}x{height}   TURNS {config.TurnLimit}\n" +
                     $"BOSS  {config.Boss?.Name ?? "???"}";
+            if (startButton != null)
+                startButton.interactable = true;
+            if (infoPanel != null)
+                infoPanel.SetActive(true);
+        }
+
+        /// <summary>잠긴 노드를 눌렀을 때 — 이동은 하지 않고 패널로 이유만 표시한다.</summary>
+        private void ShowLocked(int index)
+        {
+            // 기본 TMP 폰트에 한글 글리프가 없으므로 패널 문구는 영문으로 둔다.
+            if (titleText != null)
+                titleText.text = $"STAGE {DisplayName(index)}  - LOCKED";
+            if (infoText != null)
+                infoText.text = "LOCKED\nCLEAR THE PREVIOUS STAGE FIRST";
+            if (startButton != null)
+                startButton.interactable = false;
             if (infoPanel != null)
                 infoPanel.SetActive(true);
         }

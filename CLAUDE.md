@@ -34,10 +34,23 @@
 
 > **다음 세션은 이 섹션을 먼저 읽고 시작한다.** 세션 종료 시 여기를 갱신할 것.
 
-### 마지막 갱신: 2026-07-16 (세션 3 진행 중)
-- **진행 상황**: 로드맵 1~10단계 완료. + **StageSelect·Main을 씬 편집형으로 리팩터**(아래).
-- **사용자 확인**: 7~9단계 확인 완료. 10단계 플레이 확인 미보고. 씬 편집형 전환 컴파일/플레이 확인 대기.
-- **git**: 전부 미커밋. 커밋 여부는 사용자에게 물어볼 것.
+### 마지막 갱신: 2026-07-21 (세션 4)
+- **진행 상황**: 로드맵 1~10단계 + A1/A2/B1/낙하버그 + **B2 진행도 잠금·세이브** 완료.
+- **사용자 확인 대기**: 세션 3-4(보스 하강/스프라이트) + 세션 4(B2 잠금) — 사용자가 "나중에 한 번에 검증" 하기로 함.
+- **git**: 세션 3까지는 `6a2ad14`로 커밋됨. 세션 4(B2) 작업은 미커밋.
+
+### 세션 4: B2 진행도 잠금 + 세이브 (완료 — 테스트 53/53, 플레이 검증 대기)
+GDD §9.2. **규칙은 Core / 저장은 Game** 분리.
+- `Core/Progress/StageProgress.cs` 신규 — 클리어한 **stageId 집합**만 보관. 잠금은 맵 노드 순서(`orderedStageIds`)와 조합해 계산 → 씬에서 노드를 옮기거나 추가해도 세이브 안 깨짐. 규칙: **index 0은 항상 열림, 나머지는 직전 스테이지 클리어 시 해금**. `Serialize/Deserialize`(';' 구분 문자열)까지 순수 C#.
+- `Game/Progress/ProgressService.cs` 신규 — PlayerPrefs 어댑터(키 `ChainRiposte.Progress.v1`). `Current`/`MarkCleared`(새로 깬 경우만 저장)/`ResetAll`/`UnlockAll`.
+- `StageDataSO.StageId` 추가 — 세이브 키. **비우면 에셋 이름 폴백**(기존 Stage_1_1~2_3 그대로 동작, 마이그레이션 불필요). 한 번 정하면 바꾸지 말 것.
+- `GameManager` — `GamePhase.Victory` 시 `ProgressService.MarkCleared(stageData.StageId)`.
+- `MapNode` — `ApplyState(unlocked, cleared)` 추가. 잠금 시 스프라이트 틴트 + **lockedBadge/clearedBadge 씬 오브젝트 on/off**(자물쇠·깃발 아트로 교체 가능, 비워도 동작).
+- `StageSelectController` — Awake에서 진행도 로드 → 노드 상태 적용 → **가장 앞선 열린 노드에서 시작**. 잠긴 노드 클릭 시 이동 안 하고 패널에 `LOCKED / CLEAR THE PREVIOUS STAGE FIRST` + START 비활성. 클리어한 노드는 타이틀에 `- CLEAR`. (기본 TMP 폰트에 한글 글리프 없어 패널 문구는 영문 유지)
+- `Editor/ProgressMenu.cs` 신규 — `Tools ▸ ChainRiposte ▸ Progress ▸` Reset / Unlock All / Log.
+- `Editor/StageSelectSceneBuilder` — 노드마다 LOCK/CLEAR 배지 생성 + 자동 배선. **기존 씬에 배지를 넣으려면 빌더 재실행 필요**(안 해도 틴트로는 동작).
+- 테스트 `Tests/StageProgressTests.cs` 8개 추가 → EditMode **53/53 통과**.
+- **사용자가 할 것(검증)**: ①StageSelect 플레이 — 1-1만 열리고 1-2 이후는 어둡게+클릭 시 LOCKED ②Main에서 보스 잡고(Victory) MAP 복귀 → 1-2 해금 & 캐릭터가 1-2에 서 있는지 ③`Tools ▸ ChainRiposte ▸ Progress ▸ Reset Progress` 후 다시 잠기는지.
 
 ### 세션 3-2: Main 씬 UI 씬 편집형 전환 (진행 중)
 - **한 것**:
@@ -77,10 +90,9 @@
 - **10단계 월드맵**: GDD §9 기획(NSMB식, 1-1~2-3, 월드2=배경/보스 차별+추후 기믹, §9.3 모바일 세로뷰=출시 요구사항). Game/Map/StageSelectController(코드 조립: S자 6노드, 클릭→경로 따라 자동이동→하단 정보패널+START), StageSelection 정적 홀더(GameManager 우선 사용), Stage_1_1~2_3 + Boss_02 "The Butcher"(HP160/체간120, 월드2 연결), StageSelect.unity, 빌드설정 [0]=StageSelect [1]=Main.
 
 ### 다음 로드맵 (우선순위는 사용자에게 확인)
-- **다음 세션 시작 시**: 세션 3-4 검증 결과(보스 하강/스프라이트 표시)부터 물어볼 것. 그리고 git 전부 미커밋 상태 — 커밋 여부 확인.
-- B2. 월드맵 진행도 잠금 + 세이브 (GDD §9.2). ← 유력한 다음 작업
-- B3. 스테이지 기믹 3종(전염/시한폭탄/결박) → 월드2 적용 (GDD §3.6, `IStageGimmick` 조합형).
+- **다음 세션 시작 시**: 미검증분(세션 3-4 보스 하강/스프라이트 + 세션 4 B2 잠금) 결과부터 물어볼 것. B2 작업 미커밋 — 커밋 여부 확인.
+- B3. 스테이지 기믹 3종(전염/시한폭탄/결박) → 월드2 적용 (GDD §3.6, `IStageGimmick` 조합형). ← 유력한 다음 작업
 - B4. 모바일 세로 뷰 대응 — 방향별 UI 재배치 구조 (GDD §9.3, 출시 요구사항).
 - (선택) UI 프리팹 추출, 실제 아트 에셋 제작/적용 — A2 파이프라인은 준비됨.
 
-완료됨: A1(씬 편집형 전환: StageSelect+Main), A2(에셋 스왑 파이프라인), B1(보드 그리드 에디터), 낙하 버그 수정.
+완료됨: A1(씬 편집형 전환: StageSelect+Main), A2(에셋 스왑 파이프라인), B1(보드 그리드 에디터), 낙하 버그 수정, B2(진행도 잠금+세이브).

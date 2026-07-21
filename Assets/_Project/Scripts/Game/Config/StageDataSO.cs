@@ -17,6 +17,10 @@ namespace ChainRiposte.Game.Config
         private const char CellInactive = 'X';
         private const char CellWall = 'W';
 
+        [Header("식별자 — 진행도 세이브 키 (비우면 에셋 이름 사용)")]
+        [Tooltip("한 번 정하면 바꾸지 말 것. 바꾸면 기존 세이브의 클리어 기록과 연결이 끊긴다.")]
+        [SerializeField] private string stageId = "";
+
         [Header("보드 형태 — 위 행부터 아래로. O=활성, X=비활성(구멍), W=벽")]
         [Tooltip("모든 행의 길이가 같아야 한다. 예: 하트/해골 모양은 X로 구멍을 뚫는다")]
         [SerializeField]
@@ -72,6 +76,9 @@ namespace ChainRiposte.Game.Config
             public TileDefinitionSO tile;
             [Min(0f)] public float weight;
         }
+
+        /// <summary>진행도 세이브가 이 스테이지를 가리키는 이름 (GDD §9.2).</summary>
+        public string StageId => string.IsNullOrWhiteSpace(stageId) ? name : stageId;
 
         public StageConfig ToConfig()
         {

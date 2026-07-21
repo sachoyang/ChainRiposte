@@ -1,6 +1,7 @@
 using ChainRiposte.Core.Flow;
 using ChainRiposte.Core.Stage;
 using ChainRiposte.Game.Config;
+using ChainRiposte.Game.Progress;
 using UnityEngine;
 
 namespace ChainRiposte.Game
@@ -52,6 +53,10 @@ namespace ChainRiposte.Game
         private void OnPhaseChanged(GamePhase previous, GamePhase next)
         {
             Debug.Log($"[GameFlow] {previous} → {next}");
+
+            // 클리어하면 다음 스테이지가 열린다 (GDD §9.2)
+            if (next == GamePhase.Victory)
+                ProgressService.MarkCleared(stageData.StageId);
         }
     }
 }
