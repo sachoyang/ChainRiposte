@@ -67,14 +67,56 @@ namespace ChainRiposte.Game.Config
         [Tooltip("이 스테이지에 난입하는 보스")]
         [SerializeField] private BossDataSO bossData;
 
-        [Header("스테이지 기믹 on/off (확장 구현 사항, GDD §3.6)")]
+        [Header("스테이지 기믹 on/off (GDD §3.6) — 목록에 넣은 것만 활성화, 조합 가능")]
         [SerializeField] private GimmickType[] gimmicks = Array.Empty<GimmickType>();
+
+        [Tooltip("위 목록에 있는 기믹만 이 수치를 사용한다")]
+        [SerializeField] private GimmickTuning gimmickTuning = new();
 
         [Serializable]
         private struct SpawnWeightEntry
         {
             public TileDefinitionSO tile;
             [Min(0f)] public float weight;
+        }
+
+        /// <summary>기믹 밸런스 수치의 인스펙터 표현 (Core의 GimmickSettings로 변환된다).</summary>
+        [Serializable]
+        private sealed class GimmickTuning
+        {
+            [Header("전염 — 부패 타일")]
+            [Tooltip("퍼즐 시작 시 뿌려지는 부패 타일 수")]
+            [Min(0)] public int corruptionSeeds = 2;
+            [Tooltip("부패가 퍼지는 주기(턴). 1이면 매 턴")]
+            [Min(1)] public int corruptionSpreadEveryTurns = 1;
+            [Tooltip("부패가 이 비율을 넘으면 확산 정지 (완전 데드락 방지)")]
+            [Range(0.05f, 1f)] public float maxCorruptionRatio = 0.35f;
+
+            [Header("시한폭탄")]
+            [Tooltip("새로 스폰되는 몬스터가 폭탄이 될 확률")]
+            [Range(0f, 1f)] public float bombChance = 0.12f;
+            [Tooltip("폭발까지의 턴 수")]
+            [Min(1)] public int bombTurns = 3;
+            [Tooltip("폭발 시 플레이어 HP 피해")]
+            [Min(0)] public int bombDamage = 12;
+
+            [Header("사슬 결박")]
+            [Tooltip("퍼즐 시작 시 결박된 채로 놓이는 타일 수")]
+            [Min(0)] public int chainInitialCount = 3;
+            [Tooltip("새로 스폰되는 몬스터가 결박될 확률")]
+            [Range(0f, 1f)] public float chainChance = 0.08f;
+
+            public GimmickSettings ToSettings() => new()
+            {
+                CorruptionSeeds = corruptionSeeds,
+                CorruptionSpreadEveryTurns = corruptionSpreadEveryTurns,
+                MaxCorruptionRatio = maxCorruptionRatio,
+                BombChance = bombChance,
+                BombTurns = bombTurns,
+                BombDamage = bombDamage,
+                ChainInitialCount = chainInitialCount,
+                ChainChance = chainChance,
+            };
         }
 
         /// <summary>진행도 세이브가 이 스테이지를 가리키는 이름 (GDD §9.2).</summary>
@@ -108,6 +150,8 @@ namespace ChainRiposte.Game.Config
                 AmbushHpMultiplier = ambushHpMultiplier,
                 Boss = bossData != null ? bossData.ToConfig() : null,
                 Gimmicks = (GimmickType[])gimmicks.Clone(),
+                // 이 필드가 없던 시절의 에셋도 열 수 있게 방어 (순수 C# 클래스라 ?? 사용 가능)
+                GimmickSettings = (gimmickTuning ?? new GimmickTuning()).ToSettings(),
             };
         }
 

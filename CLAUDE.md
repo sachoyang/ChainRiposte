@@ -35,9 +35,22 @@
 > **다음 세션은 이 섹션을 먼저 읽고 시작한다.** 세션 종료 시 여기를 갱신할 것.
 
 ### 마지막 갱신: 2026-07-21 (세션 4)
-- **진행 상황**: 로드맵 1~10단계 + A1/A2/B1/낙하버그 + **B2 진행도 잠금·세이브** 완료.
-- **사용자 확인 대기**: 세션 3-4(보스 하강/스프라이트) + 세션 4(B2 잠금) — 사용자가 "나중에 한 번에 검증" 하기로 함.
-- **git**: 세션 3까지는 `6a2ad14`로 커밋됨. 세션 4(B2) 작업은 미커밋.
+- **진행 상황**: 로드맵 1~10단계 + A1/A2/B1/낙하버그 + **B2 진행도 잠금·세이브** + **B3 스테이지 기믹 3종** 완료.
+- **사용자 확인 대기**: 세션 3-4(보스 하강/스프라이트) + B2(잠금) + B3(기믹) — 사용자가 "나중에 한 번에 검증" 하기로 함.
+- **git**: B2까지 `c07a251`로 커밋됨.
+
+### 세션 4-2: B3 스테이지 기믹 3종 (완료 — 테스트 66/66, 플레이 검증 대기)
+GDD §3.6. **규칙은 Core의 조합형 모듈, 엔진은 훅만 제공**.
+- `Core/Stage/Gimmicks/` 신규 — `IStageGimmick`(+ no-op 기본 클래스 `StageGimmick`), `GimmickContext`(보드/RNG/설정 + 이벤트·피해 기록), `GimmickEvent`, `GimmickFactory`.
+  - 훅 4개: `OnBoardInitialized` / `OnTilesSpawned` / `OnMatchesResolving`(파괴 목록을 고칠 수 있음) / `OnTurnEnded`.
+- **전염** `SpreadingCorruptionGimmick`: 시작 시 부패 씨앗 N개 → 매 턴(주기 설정) 인접 몬스터 1개 감염. 부패는 **새 카테고리 `TileCategory.Corruption`**(매치·스왑 불가, 낙하는 함). 인접 매치가 나면 함께 파괴. `MaxCorruptionRatio`(기본 0.35)로 완전 데드락 방지.
+- **시한폭탄** `TickingDeathGimmick`: 스폰 시 확률로 장전(그 턴은 유예), 턴마다 감소, 0이면 타일 소멸 + **플레이어 HP 직접 피해**(`SwapResult.Gimmicks.PlayerDamage` → PuzzleController가 적용, 사망 시 패배).
+- **사슬 결박** `ChainedTilesGimmick`: `Tile.Status.Chained` → **스왑 불가 + 낙하 불가**(`Tile.IsFixed`로 GravityResolver가 벽과 동일 취급). 매치에 걸리면 **파괴 대신 사슬만 풀림**(영혼석 없음), 인접 매치로도 해제.
+- **엔진 변경**: `PuzzleEngine(config, spawner, rng=null)`. `CascadeStep`에 **`ClearedPositions`**(실제 사라진 칸 — 뷰는 이제 이걸로 파괴 연출)와 `GimmickEvents` 추가. `SwapResult.Gimmicks`(GimmickPhase: 이벤트/피해/낙하/그 여파 연쇄) 추가. 매치가 통째로 사슬에 막히면 사슬만 풀고 그 스왑을 마감(무한루프 방지).
+- **뷰**: `TileView.SetChained/SetBombTurns`(사슬 띠 + 폭탄 카운트), `BoardView`에 corruptionColor/corruptionSprite/chainSprite 슬롯 + `PlayGimmickPhase` 재생.
+- **데이터**: `StageDataSO`에 `gimmickTuning`(전염/폭탄/사슬 수치) 인스펙터 노출. **월드2 배선 완료** — 2-1=사슬, 2-2=사슬+폭탄, 2-3=사슬+폭탄+전염. 월드1은 기믹 없음(확인함).
+- 테스트 `Tests/GimmickTests.cs` 13개 추가 → EditMode **66/66 통과**.
+- **사용자가 할 것(검증)**: ①StageSelect에서 2-1 진입(잠겨 있으면 `Tools ▸ ChainRiposte ▸ Progress ▸ Unlock All Stages`) — 사슬 감긴 타일이 안 움직이고 매치하면 사슬만 풀리는지 ②2-2에서 폭탄 숫자가 줄고 0에서 터지며 HP가 깎이는지 ③2-3에서 보라색 부패가 번지고 인접 매치로 지워지는지.
 
 ### 세션 4: B2 진행도 잠금 + 세이브 (완료 — 테스트 53/53, 플레이 검증 대기)
 GDD §9.2. **규칙은 Core / 저장은 Game** 분리.
@@ -90,9 +103,8 @@ GDD §9.2. **규칙은 Core / 저장은 Game** 분리.
 - **10단계 월드맵**: GDD §9 기획(NSMB식, 1-1~2-3, 월드2=배경/보스 차별+추후 기믹, §9.3 모바일 세로뷰=출시 요구사항). Game/Map/StageSelectController(코드 조립: S자 6노드, 클릭→경로 따라 자동이동→하단 정보패널+START), StageSelection 정적 홀더(GameManager 우선 사용), Stage_1_1~2_3 + Boss_02 "The Butcher"(HP160/체간120, 월드2 연결), StageSelect.unity, 빌드설정 [0]=StageSelect [1]=Main.
 
 ### 다음 로드맵 (우선순위는 사용자에게 확인)
-- **다음 세션 시작 시**: 미검증분(세션 3-4 보스 하강/스프라이트 + 세션 4 B2 잠금) 결과부터 물어볼 것. B2 작업 미커밋 — 커밋 여부 확인.
-- B3. 스테이지 기믹 3종(전염/시한폭탄/결박) → 월드2 적용 (GDD §3.6, `IStageGimmick` 조합형). ← 유력한 다음 작업
-- B4. 모바일 세로 뷰 대응 — 방향별 UI 재배치 구조 (GDD §9.3, 출시 요구사항).
-- (선택) UI 프리팹 추출, 실제 아트 에셋 제작/적용 — A2 파이프라인은 준비됨.
+- **다음 세션 시작 시**: 미검증분(세션 3-4 보스 하강/스프라이트 + B2 잠금 + B3 기믹) 결과부터 물어볼 것.
+- B4. 모바일 세로 뷰 대응 — 방향별 UI 재배치 구조 (GDD §9.3, 출시 요구사항). ← 유력한 다음 작업
+- (선택) UI 프리팹 추출, 실제 아트 에셋 제작/적용 — A2 파이프라인은 준비됨(부패/사슬 스프라이트 슬롯도 열려 있음).
 
-완료됨: A1(씬 편집형 전환: StageSelect+Main), A2(에셋 스왑 파이프라인), B1(보드 그리드 에디터), 낙하 버그 수정, B2(진행도 잠금+세이브).
+완료됨: A1(씬 편집형 전환: StageSelect+Main), A2(에셋 스왑 파이프라인), B1(보드 그리드 에디터), 낙하 버그 수정, B2(진행도 잠금+세이브), B3(스테이지 기믹 3종).

@@ -9,6 +9,7 @@ namespace ChainRiposte.Game.Puzzle
     {
         private SpriteRenderer _renderer;
         private TextMesh _countdownText;
+        private SpriteRenderer _chainOverlay;
         private Color _baseColor;
         private int _maxHp;
         private int _remainingHp;
@@ -48,6 +49,60 @@ namespace ChainRiposte.Game.Puzzle
                 _countdownText = CreateCountdownText();
 
             _countdownText.text = $"{Mathf.CeilToInt(seconds)}s|{turns}t";
+        }
+
+        /// <summary>기믹 상태(사슬/폭탄)를 타일에 반영한다 (GDD §3.6).</summary>
+        public void ApplyStatus(Tile tile, Sprite chainSprite)
+        {
+            SetChained(tile.Status.Chained, chainSprite);
+            SetBombTurns(tile.Status.BombTurnsRemaining);
+        }
+
+        /// <summary>시한폭탄 남은 턴 표시. 0 이하면 표시를 지운다 (해체/폭발).</summary>
+        public void SetBombTurns(int turns)
+        {
+            if (turns <= 0)
+            {
+                if (_countdownText != null)
+                    _countdownText.text = string.Empty;
+                return;
+            }
+
+            if (_countdownText == null)
+                _countdownText = CreateCountdownText();
+
+            _countdownText.color = new Color(1f, 0.45f, 0.35f);
+            _countdownText.text = turns.ToString();
+        }
+
+        /// <summary>사슬 결박 표시 — 스프라이트를 주면 그걸 쓰고, 없으면 어두운 띠로 대체한다.</summary>
+        public void SetChained(bool chained, Sprite chainSprite)
+        {
+            if (!chained)
+            {
+                if (_chainOverlay != null)
+                    _chainOverlay.gameObject.SetActive(false);
+                return;
+            }
+
+            if (_chainOverlay == null)
+                _chainOverlay = CreateChainOverlay(chainSprite);
+            _chainOverlay.gameObject.SetActive(true);
+        }
+
+        private SpriteRenderer CreateChainOverlay(Sprite chainSprite)
+        {
+            var go = new GameObject("Chain");
+            go.transform.SetParent(transform, false);
+            go.transform.localScale = chainSprite != null
+                ? Vector3.one
+                : new Vector3(1.15f, 0.3f, 1f); // 플레이스홀더: 가운데를 가로지르는 띠
+
+            var renderer = go.AddComponent<SpriteRenderer>();
+            renderer.sprite = chainSprite != null ? chainSprite : PlaceholderSprite.Square;
+            renderer.color = chainSprite != null ? Color.white : new Color(0.62f, 0.60f, 0.58f);
+            renderer.sortingOrder = 5;
+            return renderer;
         }
 
         private TextMesh CreateCountdownText()

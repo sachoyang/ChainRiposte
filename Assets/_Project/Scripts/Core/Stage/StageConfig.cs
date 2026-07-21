@@ -53,9 +53,12 @@ namespace ChainRiposte.Core.Stage
         /// <summary>이 스테이지에 난입하는 보스. null이면 전투 없음 (테스트/퍼즐 전용).</summary>
         public BossConfig Boss;
 
-        // ── 스테이지 기믹 (확장 구현 사항, GDD §3.6) ──
+        // ── 스테이지 기믹 (GDD §3.6) ──
         /// <summary>이 스테이지에서 활성화되는 기믹 목록. 조합 가능.</summary>
         public IReadOnlyList<GimmickType> Gimmicks = Array.Empty<GimmickType>();
+
+        /// <summary>기믹 밸런스 수치. 활성화된 기믹만 참조한다.</summary>
+        public GimmickSettings GimmickSettings = new();
 
         /// <summary>ActiveMask로 빈 보드를 생성한다. 초기 벽 배치는 3단계 보드 초기화에서 수행.</summary>
         public BoardGrid CreateBoard() => new(ActiveMask);

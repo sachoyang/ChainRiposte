@@ -91,4 +91,7 @@ MonoBehaviour:
   bossCountdownTurns: 8
   ambushHpMultiplier: 0.5
   bossData: {fileID: 11400000, guid: 736ae02691519a14da1aead03eb8f6e2, type: 2}
-  gimmicks: 
+  gimmicks:
+  - 2
+  - 1
+  - 0 

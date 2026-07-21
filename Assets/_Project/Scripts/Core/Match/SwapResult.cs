@@ -14,20 +14,31 @@ namespace ChainRiposte.Core.Match
         /// <summary>연쇄 단계 목록. 실패 시 비어 있다.</summary>
         public IReadOnlyList<CascadeStep> Steps { get; }
 
+        /// <summary>턴 종료 후 기믹이 일으킨 일 (GDD §3.6). 기믹이 없으면 <see cref="GimmickPhase.Empty"/>.</summary>
+        public GimmickPhase Gimmicks { get; }
+
         public int TotalSouls { get; }
         public int TotalPotions { get; }
 
         /// <summary>최종 콤보 수 (= 연쇄 단계 수).</summary>
         public int ComboCount => Steps.Count;
 
-        private SwapResult(bool success, GridPos a, GridPos b, IReadOnlyList<CascadeStep> steps)
+        private SwapResult(bool success, GridPos a, GridPos b, IReadOnlyList<CascadeStep> steps, GimmickPhase gimmicks)
         {
             Success = success;
             A = a;
             B = b;
             Steps = steps;
+            Gimmicks = gimmicks ?? GimmickPhase.Empty;
 
             foreach (CascadeStep step in steps)
+            {
+                TotalSouls += step.SoulsEarned;
+                TotalPotions += step.PotionCount;
+            }
+
+            // 기믹이 만든 연쇄(폭발로 무너진 자리에서 터진 매치)도 같은 보상으로 친다
+            foreach (CascadeStep step in Gimmicks.Cascades)
             {
                 TotalSouls += step.SoulsEarned;
                 TotalPotions += step.PotionCount;
@@ -35,9 +46,10 @@ namespace ChainRiposte.Core.Match
         }
 
         public static SwapResult Failed(GridPos a, GridPos b) =>
-            new(false, a, b, Array.Empty<CascadeStep>());
+            new(false, a, b, Array.Empty<CascadeStep>(), GimmickPhase.Empty);
 
-        public static SwapResult Resolved(GridPos a, GridPos b, IReadOnlyList<CascadeStep> steps) =>
-            new(true, a, b, steps);
+        public static SwapResult Resolved(
+            GridPos a, GridPos b, IReadOnlyList<CascadeStep> steps, GimmickPhase gimmicks = null) =>
+            new(true, a, b, steps, gimmicks);
     }
 }

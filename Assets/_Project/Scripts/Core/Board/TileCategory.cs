@@ -14,5 +14,8 @@ namespace ChainRiposte.Core.Board
 
         /// <summary>보스 타일 — 매치 불가, 듀얼 카운트다운 보유. 바닥 도달 시 전투 돌입.</summary>
         Boss = 3,
+
+        /// <summary>부패 타일 (GDD §3.6 전염) — 매치·스왑 불가, 낙하는 한다. 인접 매치로 제거.</summary>
+        Corruption = 4,
     }
 }

@@ -18,6 +18,12 @@ namespace ChainRiposte.Core.Board
         /// <summary>내구도형 타일(벽 등)의 남은 HP. 일반 타일은 0.</summary>
         public int RemainingHp { get; private set; }
 
+        /// <summary>이 타일에 걸린 기믹 상태 (GDD §3.6). 기믹이 없으면 전부 기본값.</summary>
+        public TileStatus Status { get; } = new();
+
+        /// <summary>움직이지 않는 타일인가 — 벽이거나 사슬에 결박된 타일. 중력/슬라이드가 이 값을 본다.</summary>
+        public bool IsFixed => Category == TileCategory.Wall || Status.Chained;
+
         public Tile(TileDefinition definition)
         {
             Definition = definition ?? throw new ArgumentNullException(nameof(definition));

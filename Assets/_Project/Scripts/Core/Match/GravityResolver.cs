@@ -62,9 +62,9 @@ namespace ChainRiposte.Core.Match
                     if (tile == null)
                         continue;
 
-                    if (tile.Category == TileCategory.Wall)
+                    if (tile.IsFixed)
                     {
-                        // 벽은 고정. 벽 위의 타일은 벽 아래로 내려올 수 없다.
+                        // 벽·결박 타일은 고정. 그 위의 타일은 아래로 내려올 수 없다.
                         writeIndex = readIndex + 1;
                         continue;
                     }
@@ -111,12 +111,12 @@ namespace ChainRiposte.Core.Match
             {
                 var source = new GridPos(empty.X + dx, empty.Y + 1);
                 Tile tile = board.GetTile(source);
-                if (tile == null || tile.Category == TileCategory.Wall)
+                if (tile == null || tile.IsFixed)
                     continue;
 
                 // 그늘 칸이 아니면 위에서 리필/낙하로 채워지므로,
-                // 벽에 얹혀 직선 낙하가 영영 불가능한 타일만 미끄러뜨린다 (보스 하강 보장)
-                if (!intoShadow && !IsRestingOnWall(board, source))
+                // 고정 타일에 얹혀 직선 낙하가 영영 불가능한 타일만 미끄러뜨린다 (보스 하강 보장)
+                if (!intoShadow && !IsRestingOnFixed(board, source))
                     continue;
 
                 board.RemoveTile(source);
@@ -126,8 +126,8 @@ namespace ChainRiposte.Core.Match
             }
         }
 
-        /// <summary>이 타일이 벽 바로 위에 얹혀 있는가 (구멍은 통과하므로 건너뛰고 첫 활성 셀 기준).</summary>
-        private static bool IsRestingOnWall(BoardGrid board, GridPos pos)
+        /// <summary>이 타일이 고정 타일(벽·결박) 바로 위에 얹혀 있는가 (구멍은 통과하므로 첫 활성 셀 기준).</summary>
+        private static bool IsRestingOnFixed(BoardGrid board, GridPos pos)
         {
             for (int y = pos.Y - 1; y >= 0; y--)
             {
@@ -136,13 +136,13 @@ namespace ChainRiposte.Core.Match
                     continue;
 
                 Tile tile = board.GetTile(below);
-                return tile != null && tile.Category == TileCategory.Wall;
+                return tile != null && tile.IsFixed;
             }
 
             return false;
         }
 
-        /// <summary>이 칸의 열 위쪽에 벽이 있어 리필/직선 낙하가 도달할 수 없는가.</summary>
+        /// <summary>이 칸의 열 위쪽에 고정 타일이 있어 리필/직선 낙하가 도달할 수 없는가.</summary>
         private static bool IsBlockedFromAbove(BoardGrid board, GridPos pos)
         {
             for (int y = pos.Y + 1; y < board.Height; y++)
@@ -152,7 +152,7 @@ namespace ChainRiposte.Core.Match
                     continue;
 
                 Tile tile = board.GetTile(above);
-                if (tile != null && tile.Category == TileCategory.Wall)
+                if (tile != null && tile.IsFixed)
                     return true;
             }
 

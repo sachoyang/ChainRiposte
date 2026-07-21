@@ -117,6 +117,16 @@ namespace ChainRiposte.Game.Puzzle
                     gameManager.Session.Health.Heal(result.TotalPotions * _stageConfig.PotionHealAmount);
 
                 gameManager.Session.Stats.AddSouls(result.TotalSouls);
+
+                // 기믹 피해(시한폭탄 폭발 등)는 퍼즐 중에도 HP를 깎는다 (GDD §3.6)
+                if (result.Gimmicks.PlayerDamage > 0 &&
+                    gameManager.Session.Health.ApplyDamage(result.Gimmicks.PlayerDamage))
+                {
+                    _replaying = false;
+                    gameManager.Session.EndStage(victory: false);
+                    yield break;
+                }
+
                 _intrusion.OnBoardSettled(); // 새 보스 타일 추적 + 바닥 도달(정상 돌입) 판정
             }
 

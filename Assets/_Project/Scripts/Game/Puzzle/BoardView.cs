@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using ChainRiposte.Core.Board;
 using ChainRiposte.Core.Match;
+using ChainRiposte.Core.Stage.Gimmicks;
 using ChainRiposte.Game.Config;
 using UnityEngine;
 
@@ -18,6 +19,8 @@ namespace ChainRiposte.Game.Puzzle
         [SerializeField] private TileDefinitionSO[] tileVisuals = Array.Empty<TileDefinitionSO>();
         [SerializeField] private Color wallColor = new(0.20f, 0.17f, 0.15f);
         [SerializeField] private Color bossColor = new(0.62f, 0.08f, 0.12f);
+        [Tooltip("부패 타일 (GDD §3.6 전염 기믹)")]
+        [SerializeField] private Color corruptionColor = new(0.36f, 0.16f, 0.42f);
         [SerializeField] private Color unknownColor = Color.magenta;
 
         [Header("에셋 스왑 — 지정하면 색 사각형 대신 스프라이트로 표시")]
@@ -27,6 +30,10 @@ namespace ChainRiposte.Game.Puzzle
         [SerializeField] private Sprite bossSprite;
         [Tooltip("배경 셀 아트 (비우면 체커 2색 사각형)")]
         [SerializeField] private Sprite cellSprite;
+        [Tooltip("부패 타일 아트 (비우면 corruptionColor 사각형)")]
+        [SerializeField] private Sprite corruptionSprite;
+        [Tooltip("사슬 결박 오버레이 아트 (비우면 회색 띠)")]
+        [SerializeField] private Sprite chainSprite;
 
         [Header("배경 셀 (체커 2색)")]
         [SerializeField] private Color cellColorA = new(0.16f, 0.15f, 0.19f);
@@ -113,12 +120,80 @@ namespace ChainRiposte.Game.Puzzle
             _views[result.B] = viewA;
 
             foreach (CascadeStep step in result.Steps)
+                yield return PlayStep(step);
+
+            if (!result.Gimmicks.IsEmpty)
+                yield return PlayGimmickPhase(result.Gimmicks);
+        }
+
+        private IEnumerator PlayStep(CascadeStep step)
+        {
+            StepCleared?.Invoke(step);
+            yield return PlayClear(step);
+            ApplyBadgeEvents(step.GimmickEvents);
+            yield return PlayFallPhases(step.FallPhases);
+            if (stepPause > 0f)
+                yield return new WaitForSeconds(stepPause);
+        }
+
+        /// <summary>
+        /// 턴 종료 기믹(확산·폭발)의 연출 — 사건 → 낙하 → 그 여파로 터진 연쇄 순 (GDD §3.6).
+        /// </summary>
+        private IEnumerator PlayGimmickPhase(GimmickPhase phase)
+        {
+            var anims = new List<IEnumerator>();
+
+            foreach (GimmickEvent gimmickEvent in phase.Events)
             {
-                StepCleared?.Invoke(step);
-                yield return PlayClear(step);
-                yield return PlayFallAndSpawn(step);
-                if (stepPause > 0f)
-                    yield return new WaitForSeconds(stepPause);
+                switch (gimmickEvent.Type)
+                {
+                    case GimmickEventType.BombExploded:
+                    case GimmickEventType.CorruptionCleared:
+                        if (_views.Remove(gimmickEvent.Position, out TileView removed))
+                            anims.Add(removed.ClearAndDestroy(clearDuration));
+                        break;
+
+                    case GimmickEventType.CorruptionSpread:
+                        // 감염된 칸의 타일이 통째로 교체된다 — 옛 뷰를 버리고 부패 타일로 다시 만든다
+                        if (_views.Remove(gimmickEvent.Position, out TileView infected))
+                            Destroy(infected.gameObject);
+                        CreateTileView(gimmickEvent.Tile, gimmickEvent.Position);
+                        break;
+
+                    default:
+                        ApplyBadgeEvent(gimmickEvent);
+                        break;
+                }
+            }
+
+            yield return WhenAll(anims);
+            yield return PlayFallPhases(phase.FallPhases);
+
+            foreach (CascadeStep step in phase.Cascades)
+                yield return PlayStep(step);
+        }
+
+        /// <summary>파괴를 동반하지 않는 기믹 사건(사슬 해제·폭탄 카운트)만 뱃지에 반영한다.</summary>
+        private void ApplyBadgeEvents(IReadOnlyList<GimmickEvent> events)
+        {
+            foreach (GimmickEvent gimmickEvent in events)
+                ApplyBadgeEvent(gimmickEvent);
+        }
+
+        private void ApplyBadgeEvent(GimmickEvent gimmickEvent)
+        {
+            if (gimmickEvent.Tile == null || !TryFindView(gimmickEvent.Tile.InstanceId, out TileView view))
+                return;
+
+            switch (gimmickEvent.Type)
+            {
+                case GimmickEventType.ChainBroken:
+                    view.SetChained(false, chainSprite);
+                    break;
+                case GimmickEventType.BombArmed:
+                case GimmickEventType.BombTicked:
+                    view.SetBombTurns(gimmickEvent.Value);
+                    break;
             }
         }
 
@@ -126,13 +201,12 @@ namespace ChainRiposte.Game.Puzzle
         {
             var anims = new List<IEnumerator>();
 
-            foreach (MatchGroup group in step.Matches)
+            // 매치 좌표가 아니라 '실제로 사라진 칸'을 기준으로 지운다 —
+            // 사슬 타일은 살아남고, 인접한 부패 타일은 함께 사라진다 (GDD §3.6)
+            foreach (GridPos pos in step.ClearedPositions)
             {
-                foreach (GridPos pos in group.Positions)
-                {
-                    if (_views.Remove(pos, out TileView view))
-                        anims.Add(view.ClearAndDestroy(clearDuration));
-                }
+                if (_views.Remove(pos, out TileView view))
+                    anims.Add(view.ClearAndDestroy(clearDuration));
             }
 
             foreach (WallHit hit in step.WallHits)
@@ -155,9 +229,9 @@ namespace ChainRiposte.Game.Puzzle
         }
 
         /// <summary>낙하 웨이브를 순서대로 재생 — 직선 낙하와 대각선 슬라이드가 지그재그로 이어진다.</summary>
-        private IEnumerator PlayFallAndSpawn(CascadeStep step)
+        private IEnumerator PlayFallPhases(IReadOnlyList<FallPhase> phases)
         {
-            foreach (FallPhase phase in step.FallPhases)
+            foreach (FallPhase phase in phases)
             {
                 var anims = new List<IEnumerator>();
 
@@ -196,14 +270,22 @@ namespace ChainRiposte.Game.Puzzle
         /// <summary>보드 위 보스 타일의 카운트다운 표시를 갱신한다.</summary>
         public void UpdateBossCountdown(long tileId, float seconds, int turns)
         {
+            if (TryFindView(tileId, out TileView view))
+                view.SetCountdown(seconds, turns);
+        }
+
+        private bool TryFindView(long tileId, out TileView found)
+        {
             foreach (TileView view in _views.Values)
             {
-                if (view.TileId == tileId)
-                {
-                    view.SetCountdown(seconds, turns);
-                    return;
-                }
+                if (view.TileId != tileId)
+                    continue;
+                found = view;
+                return true;
             }
+
+            found = null;
+            return false;
         }
 
         private TileView CreateTileView(Tile tile, GridPos pos)
@@ -213,6 +295,7 @@ namespace ChainRiposte.Game.Puzzle
             Color color = sprite != null ? Color.white : ColorFor(tile);
             var view = TileView.Create(_tileRoot, tile, color, sprite);
             view.transform.localPosition = GridToLocal(pos);
+            view.ApplyStatus(tile, chainSprite); // 사슬/폭탄 뱃지 (GDD §3.6)
             _views[pos] = view;
             return view;
         }
@@ -223,6 +306,7 @@ namespace ChainRiposte.Game.Puzzle
             {
                 case TileCategory.Wall: return wallColor;
                 case TileCategory.Boss: return bossColor;
+                case TileCategory.Corruption: return corruptionColor;
                 default:
                     return _colorByDefinition.TryGetValue(tile.Definition, out Color color) ? color : unknownColor;
             }
@@ -234,6 +318,7 @@ namespace ChainRiposte.Game.Puzzle
             {
                 case TileCategory.Wall: return wallSprite;
                 case TileCategory.Boss: return bossSprite;
+                case TileCategory.Corruption: return corruptionSprite;
                 default:
                     return _spriteByDefinition.TryGetValue(tile.Definition, out Sprite sprite) ? sprite : null;
             }
