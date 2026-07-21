@@ -1,3 +1,4 @@
+using ChainRiposte.Game.UI;
 using TMPro;
 using UnityEditor;
 using UnityEngine;
@@ -32,7 +33,30 @@ namespace ChainRiposte.Editor
             scaler.matchWidthOrHeight = 0.5f;
             if (go.GetComponent<GraphicRaycaster>() == null)
                 go.AddComponent<GraphicRaycaster>();
+            // 방향이 바뀌면 기준 해상도도 같이 바뀌어야 한다 (GDD §9.3)
+            if (go.GetComponent<OrientationCanvas>() == null)
+                go.AddComponent<OrientationCanvas>();
         }
+
+        /// <summary>
+        /// 방향별 배치를 붙인다 — <b>현재(세로) 배치를 세로 프리셋으로 저장</b>하고 가로 프리셋은 인자로 깐다.
+        /// 생성 후에는 씬에서 드래그하고 인스펙터 버튼으로 다시 저장하면 된다 (GDD §9.3).
+        /// </summary>
+        internal static void Orient(
+            Component target, Vector2 landscapeAnchorMin, Vector2 landscapeAnchorMax,
+            Vector2 landscapePivot, Vector2 landscapePosition, Vector2 landscapeSize)
+        {
+            var layout = Undo.AddComponent<OrientationLayout>(target.gameObject);
+            layout.CaptureBothEditorOnly(); // 세로 = 지금 만든 배치
+            layout.SetLandscapeEditorOnly(
+                landscapeAnchorMin, landscapeAnchorMax, landscapePivot, landscapePosition, landscapeSize);
+        }
+
+        /// <summary>앵커가 상하좌우로 늘어나지 않는 일반 요소용 축약형.</summary>
+        internal static void Orient(
+            Component target, Vector2 landscapeAnchor, Vector2 landscapePivot,
+            Vector2 landscapePosition, Vector2 landscapeSize) =>
+            Orient(target, landscapeAnchor, landscapeAnchor, landscapePivot, landscapePosition, landscapeSize);
 
         internal static RectTransform NewRect(string name, Transform parent)
         {

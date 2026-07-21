@@ -236,6 +236,7 @@ namespace ChainRiposte.Editor
             scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
             scaler.referenceResolution = new Vector2(1080f, 1920f);
             scaler.matchWidthOrHeight = 0.5f;
+            canvasGo.AddComponent<ChainRiposte.Game.UI.OrientationCanvas>(); // 방향별 기준 해상도 (GDD §9.3)
 
             infoPanel = new GameObject("InfoPanel", typeof(RectTransform), typeof(Image));
             Undo.RegisterCreatedObjectUndo(infoPanel, "Build StageSelect");
@@ -262,6 +263,12 @@ namespace ChainRiposte.Editor
             buttonRect.sizeDelta = new Vector2(300f, 200f);
             buttonGo.GetComponent<Image>().color = new Color(0.55f, 0.16f, 0.18f, 1f);
             startButton = buttonGo.GetComponent<Button>();
+
+            // 가로에서는 하단 바 대신 오른쪽 컬럼으로 세우고, START는 컬럼 아래에 둔다 (GDD §9.3)
+            EditorUiFactory.Orient(infoPanel.transform,
+                new Vector2(0.62f, 0f), new Vector2(1f, 1f), new Vector2(0.5f, 0.5f), Vector2.zero, Vector2.zero);
+            EditorUiFactory.Orient(buttonGo.transform,
+                new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 60f), new Vector2(380f, 160f));
 
             TMP_Text label = CreatePanelText(buttonGo.transform, "Label", Vector2.zero, 56f, "START");
             var labelRect = (RectTransform)label.transform;

@@ -47,6 +47,8 @@ namespace ChainRiposte.Game.Combat
         private GameSession _session;
         private Coroutine _telegraphRoutine;
         private Coroutine _executePulseRoutine;
+        private Vector2 _popupOrigin;
+        private bool _popupPlaying;
 
         private static readonly Color ParryButtonColor = new(0.18f, 0.28f, 0.42f, 0.95f);
         private static readonly Color AttackButtonColor = new(0.42f, 0.14f, 0.16f, 0.95f);
@@ -249,8 +251,18 @@ namespace ChainRiposte.Game.Combat
 
         // ── 코루틴 연출 ──
 
+        /// <summary>
+        /// 팝업 시작 위치를 하드코딩하지 않는다 — 방향별 배치(OrientationLayout)를 그대로 기준으로 삼는다.
+        /// 연출 중에 다시 호출되면 밀어둔 위치를 먼저 되돌려 기준점이 위로 밀리는 것을 막는다 (GDD §9.3).
+        /// </summary>
         private void ShowPopup(string message, Color color)
         {
+            var rect = (RectTransform)popupText.transform;
+            if (_popupPlaying)
+                rect.anchoredPosition = _popupOrigin;
+            else
+                _popupOrigin = rect.anchoredPosition;
+
             StopCoroutine(nameof(PopupRoutine));
             popupText.text = message;
             popupText.color = color;
@@ -261,14 +273,18 @@ namespace ChainRiposte.Game.Combat
         {
             Color baseColor = popupText.color;
             var rect = (RectTransform)popupText.transform;
-            Vector2 origin = new(0f, 560f);
+            _popupPlaying = true;
+
             for (float t = 0f; t < 0.6f; t += Time.deltaTime)
             {
-                rect.anchoredPosition = origin + Vector2.up * (60f * (t / 0.6f));
+                rect.anchoredPosition = _popupOrigin + Vector2.up * (60f * (t / 0.6f));
                 popupText.color = new Color(baseColor.r, baseColor.g, baseColor.b, 1f - t / 0.6f);
                 yield return null;
             }
+
+            rect.anchoredPosition = _popupOrigin;
             popupText.text = string.Empty;
+            _popupPlaying = false;
         }
 
         private IEnumerator Flash(Color color)

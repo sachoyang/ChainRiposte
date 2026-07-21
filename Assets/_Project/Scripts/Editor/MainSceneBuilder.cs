@@ -66,6 +66,13 @@ namespace ChainRiposte.Editor
             Button def = EditorUiFactory.Button(root, "AllocDefense", new Vector2(0f, 60f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(300f, 150f), PanelButtonColor, "+DEF", 40f, out _, out _);
             Button parry = EditorUiFactory.Button(root, "AllocParry", new Vector2(330f, 60f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(300f, 150f), PanelButtonColor, "+PARRY", 40f, out _, out _);
 
+            // 가로에서는 스탯 분배 버튼을 오른쪽 가장자리에 세로로 쌓는다 (보드 가림 최소화)
+            var rightEdge = new Vector2(1f, 0.5f);
+            var allocSize = new Vector2(280f, 120f);
+            EditorUiFactory.Orient(atk, rightEdge, rightEdge, new Vector2(-40f, 140f), allocSize);
+            EditorUiFactory.Orient(def, rightEdge, rightEdge, new Vector2(-40f, 0f), allocSize);
+            EditorUiFactory.Orient(parry, rightEdge, rightEdge, new Vector2(-40f, -140f), allocSize);
+
             var so = new SerializedObject(hud);
             Set(so, "hpText", hp);
             Set(so, "soulsText", souls);
@@ -124,6 +131,26 @@ namespace ChainRiposte.Editor
             Button attack = EditorUiFactory.Button(root, "AttackButton", new Vector2(270f, 60f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(440f, 300f), Color.white, "ATTACK", 52f, out Image attackImg, out _);
 
             Image flash = EditorUiFactory.Stretch(root, "FlashOverlay", Color.clear, raycast: false);
+
+            // ── 가로 배치 (GDD §9.3): 2버튼은 양쪽 사이드, 보스/게이지는 위로 당긴다 ──
+            var top = new Vector2(0.5f, 1f);
+            var center = new Vector2(0.5f, 0.5f);
+            var bottom = new Vector2(0.5f, 0f);
+            EditorUiFactory.Orient(bossName, top, top, new Vector2(0f, -50f), new Vector2(1000f, 140f));
+            // 게이지는 Bar()가 돌려주는 '채움' 이미지가 아니라 부모(막대 본체)를 옮겨야 한다
+            EditorUiFactory.Orient(bossHp.transform.parent, top, top, new Vector2(0f, -100f), new Vector2(1400f, 26f));
+            EditorUiFactory.Orient(posture.transform.parent, top, top, new Vector2(0f, -140f), new Vector2(1400f, 46f));
+            EditorUiFactory.Orient(postureLabel, top, top, new Vector2(0f, -185f), new Vector2(1000f, 140f));
+            EditorUiFactory.Orient(ring, center, center, new Vector2(0f, 60f), new Vector2(400f, 400f));
+            EditorUiFactory.Orient(bossBody, center, center, new Vector2(0f, 60f), new Vector2(340f, 340f));
+            EditorUiFactory.Orient(execute, center, center, new Vector2(0f, 250f), new Vector2(1000f, 140f));
+            EditorUiFactory.Orient(popup, center, center, new Vector2(0f, 330f), new Vector2(1000f, 140f));
+            EditorUiFactory.Orient(playerHp.transform.parent, bottom, bottom, new Vector2(0f, 120f), new Vector2(1000f, 36f));
+            EditorUiFactory.Orient(playerHpText, bottom, bottom, new Vector2(0f, 165f), new Vector2(1000f, 140f));
+            EditorUiFactory.Orient(parry, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f),
+                new Vector2(60f, -120f), new Vector2(340f, 420f));
+            EditorUiFactory.Orient(attack, new Vector2(1f, 0.5f), new Vector2(1f, 0.5f),
+                new Vector2(-60f, -120f), new Vector2(340f, 420f));
 
             TMP_Text intro = EditorUiFactory.Text(root, "Intro", Vector2.zero, new Vector2(0.5f, 0.5f), 130f, TextAlignmentOptions.Center, new Vector2(1000f, 240f), FontStyles.Bold);
             intro.text = "BOSS BATTLE";
