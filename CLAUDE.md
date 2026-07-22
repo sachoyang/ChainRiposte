@@ -22,7 +22,7 @@
   - 코드가 매번 채우는 문구(HP·턴 등) = `Loc.GetText(key, args)`. 이런 텍스트에는 `LocalizedText`를 붙이지 말 것(언어 전환 시 서로 덮어씀). 대신 그 컨트롤러가 `Loc.LanguageChanged`를 구독해 다시 그린다.
   - 새 키는 **시트에 추가**한다. `LocalizationMenu.StarterCsv()`는 최초 부팅용 목록일 뿐이다.
   - 검사: `Tools ▸ ChainRiposte ▸ Localization ▸ Find Missing Keys In Scene`. 설계 배경과 함정은 `.claude/skills/unity-localization/` 참조.
-  - 한글 TMP 폰트가 준비되기 전까지 `Loc.UseDeviceLanguage = false`(영어 시작). 폰트가 들어오면 true로.
+  - 한글 폰트는 `Assets/_Project/Font/neodgm SDF.asset`(네오둥근모, 동적 아틀라스). TMP Settings의 **기본 폰트 + 폴백** 양쪽에 등록돼 있다.
 
 ## 워크플로 지시 (메모리에도 저장됨)
 - 세션 토큰 **90% 초과 시**: 하던 일 정리하고 아래 `## 세션 인수인계` 섹션 갱신 (①한 일 ②다음 할 일).

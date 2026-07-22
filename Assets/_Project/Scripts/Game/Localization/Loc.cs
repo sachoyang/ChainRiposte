@@ -26,11 +26,10 @@ namespace ChainRiposte.Game.Localization
         private const string PrefsKey = "ChainRiposte.Language";
 
         /// <summary>
-        /// 저장된 선택이 없을 때 쓸 언어. <b>한글 TMP 폰트가 준비되기 전까지 영어로 고정한다</b> —
-        /// 기기 언어가 한국어인 채로 시작하면 글리프가 없어 전부 □로 보인다.
-        /// 폰트가 들어오면 <see cref="UseDeviceLanguage"/>를 true로 바꾸면 된다(그게 원래 동작).
+        /// 첫 실행 시 기기 언어를 따를지. 한글 폰트(neodgm SDF)가 들어와 켜 두었다 —
+        /// 지원 목록에 없는 기기 언어면 <see cref="DefaultLanguage"/>로 떨어진다.
         /// </summary>
-        public static bool UseDeviceLanguage = false;
+        public static bool UseDeviceLanguage = true;
 
         public static SystemLanguage DefaultLanguage = SystemLanguage.English;
 

@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using ChainRiposte.Core.Progress;
 using ChainRiposte.Core.Stage;
+using ChainRiposte.Game.Audio;
 using ChainRiposte.Game.Config;
 using ChainRiposte.Game.Localization;
 using ChainRiposte.Game.Progress;
@@ -51,6 +52,14 @@ namespace ChainRiposte.Game.Map
         [SerializeField, Min(0.1f)] private float clickRadius = 0.8f;
         [Tooltip("카메라가 노드 전체를 담을 때 가장자리 여백")]
         [SerializeField, Min(0f)] private float cameraPadding = 1.5f;
+
+        [Header("막힘 연출 (잠긴 노드)")]
+        [Tooltip("막힌 노드 쪽으로 나아가는 비율. 0.35면 노드 간 거리의 35%까지 갔다가 되돌아온다.")]
+        [SerializeField, Range(0.05f, 0.9f)] private float blockedBumpRatio = 0.35f;
+        [Tooltip("부딪히는 횟수")]
+        [SerializeField, Range(1, 3)] private int blockedBumpCount = 2;
+        [Tooltip("막혔을 때 효과음 (비워도 동작)")]
+        [SerializeField] private AudioClip blockedSfx;
 
         private StageConfig[] _configs;
         private string[] _stageIds;
@@ -135,38 +144,91 @@ namespace ChainRiposte.Game.Map
             if (nearest < 0 || nearest == _currentIndex)
                 return;
 
-            if (nodes[nearest].IsLocked)
-            {
-                ShowLocked(nearest); // 이동하지 않고 이유만 알려준다
-                return;
-            }
-
-            StartCoroutine(MoveRoutine(nearest));
+            StartCoroutine(nodes[nearest].IsLocked ? BlockedRoutine(nearest) : MoveRoutine(nearest));
         }
 
         /// <summary>노드를 하나씩 거쳐 이동 — 경로를 따라 걷는 NSMB 느낌.</summary>
         private IEnumerator MoveRoutine(int target)
         {
             _moving = true;
-            if (infoPanel != null)
-                infoPanel.SetActive(false);
+            HidePanel();
 
+            yield return WalkTo(target);
+
+            _moving = false;
+            ShowInfo(target);
+        }
+
+        /// <summary>
+        /// 잠긴 노드를 눌렀을 때 — 갈 수 있는 데까지 걸어간 다음 <b>막힌 지점에서 부딪혀 튕긴다</b>.
+        /// 제자리에서 안내만 띄우는 것보다 "여기서 막혔다"는 게 훨씬 잘 읽힌다.
+        /// </summary>
+        private IEnumerator BlockedRoutine(int target)
+        {
+            _moving = true;
+            HidePanel();
+
+            int step = target > _currentIndex ? 1 : -1;
+
+            // 경로를 따라가며 잠기지 않은 마지막 노드까지만 간다
+            int reachable = _currentIndex;
+            for (int i = _currentIndex + step; i != target + step; i += step)
+            {
+                if (nodes[i] == null || nodes[i].IsLocked)
+                    break;
+                reachable = i;
+            }
+
+            if (reachable != _currentIndex)
+                yield return WalkTo(reachable);
+
+            int blocked = reachable + step;
+            if (blocked >= 0 && blocked < nodes.Length)
+                yield return BumpInto(blocked);
+
+            _moving = false;
+            ShowLocked(blocked >= 0 && blocked < nodes.Length ? blocked : target);
+        }
+
+        /// <summary>막힌 노드 쪽으로 살짝 나아갔다가 되돌아온다.</summary>
+        private IEnumerator BumpInto(int blockedIndex)
+        {
+            AudioService.PlaySfx(blockedSfx);
+
+            Vector3 origin = character.position;
+            Vector3 toward = NodeWorld(blockedIndex) + characterOffset;
+
+            for (int i = 0; i < blockedBumpCount; i++)
+            {
+                yield return MoveCharacterTo(Vector3.Lerp(origin, toward, blockedBumpRatio), moveSpeed);
+                yield return MoveCharacterTo(origin, moveSpeed * 0.8f);
+            }
+        }
+
+        private IEnumerator WalkTo(int target)
+        {
             int step = target > _currentIndex ? 1 : -1;
             while (_currentIndex != target)
             {
                 int next = _currentIndex + step;
-                Vector3 destination = NodeWorld(next) + characterOffset;
-                while ((character.position - destination).sqrMagnitude > 0.0004f)
-                {
-                    character.position = Vector3.MoveTowards(
-                        character.position, destination, moveSpeed * Time.deltaTime);
-                    yield return null;
-                }
+                yield return MoveCharacterTo(NodeWorld(next) + characterOffset, moveSpeed);
                 _currentIndex = next;
             }
+        }
 
-            _moving = false;
-            ShowInfo(target);
+        private IEnumerator MoveCharacterTo(Vector3 destination, float speed)
+        {
+            while ((character.position - destination).sqrMagnitude > 0.0004f)
+            {
+                character.position = Vector3.MoveTowards(character.position, destination, speed * Time.deltaTime);
+                yield return null;
+            }
+        }
+
+        private void HidePanel()
+        {
+            if (infoPanel != null)
+                infoPanel.SetActive(false);
         }
 
         private void ShowInfo(int index)
