@@ -78,7 +78,7 @@ namespace ChainRiposte.Game.Flow
             }
 
             if (confirmText != null)
-                confirmText.text = Loc.Get("title.newgame.confirm");
+                confirmText.text = Loc.GetText("title.newgame.confirm");
 
             confirmYesButton.onClick.RemoveAllListeners();
             confirmYesButton.onClick.AddListener(StartNewGame);

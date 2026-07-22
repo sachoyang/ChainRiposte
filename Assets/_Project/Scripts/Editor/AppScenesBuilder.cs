@@ -50,7 +50,7 @@ namespace ChainRiposte.Editor
             AssetDatabase.Refresh();
             Debug.Log(
                 "[AppScenes] Intro / Title 생성 완료. 빌드 설정 순서: Intro → Title → StageSelect → Main.\n" +
-                "문구가 키로 보이면 Tools ▸ ChainRiposte ▸ Localization ▸ Create or Update Table 을 실행하세요.");
+                "문구가 키로 보이면 Tools ▸ ChainRiposte ▸ Localization ▸ Sync From Google Sheet (또는 Create Starter CSV) 를 실행하세요.");
         }
 
         /// <summary>
@@ -168,7 +168,7 @@ namespace ChainRiposte.Editor
         }
 
         private static void Localize(TMP_Text label, string key) =>
-            label.gameObject.AddComponent<LocalizedText>().SetKeyEditorOnly(key);
+            label.gameObject.AddComponent<LocalizedText>().Key = key;
 
         /// <summary>카메라 + 이벤트시스템 + 캔버스 — 어느 씬이든 필요한 최소 구성.</summary>
         private static void CreateCommon(Scene scene, out Transform canvas)

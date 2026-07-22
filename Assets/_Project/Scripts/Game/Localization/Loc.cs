@@ -4,94 +4,210 @@ using UnityEngine;
 
 namespace ChainRiposte.Game.Localization
 {
-    public enum Language
-    {
-        Korean = 0,
-        English = 1,
-    }
-
     /// <summary>
-    /// 문구 조회 창구. 테이블(<see cref="LocalizationTableSO"/>)은 Resources에서 자동 로드하고,
-    /// 선택한 언어는 PlayerPrefs에 저장한다.
+    /// 현지화 코어. CSV 한 장(<c>Resources/Localization.csv</c>)을 키 기준으로 인덱싱해 O(1)로 조회한다.
     ///
-    /// 키가 없으면 키 자체를 돌려준다 — 문구를 아직 안 채웠어도 화면이 비지 않고 무엇이 빠졌는지 보인다.
+    /// 규칙 셋:
+    ///  1) 언어는 <b>컬럼 이름</b>(= <see cref="SystemLanguage"/> enum 이름)으로 매칭한다.
+    ///     enum 값으로 인덱싱하면 안 된다 — 알파벳순이라 Korean은 23이다.
+    ///  2) 언어 변경 진입점은 <see cref="Language"/> 프로퍼티 하나뿐이다. 값 대입과 통지가 한 몸이라 빼먹을 수 없다.
+    ///  3) 없는 키·없는 컬럼은 예외 대신 폴백(현재 언어 → 영어 → 키 자체)한다.
+    ///     화면에 키가 그대로 보이면 "번역 누락" 신호다.
+    ///
+    /// CSV는 구글 시트에서 굽는다 — <c>Tools ▸ ChainRiposte ▸ Localization</c> 참조.
+    /// 런타임에는 시트를 치지 않는다(오프라인·WebGL CORS·시트 오조작으로 전체 텍스트가 날아가는 사고 방지).
     /// </summary>
     public static class Loc
     {
-        public const string ResourcePath = "LocalizationTable";
+        public const string CsvResourceName = "Localization";
+        public const string KeyColumn = "Key";
+        public const SystemLanguage FallbackLanguage = SystemLanguage.English;
+
         private const string PrefsKey = "ChainRiposte.Language";
 
-        private static Dictionary<string, (string ko, string en)> _lookup;
-        private static Language _language;
-        private static bool _loaded;
+        private static Dictionary<string, Dictionary<string, string>> _table;
+        private static List<SystemLanguage> _supported = new();
+        private static HashSet<string> _warnedKeys = new();
+        private static SystemLanguage _language;
+        private static bool _initialized;
 
-        /// <summary>언어가 바뀌면 발행 — <see cref="LocalizedText"/>가 구독해 스스로 갱신한다.</summary>
-        public static event Action Changed;
+        /// <summary>언어가 바뀌거나 테이블이 통째로 교체될 때 발행. 바인더는 OnEnable 구독 / OnDisable 해제 쌍으로 받는다.</summary>
+        public static event Action LanguageChanged;
 
-        public static Language Current
+        /// <summary>CSV 헤더에서 뽑은 지원 언어. 옵션의 언어 선택 UI가 이걸 그대로 쓴다.</summary>
+        public static IReadOnlyList<SystemLanguage> SupportedLanguages
         {
             get
             {
-                EnsureLoaded();
+                EnsureInit();
+                return _supported;
+            }
+        }
+
+        public static SystemLanguage Language
+        {
+            get
+            {
+                EnsureInit();
                 return _language;
             }
             set
             {
-                EnsureLoaded();
+                EnsureInit();
                 if (_language == value)
-                    return;
+                    return; // 같은 값이면 전체 갱신을 쏘지 않는다
 
                 _language = value;
-                PlayerPrefs.SetInt(PrefsKey, (int)value);
+                PlayerPrefs.SetString(PrefsKey, value.ToString());
                 PlayerPrefs.Save();
-                Changed?.Invoke();
+                LanguageChanged?.Invoke();
             }
         }
 
-        /// <summary>도메인 리로드를 꺼둔 환경 대비 — 부팅 시 구독자와 캐시를 비운다.</summary>
-        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
-        private static void ResetStatics()
-        {
-            Changed = null;
-            _lookup = null;
-            _loaded = false;
-        }
-
-        public static string Get(string key)
+        /// <summary>현재 언어 문자열. 없으면 폴백 언어 → 그래도 없으면 키 자체.</summary>
+        public static string GetText(string key)
         {
             if (string.IsNullOrEmpty(key))
                 return string.Empty;
 
-            EnsureLoaded();
-            if (!_lookup.TryGetValue(key, out (string ko, string en) entry))
-                return key; // 미등록 키는 그대로 보여 준다 (빠진 문구를 눈에 띄게)
+            EnsureInit();
 
-            string text = _language == Language.Korean ? entry.ko : entry.en;
-            return string.IsNullOrEmpty(text) ? key : text;
+            if (!_table.TryGetValue(key, out Dictionary<string, string> row))
+            {
+                WarnOnce(key, $"[Loc] CSV에 없는 키: '{key}'");
+                return key;
+            }
+
+            if (TryValue(row, _language, out string value) || TryValue(row, FallbackLanguage, out value))
+                return value;
+
+            WarnOnce(key, $"[Loc] '{key}' 에 '{_language}' / '{FallbackLanguage}' 값이 모두 비어 있습니다.");
+            return key;
         }
 
-        /// <summary>서식이 있는 문구 — 테이블 값에 {0}, {1}을 쓴다.</summary>
-        public static string Format(string key, params object[] args) => string.Format(Get(key), args);
-
-        private static void EnsureLoaded()
+        /// <summary>서식 인자 — CSV 값에 {0} {1} 을 넣어 둔다.</summary>
+        public static string GetText(string key, params object[] args)
         {
-            if (_loaded)
+            string format = GetText(key);
+            try
+            {
+                return string.Format(format, args);
+            }
+            catch (FormatException)
+            {
+                Debug.LogError($"[Loc] 서식 불일치: '{key}' → \"{format}\"");
+                return format;
+            }
+        }
+
+        public static bool HasKey(string key)
+        {
+            EnsureInit();
+            return !string.IsNullOrEmpty(key) && _table.ContainsKey(key);
+        }
+
+        /// <summary>지연 초기화. 로딩 화면에서 파싱 비용을 미리 치르고 싶을 때만 직접 부른다.</summary>
+        public static void EnsureInit()
+        {
+            if (_initialized)
                 return;
 
-            _loaded = true;
-            _language = (Language)PlayerPrefs.GetInt(PrefsKey, (int)Language.Korean);
-
-            var table = Resources.Load<LocalizationTableSO>(ResourcePath);
-            _lookup = table != null
-                ? table.ToLookup()
-                : new Dictionary<string, (string, string)>(StringComparer.Ordinal);
-
-            if (table == null)
+            _initialized = true; // Load 안에서 재진입하지 않도록 먼저 세운다
+            var asset = Resources.Load<TextAsset>(CsvResourceName);
+            if (asset == null)
             {
+                _table = new Dictionary<string, Dictionary<string, string>>();
+                _language = FallbackLanguage;
                 Debug.LogWarning(
-                    $"[Loc] Resources/{ResourcePath} 을 찾지 못했습니다. 문구 대신 키가 표시됩니다. " +
-                    "Tools ▸ ChainRiposte ▸ Localization ▸ Create/Update Table 을 실행하세요.");
+                    $"[Loc] Resources/{CsvResourceName}.csv 를 찾지 못했습니다. 문구 대신 키가 표시됩니다. " +
+                    "Tools ▸ ChainRiposte ▸ Localization ▸ Sync From Google Sheet 를 실행하세요.");
+                return;
             }
+
+            LoadRows(CsvReader.ReadString(asset.text), notify: false);
+            _language = ResolveStartupLanguage();
+        }
+
+        /// <summary>CSV를 다시 읽는다 (에디터에서 시트를 다시 구웠을 때).</summary>
+        public static void Reload()
+        {
+            _initialized = false;
+            _warnedKeys.Clear();
+            SystemLanguage previous = _language;
+            EnsureInit();
+
+            // 되읽은 뒤에도 쓰던 언어를 유지한다 (지원 목록에 남아 있다면)
+            if (_supported.Contains(previous))
+                _language = previous;
+
+            LanguageChanged?.Invoke();
+        }
+
+        private static void LoadRows(List<Dictionary<string, string>> rows, bool notify)
+        {
+            _table = new Dictionary<string, Dictionary<string, string>>(StringComparer.Ordinal);
+            _supported = new List<SystemLanguage>();
+
+            if (rows == null || rows.Count == 0)
+                return;
+
+            foreach (Dictionary<string, string> row in rows)
+            {
+                if (!row.TryGetValue(KeyColumn, out string key) || string.IsNullOrWhiteSpace(key))
+                    continue;
+
+                if (_table.ContainsKey(key))
+                    Debug.LogWarning($"[Loc] 중복 키 '{key}' — 마지막 행이 이깁니다. 시트를 확인하세요.");
+
+                _table[key] = row;
+            }
+
+            foreach (string column in rows[0].Keys)
+            {
+                if (column == KeyColumn || string.IsNullOrWhiteSpace(column))
+                    continue;
+
+                if (Enum.TryParse(column, out SystemLanguage parsed))
+                    _supported.Add(parsed);
+                else
+                    Debug.LogWarning($"[Loc] SystemLanguage로 해석할 수 없는 컬럼: '{column}' (무시됨)");
+            }
+
+            if (notify)
+                LanguageChanged?.Invoke();
+        }
+
+        /// <summary>저장된 언어 → 기기 언어 → 폴백. 지원 목록에 없는 언어는 고르지 않는다.</summary>
+        private static SystemLanguage ResolveStartupLanguage()
+        {
+            string saved = PlayerPrefs.GetString(PrefsKey, string.Empty);
+            if (!string.IsNullOrEmpty(saved) && Enum.TryParse(saved, out SystemLanguage parsed) && _supported.Contains(parsed))
+                return parsed;
+
+            return _supported.Contains(Application.systemLanguage) ? Application.systemLanguage : FallbackLanguage;
+        }
+
+        private static bool TryValue(Dictionary<string, string> row, SystemLanguage language, out string value) =>
+            row.TryGetValue(language.ToString(), out value) && !string.IsNullOrEmpty(value);
+
+        /// <summary>같은 키를 매 프레임 조회해도 경고가 한 번만 나가게 한다.</summary>
+        private static void WarnOnce(string key, string message)
+        {
+#if UNITY_EDITOR
+            if (_warnedKeys.Add(key))
+                Debug.LogWarning(message);
+#endif
+        }
+
+        /// <summary>도메인 리로드를 꺼둔 환경에서 static이 남는 문제 방지 (pitfalls §8).</summary>
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetStatics()
+        {
+            _table = null;
+            _supported = new List<SystemLanguage>();
+            _warnedKeys = new HashSet<string>();
+            _initialized = false;
+            LanguageChanged = null;
         }
     }
 }
