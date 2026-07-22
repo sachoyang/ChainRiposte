@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.IO;
 using ChainRiposte.Game.Flow;
 using ChainRiposte.Game.Localization;
+using ChainRiposte.Game.UI;
 using TMPro;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -107,8 +108,9 @@ namespace ChainRiposte.Editor
             Button optionsButton = MenuButton(canvas, "OptionsButton", "title.options", 2, ButtonColor);
             Button quitButton = MenuButton(canvas, "QuitButton", "title.quit", 3, ButtonColor);
 
-            BuildConfirmPanel(canvas, out GameObject confirmPanel, out TMP_Text confirmText,
+            BuildConfirmPanel(canvas, "ConfirmPanel", out GameObject confirmPanel, out TMP_Text confirmText,
                 out Button yesButton, out Button noButton);
+            GameObject optionsPanel = BuildOptionsPanel(canvas);
 
             var controllerGo = new GameObject("TitleController", typeof(TitleController));
             SceneManager.MoveGameObjectToScene(controllerGo, scene);
@@ -117,11 +119,143 @@ namespace ChainRiposte.Editor
             so.FindProperty("newGameButton").objectReferenceValue = newGameButton;
             so.FindProperty("optionsButton").objectReferenceValue = optionsButton;
             so.FindProperty("quitButton").objectReferenceValue = quitButton;
+            so.FindProperty("optionsPanel").objectReferenceValue = optionsPanel;
             so.FindProperty("confirmPanel").objectReferenceValue = confirmPanel;
             so.FindProperty("confirmText").objectReferenceValue = confirmText;
             so.FindProperty("confirmYesButton").objectReferenceValue = yesButton;
             so.FindProperty("confirmNoButton").objectReferenceValue = noButton;
             so.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        /// <summary>옵션 패널. 항목은 위에서부터 볼륨 2개 → 화면 방향 → 언어 → 진행도 초기화 순.</summary>
+        private static GameObject BuildOptionsPanel(Transform canvas)
+        {
+            Image backdrop = EditorUiFactory.Stretch(canvas, "OptionsPanel", new Color(0.05f, 0.04f, 0.07f, 0.96f), raycast: true);
+            GameObject panel = backdrop.gameObject;
+            var options = panel.AddComponent<OptionsPanel>();
+
+            TextMeshProUGUI title = EditorUiFactory.Text(
+                panel.transform, "Title", new Vector2(0f, -80f), new Vector2(0.5f, 1f), 72f,
+                TextAlignmentOptions.Center, new Vector2(900f, 100f), FontStyles.Bold);
+            EditorUiFactory.Localize(title, "options.title");
+
+            Slider bgm = LabeledSlider(panel.transform, "Bgm", "options.bgm", -260f);
+            Slider sfx = LabeledSlider(panel.transform, "Sfx", "options.sfx", -400f);
+
+            // 화면 방향 — 자동 / 세로 / 가로 순서가 OrientationMode enum 순서와 같아야 한다
+            RowLabel(panel.transform, "OrientationLabel", "options.orientation", -540f);
+            var orientationButtons = new[]
+            {
+                ChoiceButton(panel.transform, "OrientAuto", "options.orientation.auto", -300f, -620f),
+                ChoiceButton(panel.transform, "OrientPortrait", "options.orientation.portrait", 0f, -620f),
+                ChoiceButton(panel.transform, "OrientLandscape", "options.orientation.landscape", 300f, -620f),
+            };
+
+            // 언어 — 개수가 CSV 컬럼 수로 정해지므로 템플릿 하나를 두고 런타임에 복제한다
+            RowLabel(panel.transform, "LanguageLabel", "options.language", -760f);
+            RectTransform languageParent = EditorUiFactory.NewRect("LanguageButtons", panel.transform);
+            languageParent.anchorMin = languageParent.anchorMax = languageParent.pivot = new Vector2(0.5f, 1f);
+            languageParent.anchoredPosition = new Vector2(0f, -840f);
+            languageParent.sizeDelta = new Vector2(900f, 120f);
+            var layout = languageParent.gameObject.AddComponent<HorizontalLayoutGroup>();
+            layout.childAlignment = TextAnchor.MiddleCenter;
+            layout.spacing = 20f;
+            layout.childForceExpandWidth = false;
+            layout.childForceExpandHeight = false;
+
+            Button languageTemplate = EditorUiFactory.Button(
+                languageParent, "LanguageTemplate", Vector2.zero, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
+                new Vector2(260f, 100f), ButtonColor, "LANGUAGE", 42f, out Image _, out TextMeshProUGUI _);
+            // 라벨은 OptionsPanel이 언어별로 직접 채운다 — LocalizedText를 붙이면 서로 덮어쓴다
+
+            Button reset = EditorUiFactory.Button(
+                panel.transform, "ResetProgressButton", new Vector2(0f, -1010f), new Vector2(0.5f, 1f),
+                new Vector2(0.5f, 0.5f), new Vector2(520f, 110f), new Color(0.35f, 0.12f, 0.14f, 1f),
+                "options.reset", 42f, out Image _, out TextMeshProUGUI resetLabel);
+            EditorUiFactory.Localize(resetLabel, "options.reset");
+
+            Button close = EditorUiFactory.Button(
+                panel.transform, "CloseButton", new Vector2(0f, 90f), new Vector2(0.5f, 0f),
+                new Vector2(0.5f, 0.5f), new Vector2(400f, 120f), ButtonColor,
+                "common.back", 48f, out Image _, out TextMeshProUGUI closeLabel);
+            EditorUiFactory.Localize(closeLabel, "common.back");
+
+            BuildConfirmPanel(panel.transform, "OptionsConfirmPanel", out GameObject confirmPanel,
+                out TMP_Text confirmText, out Button yes, out Button no);
+
+            var so = new SerializedObject(options);
+            so.FindProperty("bgmSlider").objectReferenceValue = bgm;
+            so.FindProperty("sfxSlider").objectReferenceValue = sfx;
+            so.FindProperty("languageButtonParent").objectReferenceValue = languageParent;
+            so.FindProperty("languageButtonTemplate").objectReferenceValue = languageTemplate;
+            so.FindProperty("resetProgressButton").objectReferenceValue = reset;
+            so.FindProperty("closeButton").objectReferenceValue = close;
+            so.FindProperty("confirmPanel").objectReferenceValue = confirmPanel;
+            so.FindProperty("confirmText").objectReferenceValue = confirmText;
+            so.FindProperty("confirmYesButton").objectReferenceValue = yes;
+            so.FindProperty("confirmNoButton").objectReferenceValue = no;
+
+            SerializedProperty array = so.FindProperty("orientationButtons");
+            array.arraySize = orientationButtons.Length;
+            for (int i = 0; i < orientationButtons.Length; i++)
+                array.GetArrayElementAtIndex(i).objectReferenceValue = orientationButtons[i];
+
+            so.ApplyModifiedPropertiesWithoutUndo();
+            return panel;
+        }
+
+        private static void RowLabel(Transform parent, string name, string locKey, float y)
+        {
+            TextMeshProUGUI label = EditorUiFactory.Text(
+                parent, name, new Vector2(0f, y), new Vector2(0.5f, 1f), 44f,
+                TextAlignmentOptions.Center, new Vector2(900f, 70f), FontStyles.Bold);
+            EditorUiFactory.Localize(label, locKey);
+        }
+
+        private static Slider LabeledSlider(Transform parent, string name, string locKey, float y)
+        {
+            RowLabel(parent, name + "Label", locKey, y);
+
+            RectTransform rect = EditorUiFactory.NewRect(name + "Slider", parent);
+            rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(0.5f, 1f);
+            rect.anchoredPosition = new Vector2(0f, y - 70f);
+            rect.sizeDelta = new Vector2(700f, 50f);
+
+            Image background = EditorUiFactory.Stretch(rect, "Background", new Color(0.12f, 0.11f, 0.15f, 1f), raycast: true);
+
+            RectTransform fillArea = EditorUiFactory.NewRect("Fill Area", rect);
+            fillArea.anchorMin = new Vector2(0f, 0.25f);
+            fillArea.anchorMax = new Vector2(1f, 0.75f);
+            fillArea.offsetMin = fillArea.offsetMax = Vector2.zero;
+            Image fill = EditorUiFactory.Stretch(fillArea, "Fill", new Color(0.55f, 0.16f, 0.18f, 1f), raycast: false);
+
+            RectTransform handleArea = EditorUiFactory.NewRect("Handle Slide Area", rect);
+            handleArea.anchorMin = Vector2.zero;
+            handleArea.anchorMax = Vector2.one;
+            handleArea.offsetMin = handleArea.offsetMax = Vector2.zero;
+            Image handle = EditorUiFactory.Stretch(handleArea, "Handle", new Color(0.92f, 0.90f, 0.85f, 1f), raycast: true);
+            var handleRect = (RectTransform)handle.transform;
+            handleRect.anchorMin = handleRect.anchorMax = new Vector2(0f, 0.5f);
+            handleRect.sizeDelta = new Vector2(40f, 60f);
+
+            var slider = rect.gameObject.AddComponent<Slider>();
+            slider.targetGraphic = handle;
+            slider.fillRect = (RectTransform)fill.transform;
+            slider.handleRect = handleRect;
+            slider.direction = Slider.Direction.LeftToRight;
+            slider.minValue = 0f;
+            slider.maxValue = 1f;
+            slider.value = 1f;
+            return slider;
+        }
+
+        private static Button ChoiceButton(Transform parent, string name, string locKey, float x, float y)
+        {
+            Button button = EditorUiFactory.Button(
+                parent, name, new Vector2(x, y), new Vector2(0.5f, 1f), new Vector2(0.5f, 0.5f),
+                new Vector2(280f, 100f), ButtonColor, locKey, 40f, out Image _, out TextMeshProUGUI label);
+            EditorUiFactory.Localize(label, locKey);
+            return button;
         }
 
         /// <summary>세로로 쌓이는 메뉴 버튼. 라벨은 키로 붙여 언어 전환을 따라간다.</summary>
@@ -143,9 +277,9 @@ namespace ChainRiposte.Editor
         }
 
         private static void BuildConfirmPanel(
-            Transform canvas, out GameObject panel, out TMP_Text text, out Button yes, out Button no)
+            Transform canvas, string name, out GameObject panel, out TMP_Text text, out Button yes, out Button no)
         {
-            Image backdrop = EditorUiFactory.Stretch(canvas, "ConfirmPanel", new Color(0f, 0f, 0f, 0.82f), raycast: true);
+            Image backdrop = EditorUiFactory.Stretch(canvas, name, new Color(0f, 0f, 0f, 0.88f), raycast: true);
             panel = backdrop.gameObject;
 
             TextMeshProUGUI body = EditorUiFactory.Text(

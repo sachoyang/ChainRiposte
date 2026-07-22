@@ -81,6 +81,10 @@ namespace ChainRiposte.Editor
                 return;
             }
 
+            // 로컬에만 있는 키(시트에 아직 안 올린 것)가 조용히 사라지는 것을 막는다
+            if (!ConfirmNoKeyLoss(csv))
+                return;
+
             Directory.CreateDirectory(CsvDirectory);
             File.WriteAllText(CsvPath, csv, new UTF8Encoding(false)); // BOM 없는 UTF-8
             AssetDatabase.Refresh();
@@ -296,6 +300,46 @@ namespace ChainRiposte.Editor
             return true;
         }
 
+        /// <summary>
+        /// 시트로 덮어쓰면 사라질 키가 있는지 확인한다.
+        /// 코드가 먼저 쓴 키를 로컬 CSV에만 넣어 둔 동안에는 이게 유일한 안전장치다.
+        /// </summary>
+        private static bool ConfirmNoKeyLoss(string incomingCsv)
+        {
+            var existing = AssetDatabase.LoadAssetAtPath<TextAsset>(CsvPath);
+            if (existing == null)
+                return true;
+
+            var incomingKeys = new HashSet<string>();
+            foreach (Dictionary<string, string> row in CsvReader.ReadString(incomingCsv))
+            {
+                if (row.TryGetValue(Loc.KeyColumn, out string key))
+                    incomingKeys.Add(key);
+            }
+
+            var lost = new List<string>();
+            foreach (Dictionary<string, string> row in CsvReader.ReadString(existing.text))
+            {
+                if (row.TryGetValue(Loc.KeyColumn, out string key) &&
+                    !string.IsNullOrWhiteSpace(key) && !incomingKeys.Contains(key))
+                    lost.Add(key);
+            }
+
+            if (lost.Count == 0)
+                return true;
+
+            const int preview = 15;
+            string list = string.Join("\n", lost.GetRange(0, Mathf.Min(preview, lost.Count)));
+            if (lost.Count > preview)
+                list += $"\n… 외 {lost.Count - preview}개";
+
+            return EditorUtility.DisplayDialog(
+                "시트에 없는 키가 있습니다",
+                $"로컬 CSV에만 있는 키 {lost.Count}개가 사라집니다:\n\n{list}\n\n" +
+                "먼저 이 키들을 시트에 옮기는 것을 권합니다.",
+                "그래도 덮어쓰기", "취소");
+        }
+
         /// <summary>받은 내용이 진짜 현지화 CSV인지 확인한다 (로그인 HTML·빈 시트 방지).</summary>
         private static bool Validate(string csv, out string reason, out int rowCount, out List<string> languages)
         {
@@ -393,6 +437,11 @@ namespace ChainRiposte.Editor
             Row(builder, "options.reset.confirm",
                 "저장된 진행도를 모두 지웁니다.\\n되돌릴 수 없습니다. 계속할까요?",
                 "This erases all saved progress.\\nThis cannot be undone.");
+
+            // 언어 버튼 라벨 — 키는 language.{SystemLanguage 이름}.
+            // 한글 폰트가 들어오기 전이라 영어 컬럼은 영어 표기로 둔다(□ 방지). 폰트 후에는 양쪽 다 자국어 표기로 바꿔도 된다.
+            Row(builder, "language.Korean", "한국어", "Korean");
+            Row(builder, "language.English", "English", "English");
 
             // 월드맵
             Row(builder, "map.start", "시작", "START");
