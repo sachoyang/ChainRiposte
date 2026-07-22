@@ -157,14 +157,14 @@ namespace ChainRiposte.Game.Juice
 
         // ── 전투 훅 ──
 
-        private void OnParried(BossAttackConfig attack)
+        private void OnParried(BossNoteConfig note)
         {
             PlaySfx(parryClip);
             cameraShaker.Shake(0.12f, 0.15f);
             HitStop(parryHitStop);
         }
 
-        private void OnPlayerHit(BossAttackConfig attack, int damage)
+        private void OnPlayerHit(BossNoteConfig note, int damage)
         {
             PlaySfx(playerHitClip);
             cameraShaker.Shake(0.25f, 0.3f);

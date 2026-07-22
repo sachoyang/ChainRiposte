@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using ChainRiposte.Core.Combat;
 using ChainRiposte.Core.Flow;
 using ChainRiposte.Game.Localization;
@@ -92,7 +93,6 @@ namespace ChainRiposte.Game.Combat
             _combat = combat;
             _session = session;
 
-            combat.AttackTelegraphed += OnAttackTelegraphed;
             combat.AttackParried += OnAttackParried;
             combat.PlayerHit += OnPlayerHit;
             combat.PlayerAttackLanded += OnPlayerAttackLanded;
@@ -112,7 +112,6 @@ namespace ChainRiposte.Game.Combat
         {
             if (_combat != null)
             {
-                _combat.AttackTelegraphed -= OnAttackTelegraphed;
                 _combat.AttackParried -= OnAttackParried;
                 _combat.PlayerHit -= OnPlayerHit;
                 _combat.PlayerAttackLanded -= OnPlayerAttackLanded;
@@ -158,33 +157,33 @@ namespace ChainRiposte.Game.Combat
 
         // ── CombatSystem 이벤트 연출 ──
 
-        private void OnAttackTelegraphed(int index, BossAttackConfig attack)
+        /// <summary>
+        /// 수축하는 원이 보스 크기(×1)에 닿는 순간이 타격 시점 — 유일한 타이밍 큐.
+        /// 지금은 가장 임박한 노트 하나만 그린다. 여러 개를 동시에 그리는 것과
+        /// 패링 구간 회색 띠는 C3-2에서 붙인다.
+        /// </summary>
+        private void Update()
         {
-            if (_telegraphRoutine != null)
-                StopCoroutine(_telegraphRoutine);
-            _telegraphRoutine = StartCoroutine(TelegraphRoutine(attack));
-        }
+            if (_combat == null || _combat.Finished)
+                return;
 
-        /// <summary>링이 보스 크기(×1)까지 수축하는 순간이 타격 시점 — 유일한 타이밍 큐.</summary>
-        private IEnumerator TelegraphRoutine(BossAttackConfig attack)
-        {
-            telegraphRing.gameObject.SetActive(true);
-            telegraphRingImage.color = attack.Parryable ? parryableRingColor : unparryableRingColor;
-
-            float elapsed = 0f;
-            while (elapsed < attack.TelegraphSeconds)
+            IReadOnlyList<ActiveNote> notes = _combat.ActiveNotes;
+            if (notes.Count == 0)
             {
-                float t = elapsed / attack.TelegraphSeconds;
-                telegraphRing.localScale = Vector3.one * Mathf.Lerp(2.4f, 1f, t);
-                elapsed += Time.deltaTime;
-                yield return null;
+                if (telegraphRing.gameObject.activeSelf)
+                    telegraphRing.gameObject.SetActive(false);
+                return;
             }
 
-            telegraphRing.gameObject.SetActive(false);
-            _telegraphRoutine = null;
+            ActiveNote nearest = notes[0];
+            if (!telegraphRing.gameObject.activeSelf)
+                telegraphRing.gameObject.SetActive(true);
+
+            telegraphRingImage.color = parryableRingColor;
+            telegraphRing.localScale = Vector3.one * Mathf.Lerp(2.4f, 1f, nearest.Progress);
         }
 
-        private void OnAttackParried(BossAttackConfig attack)
+        private void OnAttackParried(BossNoteConfig note)
         {
             HideTelegraph();
             ShowPopup(Loc.GetText("combat.popup.parry"), new Color(0.95f, 0.9f, 0.5f));
@@ -192,7 +191,7 @@ namespace ChainRiposte.Game.Combat
             StartCoroutine(Punch(bossBody, 0.85f));
         }
 
-        private void OnPlayerHit(BossAttackConfig attack, int damage)
+        private void OnPlayerHit(BossNoteConfig note, int damage)
         {
             HideTelegraph();
             ShowPopup($"-{damage}", new Color(0.9f, 0.3f, 0.3f));

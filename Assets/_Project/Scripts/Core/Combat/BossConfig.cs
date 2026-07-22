@@ -28,10 +28,39 @@ namespace ChainRiposte.Core.Combat
         /// <summary>true면 보스 HP 비율에 비례해 체간 회복이 느려진다 (HP가 낮을수록 무너지기 쉬움, GDD §5.2).</summary>
         public bool ScaleDecayWithHp = true;
 
-        /// <summary>전투 시작 후 첫 텔레그래프까지의 대기 — 유저가 화면 전환에 적응할 시간.</summary>
+        /// <summary>전투 시작 후 첫 패턴까지의 대기 — 유저가 화면 전환에 적응할 시간.</summary>
         public float FirstAttackDelaySeconds = 1.5f;
 
-        /// <summary>공격 시퀀스. 끝까지 수행하면 처음부터 반복한다.</summary>
-        public IReadOnlyList<BossAttackConfig> Pattern = Array.Empty<BossAttackConfig>();
+        /// <summary>패턴 사이의 숨 고르기 (초). 0이면 쉼 없이 이어진다.</summary>
+        public float PatternGapSeconds = 0.6f;
+
+        /// <summary>
+        /// HP 구간별 패턴 풀 (GDD §5.2). 보스는 이 패턴들을 조합해 승부한다.
+        /// 비어 있으면 안 된다 — CombatSystem이 생성 시 거부한다.
+        /// </summary>
+        public IReadOnlyList<BossPhaseConfig> Phases = Array.Empty<BossPhaseConfig>();
+
+        /// <summary>현재 HP 비율에 해당하는 페이즈. 조건을 만족하는 것 중 <b>가장 진행된</b> 페이즈를 쓴다.</summary>
+        public BossPhaseConfig ResolvePhase(float hpRatio)
+        {
+            BossPhaseConfig best = null;
+            foreach (BossPhaseConfig phase in Phases)
+            {
+                if (hpRatio > phase.HpRatioAtOrBelow)
+                    continue;
+                if (best == null || phase.HpRatioAtOrBelow < best.HpRatioAtOrBelow)
+                    best = phase;
+            }
+
+            // 전부 조건에 안 맞으면(임계치를 낮게만 잡은 설정) 가장 너그러운 페이즈로 떨어진다
+            if (best != null)
+                return best;
+
+            foreach (BossPhaseConfig phase in Phases)
+                if (best == null || phase.HpRatioAtOrBelow > best.HpRatioAtOrBelow)
+                    best = phase;
+
+            return best;
+        }
     }
 }

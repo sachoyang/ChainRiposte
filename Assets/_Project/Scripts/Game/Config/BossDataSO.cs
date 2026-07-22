@@ -6,8 +6,10 @@ using UnityEngine;
 namespace ChainRiposte.Game.Config
 {
     /// <summary>
-    /// 보스 전투 밸런스 데이터. 공격 시퀀스의 텔레그래프 길이를 섞어
-    /// 정박/엇박 리듬을 기획자가 인스펙터에서 설계한다 (GDD §5.2).
+    /// 보스 전투 밸런스 + 채보 (GDD §5.2).
+    ///
+    /// 패턴 하나가 미니 리듬게임 한 마디다. 보스는 HP 페이즈별 풀에서 패턴을 뽑아 조합한다.
+    /// <b>연속기는 별도 타입이 아니라 촘촘히 찍은 노트</b>이며, 노트가 없는 박은 플레이어의 공격 기회다.
     /// </summary>
     [CreateAssetMenu(menuName = "ChainRiposte/Boss Data", fileName = "Boss_")]
     public sealed class BossDataSO : ScriptableObject
@@ -34,22 +36,56 @@ namespace ChainRiposte.Game.Config
         [Tooltip("체크 시 보스 HP 비율에 비례해 체간 회복이 느려진다 (HP가 낮을수록 무너지기 쉬움)")]
         [SerializeField] private bool scaleDecayWithHp = true;
 
-        [Header("공격 패턴 (위에서부터 순서대로, 끝나면 반복)")]
-        [Tooltip("전투 시작 후 첫 텔레그래프까지의 대기")]
+        [Header("템포")]
+        [Tooltip("전투 시작 후 첫 패턴까지의 대기")]
         [SerializeField, Min(0f)] private float firstAttackDelaySeconds = 1.5f;
-        [SerializeField] private AttackEntry[] pattern = Array.Empty<AttackEntry>();
+        [Tooltip("패턴 사이 숨 고르기. 0이면 쉼 없이 이어진다.")]
+        [SerializeField, Min(0f)] private float patternGapSeconds = 0.6f;
+
+        [Header("채보")]
+        [SerializeField] private PatternEntry[] patterns = Array.Empty<PatternEntry>();
+        [Tooltip("HP 구간별 패턴 풀. 비우면 모든 패턴을 균등하게 쓰는 단일 페이즈로 동작한다.")]
+        [SerializeField] private PhaseEntry[] phases = Array.Empty<PhaseEntry>();
 
         [Serializable]
-        private struct AttackEntry
+        private sealed class NoteEntry
         {
-            [Tooltip("텔레그래프(예비 동작) 길이 — 끝나는 순간 타격")]
-            [Min(0.05f)] public float telegraphSeconds;
+            [Tooltip("타격 시점 (패턴 시작 기준 박). 3.5 = 엇박")]
+            [Min(0f)] public float beat;
+            [Tooltip("예비동작 길이 (박). 길수록 읽기 쉽다")]
+            [Min(0.05f)] public float telegraphBeats = 1f;
+            [Tooltip("이 노트만의 속도 배율. 1보다 크면 예비동작이 짧아진다")]
+            [Min(0.05f)] public float speedMultiplier = 1f;
             [Tooltip("패링 실패 시 피해 (DEF 적용 전)")]
-            [Min(0f)] public float damage;
-            [Tooltip("해제 시 패링 불가 공격 — 반드시 맞는 압박 수")]
-            public bool parryable;
-            [Tooltip("타격 후 다음 공격까지의 후딜레이")]
-            [Min(0f)] public float recoverySeconds;
+            [Min(0f)] public float damage = 12f;
+        }
+
+        [Serializable]
+        private sealed class PatternEntry
+        {
+            public string name = "Pattern";
+            [Min(20f)] public float bpm = 120f;
+            [Tooltip("패턴 길이 (박). 기본 8박")]
+            [Min(1f)] public float lengthBeats = 8f;
+            [Tooltip("패턴 전체 속도 배율 — 같은 채보를 후반에 1.3배로 재탕할 때")]
+            [Min(0.1f)] public float speedMultiplier = 1f;
+            public NoteEntry[] notes = Array.Empty<NoteEntry>();
+        }
+
+        [Serializable]
+        private sealed class PatternWeight
+        {
+            [Tooltip("위 patterns 배열의 인덱스")]
+            [Min(0)] public int patternIndex;
+            [Min(0f)] public float weight = 1f;
+        }
+
+        [Serializable]
+        private sealed class PhaseEntry
+        {
+            [Tooltip("보스 HP 비율이 이 값 이하일 때 이 페이즈를 쓴다. 시작 페이즈는 1")]
+            [Range(0f, 1f)] public float hpRatioAtOrBelow = 1f;
+            public PatternWeight[] patterns = Array.Empty<PatternWeight>();
         }
 
         public string DisplayName => displayName;
@@ -62,13 +98,7 @@ namespace ChainRiposte.Game.Config
 
         public BossConfig ToConfig()
         {
-            if (pattern.Length == 0)
-                throw new InvalidOperationException($"{name}: 공격 패턴이 비어 있습니다.");
-
-            var attacks = new List<BossAttackConfig>(pattern.Length);
-            foreach (AttackEntry entry in pattern)
-                attacks.Add(new BossAttackConfig(
-                    entry.telegraphSeconds, entry.damage, entry.parryable, entry.recoverySeconds));
+            List<BossPatternConfig> built = BuildPatterns();
 
             return new BossConfig
             {
@@ -80,8 +110,86 @@ namespace ChainRiposte.Game.Config
                 PostureDecayPerSecond = postureDecayPerSecond,
                 ScaleDecayWithHp = scaleDecayWithHp,
                 FirstAttackDelaySeconds = firstAttackDelaySeconds,
-                Pattern = attacks,
+                PatternGapSeconds = patternGapSeconds,
+                Phases = BuildPhases(built),
             };
+        }
+
+        private List<BossPatternConfig> BuildPatterns()
+        {
+            var built = new List<BossPatternConfig>();
+            foreach (PatternEntry entry in patterns)
+            {
+                if (entry == null)
+                    continue;
+
+                var notes = new List<BossNoteConfig>();
+                foreach (NoteEntry note in entry.notes ?? Array.Empty<NoteEntry>())
+                {
+                    if (note == null)
+                        continue;
+                    notes.Add(new BossNoteConfig(
+                        note.beat, note.telegraphBeats, note.damage, note.speedMultiplier));
+                }
+
+                if (notes.Count == 0)
+                    continue; // 노트가 하나도 없는 패턴은 무한 빈 박이 되므로 건너뛴다
+
+                built.Add(new BossPatternConfig(
+                    entry.name, entry.bpm, entry.lengthBeats, notes, entry.speedMultiplier));
+            }
+
+            if (built.Count > 0)
+                return built;
+
+            Debug.LogError(
+                $"{name}: 채보가 비어 있습니다. 임시 패턴으로 대체합니다 — " +
+                "인스펙터의 Patterns에 노트를 찍어 주세요.", this);
+            built.Add(PlaceholderPattern());
+            return built;
+        }
+
+        /// <summary>채보를 아직 안 찍은 보스도 플레이는 되게 하는 임시 패턴 (정박 4타).</summary>
+        private static BossPatternConfig PlaceholderPattern()
+        {
+            var notes = new List<BossNoteConfig>();
+            for (int beat = 1; beat <= 7; beat += 2)
+                notes.Add(new BossNoteConfig(beat, telegraphBeats: 1f, damage: 12f));
+
+            return new BossPatternConfig("Placeholder", 120f, 8f, notes);
+        }
+
+        private List<BossPhaseConfig> BuildPhases(List<BossPatternConfig> built)
+        {
+            var result = new List<BossPhaseConfig>();
+
+            foreach (PhaseEntry phase in phases)
+            {
+                if (phase == null)
+                    continue;
+
+                var weighted = new List<WeightedPattern>();
+                foreach (PatternWeight reference in phase.patterns ?? Array.Empty<PatternWeight>())
+                {
+                    if (reference == null || reference.patternIndex < 0 || reference.patternIndex >= built.Count)
+                        continue;
+                    weighted.Add(new WeightedPattern(built[reference.patternIndex], reference.weight));
+                }
+
+                if (weighted.Count > 0)
+                    result.Add(new BossPhaseConfig(phase.hpRatioAtOrBelow, weighted));
+            }
+
+            if (result.Count > 0)
+                return result;
+
+            // 페이즈를 안 짰으면 모든 패턴을 균등하게 쓰는 단일 페이즈로 둔다
+            var all = new List<WeightedPattern>();
+            foreach (BossPatternConfig pattern in built)
+                all.Add(new WeightedPattern(pattern));
+
+            result.Add(new BossPhaseConfig(1f, all));
+            return result;
         }
     }
 }

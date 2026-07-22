@@ -8,22 +8,31 @@ namespace ChainRiposte.Core.Tests
 {
     public sealed class CombatSystemTests
     {
-        private const float FirstDelay = 1f; // 기본: t=1에 첫 텔레그래프 시작
+        private const float FirstDelay = 1f; // 기본: t=1에 패턴 시작
 
-        private static BossAttackConfig Attack(
-            float telegraph = 1f, float damage = 20f, bool parryable = true, float recovery = 1f) =>
-            new(telegraph, damage, parryable, recovery);
+        /// <summary>테스트는 전부 60BPM으로 돌린다 — <b>1박 = 1초</b>라 시간 계산이 눈에 보인다.</summary>
+        private const float Bpm = 60f;
 
-        private static BossConfig Boss(params BossAttackConfig[] pattern) => new()
+        private static BossNoteConfig Note(float beat, float telegraph = 1f, float damage = 20f, float speed = 1f) =>
+            new(beat, telegraph, damage, speed);
+
+        private static BossConfig Boss(params BossNoteConfig[] notes)
         {
-            MaxHp = 100f,
-            MaxPosture = 100f,
-            ParryPostureGain = 40f,
-            AttackPostureFactor = 0.5f,
-            PostureDecayPerSecond = 0f, // 회복은 전용 테스트에서만 켠다
-            FirstAttackDelaySeconds = FirstDelay,
-            Pattern = pattern.Length > 0 ? pattern : new[] { Attack() },
-        };
+            var used = notes.Length > 0 ? notes : new[] { Note(1f) };
+            var pattern = new BossPatternConfig("Test", Bpm, lengthBeats: 8f, used);
+
+            return new BossConfig
+            {
+                MaxHp = 100f,
+                MaxPosture = 100f,
+                ParryPostureGain = 40f,
+                AttackPostureFactor = 0.5f,
+                PostureDecayPerSecond = 0f, // 회복은 전용 테스트에서만 켠다
+                FirstAttackDelaySeconds = FirstDelay,
+                PatternGapSeconds = 0f,
+                Phases = new[] { new BossPhaseConfig(1f, new[] { new WeightedPattern(pattern) }) },
+            };
+        }
 
         private static PlayerStats Stats(float def = 0f, float atk = 10f) =>
             new(new PlayerStatsConfig
@@ -43,7 +52,7 @@ namespace ChainRiposte.Core.Tests
             bool parried = false;
             combat.AttackParried += _ => parried = true;
 
-            combat.Tick(1.9f);       // 텔레그래프 진행 중 (타격은 t=2)
+            combat.Tick(1.9f);       // 예비동작 진행 중 (타격은 t=2)
             combat.PressParry();     // 윈도우 0.2초 → t=2.1까지 유효
             combat.Tick(0.2f);       // t=2 타격 → 패링
 
@@ -57,7 +66,7 @@ namespace ChainRiposte.Core.Tests
         public void 패링_미입력시_방어력을_뺀_피해를_입는다()
         {
             var health = new PlayerHealth(100);
-            var combat = new CombatSystem(Boss(Attack(damage: 20f)), Stats(def: 5f), health);
+            var combat = new CombatSystem(Boss(Note(1f, damage: 20f)), Stats(def: 5f), health);
             int hitDamage = -1;
             combat.PlayerHit += (_, dmg) => hitDamage = dmg;
 
@@ -80,21 +89,79 @@ namespace ChainRiposte.Core.Tests
         }
 
         [Test]
-        public void 공격_커밋_중에는_패링_입력이_무시된다()
+        public void 연속기는_노트마다_따로_패링해야_한다()
+        {
+            // 1박과 1.5박 — 0.5초 간격의 2연타
+            var health = new PlayerHealth(100);
+            var combat = new CombatSystem(
+                Boss(Note(1f, telegraph: 1f, damage: 20f), Note(1.5f, telegraph: 1f, damage: 20f)),
+                Stats(), health);
+            int parries = 0;
+            combat.AttackParried += _ => parries++;
+
+            combat.Tick(1.9f);
+            combat.PressParry();
+            combat.Tick(0.2f);  // t=2.0 첫 타격 → 패링 성공, 즉시 Ready
+
+            Assert.That(parries, Is.EqualTo(1));
+            Assert.That(combat.PlayerState, Is.EqualTo(PlayerActionState.Ready));
+
+            // 윈도우가 0.2초뿐이라 두 번째 타격(t=2.5)에 맞춰 다시 눌러야 한다 — 바로 누르면 일찍 끝난다
+            combat.Tick(0.25f);  // t=2.35
+            combat.PressParry();
+            combat.Tick(0.2f);   // t=2.55 — 그 사이 t=2.5 타격
+
+            Assert.That(parries, Is.EqualTo(2), "연속기는 노트 수만큼 눌러야 한다");
+            Assert.That(health.Current, Is.EqualTo(100));
+        }
+
+        [Test]
+        public void 연속기_중_하나를_놓쳐도_나머지는_계속된다()
         {
             var health = new PlayerHealth(100);
-            var combat = new CombatSystem(Boss(), Stats(), health);
+            var combat = new CombatSystem(
+                Boss(Note(1f, damage: 20f), Note(1.5f, damage: 20f)),
+                Stats(), health);
 
-            combat.Tick(1.8f);   // 타격(t=2) 직전
-            combat.PressAttack(); // 커밋 t=1.8~2.2 — 이 동안 무방비
-            combat.PressParry();  // 무시되어야 한다
+            combat.Tick(2.1f);   // 첫 타격 놓침 (t=2)
+            Assert.That(health.Current, Is.EqualTo(80));
 
-            Assert.That(combat.PlayerState, Is.EqualTo(PlayerActionState.Attacking));
+            combat.Tick(0.25f);  // t=2.35 — 두 번째 타격(t=2.5)에 맞춰
+            combat.PressParry();
+            combat.Tick(0.2f);   // t=2.55
 
-            combat.Tick(0.5f); // t=2 피격 → t=2.2 공격 적중
+            Assert.That(health.Current, Is.EqualTo(80), "놓친 한 대만 맞고 나머지는 살아난다");
+            Assert.That(combat.Posture, Is.EqualTo(40f));
+        }
 
-            Assert.That(health.Current, Is.EqualTo(80), "커밋 중 타격은 그대로 맞는다");
-            Assert.That(combat.BossHp, Is.EqualTo(90f), "커밋이 끝나면 공격은 적중한다");
+        [Test]
+        public void 여러_노트가_동시에_날아오면_전부_보인다()
+        {
+            // 예비동작 2박짜리 노트 세 개가 겹친다
+            var combat = new CombatSystem(
+                Boss(Note(2f, telegraph: 2f), Note(2.5f, telegraph: 2f), Note(3f, telegraph: 2f)),
+                Stats(), new PlayerHealth(100));
+
+            // 예비동작 시작은 각각 0 / 0.5 / 1박. 패턴 시작 t=1 기준 1.1박 지점이면 셋 다 감기고 있다
+            combat.Tick(2.1f);
+
+            Assert.That(combat.ActiveNotes.Count, Is.EqualTo(3));
+            Assert.That(combat.ActiveNotes[0].SecondsUntilHit,
+                Is.LessThan(combat.ActiveNotes[1].SecondsUntilHit), "임박한 순으로 정렬된다");
+            Assert.That(combat.ActiveNotes[0].Progress, Is.GreaterThan(0f).And.LessThan(1f));
+        }
+
+        [Test]
+        public void 공격은_빈_박에서만_들어간다()
+        {
+            var combat = new CombatSystem(Boss(), Stats(atk: 10f), new PlayerHealth(100));
+
+            combat.Tick(1.5f);    // 노트가 날아오는 중 (타격 t=2)
+            Assert.That(combat.BossState, Is.EqualTo(BossActionState.Telegraphing));
+
+            combat.PressAttack(); // 빈 박이 아니다 → 헛짓으로 잠긴다
+            Assert.That(combat.PlayerState, Is.EqualTo(PlayerActionState.ParryRecovering));
+            Assert.That(combat.BossHp, Is.EqualTo(100f), "공격이 나가지 않았다");
         }
 
         [Test]
@@ -102,8 +169,8 @@ namespace ChainRiposte.Core.Tests
         {
             var combat = new CombatSystem(Boss(), Stats(atk: 10f), new PlayerHealth(100));
 
-            combat.PressAttack();
-            combat.Tick(0.4f); // 커밋 종료 → 적중
+            combat.PressAttack(); // t=0 — 아직 패턴 전이라 빈 박
+            combat.Tick(0.4f);    // 커밋 종료 → 적중
 
             Assert.That(combat.BossHp, Is.EqualTo(90f));
             Assert.That(combat.Posture, Is.EqualTo(5f), "ATK 10 × 배율 0.5");
@@ -156,7 +223,7 @@ namespace ChainRiposte.Core.Tests
         [Test]
         public void 플레이어HP_소진시_패배로_끝난다()
         {
-            var combat = new CombatSystem(Boss(Attack(damage: 20f)), Stats(), new PlayerHealth(10));
+            var combat = new CombatSystem(Boss(Note(1f, damage: 20f)), Stats(), new PlayerHealth(10));
             bool? victory = null;
             combat.Ended += v => victory = v;
 
@@ -167,17 +234,17 @@ namespace ChainRiposte.Core.Tests
         }
 
         [Test]
-        public void 패링불가_공격은_윈도우_안이어도_맞는다()
+        public void 노트_속도_배율은_예비동작만_짧게_만든다()
         {
-            var health = new PlayerHealth(100);
-            var combat = new CombatSystem(Boss(Attack(parryable: false)), Stats(), health);
+            // 타격 시점(2박=t=3)은 그대로고 예비동작만 1박 → 0.5박으로 줄어든다
+            var combat = new CombatSystem(
+                Boss(Note(2f, telegraph: 1f, speed: 2f)), Stats(), new PlayerHealth(100));
 
-            combat.Tick(1.9f);
-            combat.PressParry();
-            combat.Tick(0.2f);
+            combat.Tick(2.4f); // t=1 패턴 시작 기준 1.4박 — 아직 예비동작 전(1.5박부터)
+            Assert.That(combat.ActiveNotes.Count, Is.EqualTo(0), "배율만큼 늦게 감기 시작한다");
 
-            Assert.That(health.Current, Is.EqualTo(80));
-            Assert.That(combat.Posture, Is.EqualTo(0f));
+            combat.Tick(0.2f); // 1.6박 — 예비동작 시작됨
+            Assert.That(combat.ActiveNotes.Count, Is.EqualTo(1));
         }
 
         [Test]
@@ -199,20 +266,17 @@ namespace ChainRiposte.Core.Tests
         }
 
         [Test]
-        public void 패턴은_순서대로_반복되며_큰_틱에도_결정적이다()
+        public void 채보는_큰_틱에도_결정적으로_재생된다()
         {
             var combat = new CombatSystem(
-                Boss(
-                    Attack(telegraph: 1f, damage: 1f, recovery: 1f),
-                    Attack(telegraph: 0.5f, damage: 1f, recovery: 0.5f)),
-                Stats(),
-                new PlayerHealth(100));
-            var indices = new List<int>();
-            combat.AttackTelegraphed += (i, _) => indices.Add(i);
+                Boss(Note(1f, damage: 1f), Note(3f, damage: 1f), Note(5f, damage: 1f)),
+                Stats(), new PlayerHealth(100));
+            var hits = new List<float>();
+            combat.NoteTelegraphed += note => hits.Add(note.Beat);
 
-            combat.Tick(4.1f); // t=1 공격0, t=3 공격1, t=4 공격0 — 한 번의 큰 틱으로 진행
+            combat.Tick(6.1f); // 한 번의 큰 틱으로 t=0~6.1 진행
 
-            Assert.That(indices, Is.EqualTo(new[] { 0, 1, 0 }));
+            Assert.That(hits, Is.EqualTo(new[] { 1f, 3f, 5f }), "예비동작 시작 순서가 박 순서와 같다");
         }
 
         [Test]
@@ -233,9 +297,29 @@ namespace ChainRiposte.Core.Tests
         }
 
         [Test]
-        public void 빈_공격_패턴은_예외를_던진다()
+        public void HP_페이즈에_따라_다른_패턴_풀을_쓴다()
         {
-            var config = new BossConfig { Pattern = Array.Empty<BossAttackConfig>() };
+            var easy = new BossPatternConfig("Easy", Bpm, 8f, new[] { Note(1f, damage: 1f) });
+            var hard = new BossPatternConfig("Hard", Bpm, 8f, new[] { Note(1f, damage: 99f) });
+
+            var config = Boss();
+            config.MaxHp = 100f;
+            config.Phases = new[]
+            {
+                new BossPhaseConfig(1f, new[] { new WeightedPattern(easy) }),
+                new BossPhaseConfig(0.5f, new[] { new WeightedPattern(hard) }),
+            };
+
+            Assert.That(config.ResolvePhase(1f).Patterns[0].Pattern.Name, Is.EqualTo("Easy"));
+            Assert.That(config.ResolvePhase(0.8f).Patterns[0].Pattern.Name, Is.EqualTo("Easy"));
+            Assert.That(config.ResolvePhase(0.5f).Patterns[0].Pattern.Name, Is.EqualTo("Hard"), "체력이 깎이면 험한 풀로");
+            Assert.That(config.ResolvePhase(0.1f).Patterns[0].Pattern.Name, Is.EqualTo("Hard"));
+        }
+
+        [Test]
+        public void 페이즈가_비면_예외를_던진다()
+        {
+            var config = new BossConfig { Phases = Array.Empty<BossPhaseConfig>() };
 
             Assert.Throws<ArgumentException>(() =>
                 _ = new CombatSystem(config, Stats(), new PlayerHealth(100)));
