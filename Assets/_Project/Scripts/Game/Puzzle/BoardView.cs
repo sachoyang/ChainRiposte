@@ -26,6 +26,8 @@ namespace ChainRiposte.Game.Puzzle
         [Header("에셋 스왑 — 지정하면 색 사각형 대신 스프라이트로 표시")]
         [Tooltip("벽 타일 아트 (비우면 wallColor 사각형)")]
         [SerializeField] private Sprite wallSprite;
+        [Tooltip("벽 손상 단계 — 0=온전, 마지막=거의 부서짐. 채우면 어두워지는 대신 금이 간 그림으로 바뀐다.")]
+        [SerializeField] private Sprite[] wallDamageSprites = Array.Empty<Sprite>();
         [Tooltip("보스 타일 아트 (비우면 bossColor 사각형)")]
         [SerializeField] private Sprite bossSprite;
         [Tooltip("배경 셀 아트 (비우면 체커 2색 사각형)")]
@@ -332,6 +334,8 @@ namespace ChainRiposte.Game.Puzzle
             }
 
             var view = TileView.Create(_tileRoot, tile, color, sprite);
+            if (tile.Category == TileCategory.Wall && wallDamageSprites.Length > 0)
+                view.SetWallStages(wallDamageSprites);
             view.transform.localPosition = GridToLocal(pos);
             view.ApplyStatus(tile, chainSprite); // 사슬/폭탄 뱃지 (GDD §3.6)
             _views[pos] = view;

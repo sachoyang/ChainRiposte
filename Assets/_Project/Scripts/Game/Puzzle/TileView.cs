@@ -11,6 +11,7 @@ namespace ChainRiposte.Game.Puzzle
         private TextMesh _countdownText;
         private SpriteRenderer _chainOverlay;
         private Color _baseColor;
+        private Sprite[] _wallStages;
         private int _maxHp;
         private int _remainingHp;
 
@@ -35,7 +36,17 @@ namespace ChainRiposte.Game.Puzzle
             return view;
         }
 
-        /// <summary>내구도형 타일(벽)은 피해를 입을수록 어두워진다.</summary>
+        /// <summary>
+        /// 벽의 손상 단계 스프라이트 (0 = 온전 … 마지막 = 거의 부서짐).
+        /// 지정하면 어두워지는 대신 실제로 금이 간 그림으로 바뀐다.
+        /// </summary>
+        public void SetWallStages(Sprite[] stages)
+        {
+            _wallStages = stages != null && stages.Length > 0 ? stages : null;
+            RefreshColor();
+        }
+
+        /// <summary>내구도형 타일(벽)은 피해를 입을수록 어두워지거나, 손상 단계 그림으로 바뀐다.</summary>
         public void ApplyWallDamage(int damage)
         {
             _remainingHp = Mathf.Max(0, _remainingHp - damage);
@@ -151,6 +162,16 @@ namespace ChainRiposte.Game.Puzzle
 
         private void RefreshColor()
         {
+            // 손상 단계 그림이 있으면 그걸로 상태를 보여 준다 — 색을 어둡게 하는 건 그림이 없을 때의 대체 표현이다
+            if (_wallStages != null && _maxHp > 0)
+            {
+                float lost = 1f - (float)_remainingHp / _maxHp;
+                int index = Mathf.Clamp(Mathf.RoundToInt(lost * (_wallStages.Length - 1)), 0, _wallStages.Length - 1);
+                _renderer.sprite = _wallStages[index];
+                _renderer.color = Color.white;
+                return;
+            }
+
             _renderer.color = _maxHp > 0
                 ? Color.Lerp(Color.black, _baseColor, 0.4f + 0.6f * _remainingHp / _maxHp)
                 : _baseColor;

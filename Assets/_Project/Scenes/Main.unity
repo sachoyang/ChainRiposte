@@ -1557,6 +1557,11 @@ MonoBehaviour:
   corruptionColor: {r: 0.36, g: 0.16, b: 0.42, a: 1}
   unknownColor: {r: 1, g: 0, b: 1, a: 1}
   wallSprite: {fileID: 0}
+  wallDamageSprites:
+  - {fileID: -6954986683506236323, guid: a41a600958723a84880d7bf2bce2009b, type: 3}
+  - {fileID: 3733188388392435883, guid: a41a600958723a84880d7bf2bce2009b, type: 3}
+  - {fileID: 4889903263763644191, guid: a41a600958723a84880d7bf2bce2009b, type: 3}
+  - {fileID: -2277764938230213456, guid: a41a600958723a84880d7bf2bce2009b, type: 3}
   bossSprite: {fileID: 0}
   cellSprite: {fileID: 0}
   corruptionSprite: {fileID: 0}
