@@ -39,6 +39,9 @@ namespace ChainRiposte.Core.Flow
         public void StartPuzzle() => TransitionTo(GamePhase.Puzzle);
 
         /// <summary>보스 타일이 바닥에 닿거나 강제 조우가 발생했을 때 호출된다.</summary>
+        /// <summary>보스 돌입 직전의 스탯 분배 시간으로 넘어간다 (시간 제한 없음).</summary>
+        public void StartIntermission() => TransitionTo(GamePhase.Intermission);
+
         public void StartCombat() => TransitionTo(GamePhase.Combat);
 
         public void EndStage(bool victory) => TransitionTo(victory ? GamePhase.Victory : GamePhase.Defeat);

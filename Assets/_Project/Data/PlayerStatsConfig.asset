@@ -12,12 +12,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8428b62c53e3ca64097775c74408c6cd, type: 3}
   m_Name: PlayerStatsConfig
   m_EditorClassIdentifier: ChainRiposte.Game::ChainRiposte.Game.Config.PlayerStatsConfigSO
+  maxHp: 100
   baseSoulsToLevel: 30
   soulsToLevelGrowth: 15
   baseAttackDamage: 10
   attackDamagePerLevel: 3
   baseDamageReduction: 0
   damageReductionPerLevel: 2
-  baseParryWindowSeconds: 0.15
+  baseParryWindowSeconds: 0.25
   parryWindowPerLevelSeconds: 0.03
+  parryLateGraceSeconds: 0.12
   parryLevelHardCap: 5
+  attackCommitSeconds: 0.4
+  parryWhiffLockSeconds: 0.25

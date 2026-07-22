@@ -6,8 +6,14 @@ namespace ChainRiposte.Core.Tests
 {
     public sealed class PlayerStatsTests
     {
+        // 밸런스 기본값이 바뀌어도 테스트가 깨지지 않도록 여기서 쓰는 값은 명시한다
         private static PlayerStats CreateStats(int parryCap = 5) =>
-            new(new PlayerStatsConfig { ParryLevelHardCap = parryCap });
+            new(new PlayerStatsConfig
+            {
+                ParryLevelHardCap = parryCap,
+                BaseParryWindowSeconds = 0.15f,
+                ParryWindowPerLevelSeconds = 0.03f,
+            });
 
         [Test]
         public void 영혼석이_요구량에_도달하면_레벨업하고_포인트를_적립한다()

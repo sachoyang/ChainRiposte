@@ -17,8 +17,15 @@ namespace ChainRiposte.Core.Stats
         public float BaseDamageReduction = 0f;
         public float DamageReductionPerLevel = 2f;
 
-        public float BaseParryWindowSeconds = 0.15f;
+        public float BaseParryWindowSeconds = 0.25f;
         public float ParryWindowPerLevelSeconds = 0.03f;
+
+        /// <summary>
+        /// 타격이 지난 뒤에도 이만큼은 패링을 받아 준다.
+        /// 윈도우가 전부 타격 '이전'에만 열려 있으면 조금만 늦어도 무조건 실패해서 손이 아프다 —
+        /// 사람은 원이 닿는 걸 보고 누르므로 대개 살짝 늦는다.
+        /// </summary>
+        public float ParryLateGraceSeconds = 0.12f;
 
         /// <summary>판정치 하드 캡 — 이 레벨에 도달하면 더 이상 분배할 수 없다.</summary>
         public int ParryLevelHardCap = 5;

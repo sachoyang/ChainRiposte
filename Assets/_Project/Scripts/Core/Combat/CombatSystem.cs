@@ -26,6 +26,10 @@ namespace ChainRiposte.Core.Combat
             public float HitSeconds;
             public bool Telegraphed;
             public bool Resolved;
+
+            /// <summary>타격 시점은 지났지만 아직 늦은 패링을 받아 주는 중.</summary>
+            public bool InGrace;
+            public float GraceEndsAt;
         }
 
         private readonly BossConfig _config;
@@ -145,14 +149,36 @@ namespace ChainRiposte.Core.Combat
             RebuildActiveNotes();
         }
 
-        /// <summary>좌측 버튼 — 탭 순간부터 판정치(초) 동안 패링 판정 활성.</summary>
+        /// <summary>
+        /// 좌측 버튼 — 탭 순간부터 판정치(초) 동안 패링 판정 활성.
+        /// 이미 타격이 지나갔더라도 유예 시간 안이면 그 노트를 소급해서 막아 준다.
+        /// </summary>
         public void PressParry()
         {
-            if (Finished || PlayerState != PlayerActionState.Ready)
+            if (Finished)
+                return;
+
+            // 늦은 패링 — 원이 닿는 걸 보고 누르면 대개 살짝 늦는다. 잠금 중이어도 이건 받아 준다.
+            RuntimeNote late = FindInGrace();
+            if (late != null)
+            {
+                ParryNote(late);
+                return;
+            }
+
+            if (PlayerState != PlayerActionState.Ready)
                 return;
 
             SetPlayerState(PlayerActionState.Parrying);
             _playerTimer = _stats.ParryWindowSeconds;
+        }
+
+        private RuntimeNote FindInGrace()
+        {
+            foreach (RuntimeNote note in _notes)
+                if (note.InGrace && !note.Resolved)
+                    return note;
+            return null;
         }
 
         /// <summary>
@@ -200,7 +226,10 @@ namespace ChainRiposte.Core.Combat
             {
                 if (note.Resolved)
                     continue;
-                float target = note.Telegraphed ? note.HitSeconds : note.TelegraphStartSeconds;
+
+                float target = note.InGrace
+                    ? note.GraceEndsAt
+                    : note.Telegraphed ? note.HitSeconds : note.TelegraphStartSeconds;
                 next = Math.Min(next, target - _patternTime);
             }
 
@@ -256,6 +285,15 @@ namespace ChainRiposte.Core.Combat
                     continue;
                 }
 
+                // 유예가 끝난 노트부터 확정한다
+                RuntimeNote expired = FindGraceExpired();
+                if (expired != null)
+                {
+                    ApplyNoteDamage(expired);
+                    transitioned = true;
+                    continue;
+                }
+
                 // 타격을 예비동작 시작보다 먼저 본다 — 같은 순간이면 먼저 온 노트가 먼저 해결돼야 한다
                 RuntimeNote striking = FindDue(hit: true);
                 if (striking != null)
@@ -296,7 +334,7 @@ namespace ChainRiposte.Core.Combat
 
                 if (hit)
                 {
-                    if (note.Telegraphed && _patternTime >= note.HitSeconds - TimeEpsilon)
+                    if (note.Telegraphed && !note.InGrace && _patternTime >= note.HitSeconds - TimeEpsilon)
                         return note;
                 }
                 else if (!note.Telegraphed && _patternTime >= note.TelegraphStartSeconds - TimeEpsilon)
@@ -305,6 +343,14 @@ namespace ChainRiposte.Core.Combat
                 }
             }
 
+            return null;
+        }
+
+        private RuntimeNote FindGraceExpired()
+        {
+            foreach (RuntimeNote note in _notes)
+                if (note.InGrace && !note.Resolved && _patternTime >= note.GraceEndsAt - TimeEpsilon)
+                    return note;
             return null;
         }
 
@@ -374,25 +420,49 @@ namespace ChainRiposte.Core.Combat
             return phase.Patterns[phase.Patterns.Count - 1].Pattern;
         }
 
+        /// <summary>타격 시점 도달 — 이미 누르고 있으면 즉시 패링, 아니면 유예를 연다.</summary>
         private void ResolveStrike(RuntimeNote runtime)
         {
-            runtime.Resolved = true;
-            BossNoteConfig note = runtime.Note;
-
             if (PlayerState == PlayerActionState.Parrying)
             {
-                // 패링 성공: 피해 0, 즉시 복귀(보상), 체간 대폭 상승.
-                // 즉시 Ready로 돌리므로 연속기는 노트 수만큼 눌러야 한다.
-                SetPlayerState(PlayerActionState.Ready);
-                AttackParried?.Invoke(note);
-                AddPosture(_config.ParryPostureGain);
+                ParryNote(runtime);
+                return;
+            }
+
+            float grace = _stats.ParryLateGraceSeconds;
+            if (grace > 0f)
+            {
+                runtime.InGrace = true;
+                runtime.GraceEndsAt = _patternTime + grace;
                 RefreshBossState();
                 return;
             }
 
+            ApplyNoteDamage(runtime);
+        }
+
+        private void ParryNote(RuntimeNote runtime)
+        {
+            runtime.Resolved = true;
+            runtime.InGrace = false;
+
+            // 패링 성공: 피해 0, 즉시 복귀(보상), 체간 대폭 상승.
+            // 즉시 Ready로 돌리므로 연속기는 노트 수만큼 눌러야 한다.
+            SetPlayerState(PlayerActionState.Ready);
+            AttackParried?.Invoke(runtime.Note);
+            AddPosture(_config.ParryPostureGain);
+            RefreshBossState();
+        }
+
+        /// <summary>유예까지 지나 확정된 피격.</summary>
+        private void ApplyNoteDamage(RuntimeNote runtime)
+        {
+            runtime.Resolved = true;
+            runtime.InGrace = false;
+
             // DEF로 완전 무효화는 불가 — 최소 1 피해로 압박을 유지한다
-            int damage = Math.Max(1, (int)Math.Round(note.Damage - _stats.DamageReduction));
-            PlayerHit?.Invoke(note, damage);
+            int damage = Math.Max(1, (int)Math.Round(runtime.Note.Damage - _stats.DamageReduction));
+            PlayerHit?.Invoke(runtime.Note, damage);
 
             if (_health.ApplyDamage(damage))
             {

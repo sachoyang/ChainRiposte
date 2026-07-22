@@ -569,6 +569,13 @@ namespace ChainRiposte.Editor
             Row(builder, "puzzle.banner.defeat", "패배", "DEFEAT");
             Row(builder, "puzzle.banner.combat", "보스!", "BOSS!");
             Row(builder, "puzzle.banner.noMoves", "둘 수 있는 수 없음 — 섞는 중", "NO MOVES — SHUFFLING");
+            Row(builder, "puzzle.banner.intermission", "보스 돌입 준비", "BOSS INCOMING");
+
+            // 보스 돌입 준비 (시간 제한 없음)
+            Row(builder, "intermission.title", "보스 돌입 준비", "BOSS INCOMING");
+            Row(builder, "intermission.points", "남은 포인트 {0}점 — 지금 분배하세요", "{0} POINT(S) TO SPEND");
+            Row(builder, "intermission.nopoints", "준비되면 시작하세요", "READY WHEN YOU ARE");
+            Row(builder, "intermission.fight", "전투 시작", "FIGHT");
             Row(builder, "puzzle.countdown", "{0}초|{1}턴", "{0}s|{1}t");
 
             // 전투

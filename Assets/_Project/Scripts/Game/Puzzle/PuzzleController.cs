@@ -102,7 +102,8 @@ namespace ChainRiposte.Game.Puzzle
                 }
             }
 
-            gameManager.Session.StartCombat();
+            // 곧바로 전투로 넘기지 않는다 — 파밍한 포인트를 쓸 시간을 먼저 준다 (시간 제한 없음)
+            gameManager.Session.StartIntermission();
         }
 
         private void OnSwapRequested(GridPos a, GridPos b)

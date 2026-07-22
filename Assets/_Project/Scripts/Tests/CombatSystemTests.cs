@@ -34,7 +34,7 @@ namespace ChainRiposte.Core.Tests
             };
         }
 
-        private static PlayerStats Stats(float def = 0f, float atk = 10f) =>
+        private static PlayerStats Stats(float def = 0f, float atk = 10f, float lateGrace = 0f) =>
             new(new PlayerStatsConfig
             {
                 BaseAttackDamage = atk,
@@ -42,6 +42,8 @@ namespace ChainRiposte.Core.Tests
                 BaseParryWindowSeconds = 0.2f,
                 AttackCommitSeconds = 0.4f,
                 ParryWhiffLockSeconds = 0.25f,
+                // 대부분의 테스트는 유예를 꺼서 타격 시점을 정확히 관찰한다
+                ParryLateGraceSeconds = lateGrace,
             });
 
         [Test]
@@ -132,6 +134,37 @@ namespace ChainRiposte.Core.Tests
 
             Assert.That(health.Current, Is.EqualTo(80), "놓친 한 대만 맞고 나머지는 살아난다");
             Assert.That(combat.Posture, Is.EqualTo(40f));
+        }
+
+        [Test]
+        public void 타격_직후_유예_안에_누르면_늦은_패링이_인정된다()
+        {
+            var health = new PlayerHealth(100);
+            var combat = new CombatSystem(Boss(), Stats(lateGrace: 0.12f), health);
+            bool parried = false;
+            combat.AttackParried += _ => parried = true;
+
+            combat.Tick(2.05f);  // t=2 타격이 이미 지났다 — 유예 중
+            Assert.That(health.Current, Is.EqualTo(100), "유예 동안은 아직 피해가 확정되지 않는다");
+
+            combat.PressParry(); // 늦게 눌렀지만 유예 안
+
+            Assert.That(parried, Is.True);
+            Assert.That(health.Current, Is.EqualTo(100));
+            Assert.That(combat.Posture, Is.EqualTo(40f));
+        }
+
+        [Test]
+        public void 유예가_지나면_피해가_확정된다()
+        {
+            var health = new PlayerHealth(100);
+            var combat = new CombatSystem(Boss(Note(1f, damage: 20f)), Stats(lateGrace: 0.12f), health);
+
+            combat.Tick(2.2f);   // 타격 t=2 + 유예 0.12 를 넘겼다
+            Assert.That(health.Current, Is.EqualTo(80));
+
+            combat.PressParry(); // 이제 눌러도 소용없다
+            Assert.That(health.Current, Is.EqualTo(80));
         }
 
         [Test]

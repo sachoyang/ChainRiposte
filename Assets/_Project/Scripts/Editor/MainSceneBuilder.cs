@@ -18,6 +18,7 @@ namespace ChainRiposte.Editor
     public static class MainSceneBuilder
     {
         private static readonly Color PanelButtonColor = new(0.22f, 0.20f, 0.26f, 0.95f);
+        private static readonly Color AccentButtonColor = new(0.55f, 0.16f, 0.18f, 1f);
 
         [MenuItem("Tools/ChainRiposte/Build Main Scene UI")]
         private static void Build()
@@ -42,6 +43,25 @@ namespace ChainRiposte.Editor
             if (hud != null) BuildHud(hud);
             if (combat != null) BuildCombat(combat);
             if (result != null) BuildResult(result);
+
+            // 보스 돌입 준비 화면 — 컴포넌트가 없으면 GameManager 옆에 만들어 붙인다
+            var intermission = Object.FindFirstObjectByType<IntermissionScreen>();
+            if (intermission == null)
+            {
+                var go = new GameObject("IntermissionScreen");
+                Undo.RegisterCreatedObjectUndo(go, "Build Main UI");
+                intermission = go.AddComponent<IntermissionScreen>();
+
+                var manager = Object.FindFirstObjectByType<ChainRiposte.Game.GameManager>();
+                if (manager != null)
+                {
+                    var link = new SerializedObject(intermission);
+                    Set(link, "gameManager", manager);
+                    link.ApplyModifiedPropertiesWithoutUndo();
+                }
+            }
+
+            BuildIntermission(intermission);
 
             GameObject anchor = hud != null ? hud.gameObject : combat != null ? combat.gameObject : result.gameObject;
             UnityEditor.SceneManagement.EditorSceneManager.MarkSceneDirty(anchor.scene);
@@ -218,6 +238,54 @@ namespace ChainRiposte.Editor
             Set(so, "mapButton", map);
             so.ApplyModifiedPropertiesWithoutUndo();
             EditorUtility.SetDirty(result);
+        }
+
+        // ── 보스 돌입 준비 ──
+
+        /// <summary>
+        /// 화면 아래쪽만 덮는 얇은 띠로 만든다 — 위쪽 HUD의 +ATK/+DEF/+PARRY 버튼이 그대로 보여야
+        /// 플레이어가 여기서 스탯을 찍을 수 있다.
+        /// </summary>
+        private static void BuildIntermission(IntermissionScreen screen)
+        {
+            Transform canvas = PrepareCanvas(screen.gameObject, 15);
+
+            RectTransform panel = EditorUiFactory.NewRect("Root", canvas);
+            panel.anchorMin = new Vector2(0f, 0.5f);
+            panel.anchorMax = new Vector2(1f, 0.5f);
+            panel.pivot = new Vector2(0.5f, 0.5f);
+            panel.anchoredPosition = new Vector2(0f, 240f);
+            panel.sizeDelta = new Vector2(0f, 420f);
+            var backdrop = panel.gameObject.AddComponent<Image>();
+            backdrop.sprite = EditorUiFactory.Square;
+            backdrop.color = new Color(0.06f, 0.05f, 0.09f, 0.92f);
+
+            TMP_Text title = EditorUiFactory.Text(
+                panel, "Title", new Vector2(0f, 120f), new Vector2(0.5f, 0.5f), 76f,
+                TextAlignmentOptions.Center, new Vector2(1000f, 110f), FontStyles.Bold);
+            title.color = new Color(0.95f, 0.83f, 0.35f);
+
+            TMP_Text points = EditorUiFactory.Text(
+                panel, "Points", new Vector2(0f, 20f), new Vector2(0.5f, 0.5f), 44f,
+                TextAlignmentOptions.Center, new Vector2(1000f, 80f));
+
+            Button fight = EditorUiFactory.Button(
+                panel, "FightButton", new Vector2(0f, -110f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
+                new Vector2(520f, 140f), AccentButtonColor, "intermission.fight", 56f,
+                out _, out TextMeshProUGUI fightLabel);
+            EditorUiFactory.Localize(fightLabel, "intermission.fight");
+
+            // 가로에서는 화면 중앙에 조금 더 위로
+            EditorUiFactory.Orient(panel, new Vector2(0f, 0.5f), new Vector2(1f, 0.5f),
+                new Vector2(0f, 140f), new Vector2(0f, 340f));
+
+            var so = new SerializedObject(screen);
+            Set(so, "panelRoot", panel.gameObject);
+            Set(so, "titleText", title);
+            Set(so, "pointsText", points);
+            Set(so, "fightButton", fight);
+            so.ApplyModifiedPropertiesWithoutUndo();
+            EditorUtility.SetDirty(screen);
         }
 
         // ── 공통 ──

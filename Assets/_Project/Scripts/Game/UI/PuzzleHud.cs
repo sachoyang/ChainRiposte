@@ -127,6 +127,7 @@ namespace ChainRiposte.Game.UI
             {
                 GamePhase.Victory => "puzzle.banner.victory",
                 GamePhase.Defeat => "puzzle.banner.defeat",
+                GamePhase.Intermission => "puzzle.banner.intermission",
                 GamePhase.Combat => "puzzle.banner.combat",
                 _ => null,
             };

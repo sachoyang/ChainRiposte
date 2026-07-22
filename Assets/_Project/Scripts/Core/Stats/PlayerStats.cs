@@ -42,6 +42,9 @@ namespace ChainRiposte.Core.Stats
         /// <summary>패링 헛침 후딜레이.</summary>
         public float ParryWhiffLockSeconds => _config.ParryWhiffLockSeconds;
 
+        /// <summary>타격 직후에도 패링을 받아 주는 유예 시간.</summary>
+        public float ParryLateGraceSeconds => _config.ParryLateGraceSeconds;
+
         /// <summary>(현재 영혼석, 다음 레벨 요구량) — XP 바 갱신용.</summary>
         public event Action<int, int> SoulsChanged;
 
