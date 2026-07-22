@@ -123,11 +123,16 @@ namespace ChainRiposte.Editor
             EditorUiFactory.Localize(postureLabel, "combat.posture");
             postureLabel.color = new Color(0.95f, 0.62f, 0.12f);
 
-            // 패링 가능 구간 — 보스를 감싸는 연한 회색 원. 두께(스케일)는 런타임에 PARRY 스탯으로 정해진다.
+            // 포켓몬식 대치 — 보스는 오른쪽 위, 플레이어는 왼쪽 아래.
+            // 공격은 보스에서 나와 '나에게' 도달하므로 패링 원은 플레이어 자리로 모인다.
+            var bossHome = new Vector2(250f, 420f);
+            var playerHome = new Vector2(-230f, -180f);
+
+            // 패링 가능 구간 — 플레이어를 감싸는 연한 회색 원. 두께(스케일)는 런타임에 PARRY 스탯으로 정해진다.
             RectTransform band = EditorUiFactory.NewRect("ParryBand", root);
             band.anchorMin = band.anchorMax = new Vector2(0.5f, 0.5f);
-            band.anchoredPosition = new Vector2(0f, 200f);
-            band.sizeDelta = new Vector2(340f, 340f); // 보스 본체와 같은 크기 = 스케일 1이 타격 지점
+            band.anchoredPosition = playerHome;
+            band.sizeDelta = new Vector2(300f, 300f); // 플레이어 본체와 같은 크기 = 스케일 1이 타격 지점
             var bandImg = band.gameObject.AddComponent<Image>();
             bandImg.sprite = ChainRiposte.Game.PlaceholderSprite.Ring;
             bandImg.color = new Color(1f, 1f, 1f, 0.22f);
@@ -136,8 +141,8 @@ namespace ChainRiposte.Editor
             // 다가오는 노트 원의 복제 원본 — 개수가 채보로 정해지므로 CombatScreen이 필요한 만큼 복제한다
             RectTransform ring = EditorUiFactory.NewRect("NoteRingTemplate", root);
             ring.anchorMin = ring.anchorMax = new Vector2(0.5f, 0.5f);
-            ring.anchoredPosition = new Vector2(0f, 200f);
-            ring.sizeDelta = new Vector2(340f, 340f);
+            ring.anchoredPosition = playerHome;
+            ring.sizeDelta = new Vector2(300f, 300f);
             var ringImg = ring.gameObject.AddComponent<Image>();
             ringImg.sprite = ChainRiposte.Game.PlaceholderSprite.Ring;
             ringImg.color = Color.white;
@@ -146,12 +151,21 @@ namespace ChainRiposte.Editor
 
             RectTransform bossBody = EditorUiFactory.NewRect("BossBody", root);
             bossBody.anchorMin = bossBody.anchorMax = new Vector2(0.5f, 0.5f);
-            bossBody.anchoredPosition = new Vector2(0f, 200f);
+            bossBody.anchoredPosition = bossHome;
             bossBody.sizeDelta = new Vector2(340f, 340f);
             var bossBodyImg = bossBody.gameObject.AddComponent<Image>();
             bossBodyImg.sprite = EditorUiFactory.Square;
             bossBodyImg.color = bossColor;
             bossBodyImg.raycastTarget = false;
+
+            RectTransform playerBody = EditorUiFactory.NewRect("PlayerBody", root);
+            playerBody.anchorMin = playerBody.anchorMax = new Vector2(0.5f, 0.5f);
+            playerBody.anchoredPosition = playerHome;
+            playerBody.sizeDelta = new Vector2(300f, 300f);
+            var playerBodyImg = playerBody.gameObject.AddComponent<Image>();
+            playerBodyImg.sprite = EditorUiFactory.Square;
+            playerBodyImg.color = new Color(0.35f, 0.55f, 0.75f);
+            playerBodyImg.raycastTarget = false;
 
             TMP_Text execute = EditorUiFactory.Text(root, "ExecuteMark", new Vector2(0f, 470f), new Vector2(0.5f, 0.5f), 96f, TextAlignmentOptions.Center, new Vector2(1000f, 140f), FontStyles.Bold);
             EditorUiFactory.Localize(execute, "combat.execute");
@@ -176,10 +190,12 @@ namespace ChainRiposte.Editor
             EditorUiFactory.Orient(bossHp.transform.parent, top, top, new Vector2(0f, -100f), new Vector2(1400f, 26f));
             EditorUiFactory.Orient(posture.transform.parent, top, top, new Vector2(0f, -140f), new Vector2(1400f, 46f));
             EditorUiFactory.Orient(postureLabel, top, top, new Vector2(0f, -185f), new Vector2(1000f, 140f));
-            // 원과 띠는 보스 본체와 정확히 같은 자리·크기여야 한다 (스케일 1 = 타격 지점)
-            EditorUiFactory.Orient(ring, center, center, new Vector2(0f, 60f), new Vector2(340f, 340f));
-            EditorUiFactory.Orient(band, center, center, new Vector2(0f, 60f), new Vector2(340f, 340f));
-            EditorUiFactory.Orient(bossBody, center, center, new Vector2(0f, 60f), new Vector2(340f, 340f));
+            // 원과 띠는 플레이어 본체와 정확히 같은 자리·크기여야 한다 (스케일 1 = 타격 지점)
+            EditorUiFactory.Orient(ring, center, center, new Vector2(-400f, -110f), new Vector2(260f, 260f));
+            EditorUiFactory.Orient(band, center, center, new Vector2(-400f, -110f), new Vector2(260f, 260f));
+            // 가로에서는 좌우가 넓으니 대치 간격을 더 벌린다
+            EditorUiFactory.Orient(bossBody, center, center, new Vector2(430f, 190f), new Vector2(300f, 300f));
+            EditorUiFactory.Orient(playerBody, center, center, new Vector2(-400f, -110f), new Vector2(260f, 260f));
             EditorUiFactory.Orient(execute, center, center, new Vector2(0f, 250f), new Vector2(1000f, 140f));
             EditorUiFactory.Orient(popup, center, center, new Vector2(0f, 330f), new Vector2(1000f, 140f));
             EditorUiFactory.Orient(playerHp.transform.parent, bottom, bottom, new Vector2(0f, 120f), new Vector2(1000f, 36f));
@@ -201,6 +217,8 @@ namespace ChainRiposte.Editor
             Set(so, "playerHpText", playerHpText);
             Set(so, "bossBody", bossBody);
             Set(so, "bossBodyImage", bossBodyImg);
+            Set(so, "playerBody", playerBody);
+            Set(so, "playerBodyImage", playerBodyImg);
             Set(so, "noteRingTemplate", ring);
             Set(so, "parryBand", band);
             Set(so, "parryBandImage", bandImg);

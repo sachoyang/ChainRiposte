@@ -44,6 +44,21 @@ namespace ChainRiposte.Game.Combat
         [SerializeField] private TMP_Text playerHpText;
         [SerializeField] private RectTransform bossBody;
         [SerializeField] private Image bossBodyImage;
+        [Tooltip("플레이어 본체 (왼쪽 아래). 패링 원이 여기로 모인다.")]
+        [SerializeField] private RectTransform playerBody;
+        [SerializeField] private Image playerBodyImage;
+        [Tooltip("플레이어 그림. 비우면 색 사각형 플레이스홀더.")]
+        [SerializeField] private Sprite playerSprite;
+        [SerializeField] private Color playerColor = new(0.35f, 0.55f, 0.75f);
+
+        [Header("등장 연출 (포켓몬식 대치)")]
+        [Tooltip("각자 자기 쪽 화면 밖에서 미끄러져 들어오는 시간")]
+        [SerializeField, Min(0.05f)] private float entranceSeconds = 0.7f;
+        [Tooltip("화면 밖 시작 위치까지의 가로 거리")]
+        [SerializeField, Min(100f)] private float entranceOffsetX = 900f;
+        [Tooltip("공격 시 보스 쪽으로 찔러 들어가는 거리")]
+        [SerializeField, Min(0f)] private float lungeDistance = 120f;
+        [SerializeField, Min(0.05f)] private float lungeSeconds = 0.3f;
         [Tooltip("노트 원의 복제 원본. 개수가 채보로 정해지므로 이것만 씬에 두고 필요한 만큼 복제한다.")]
         [SerializeField] private RectTransform noteRingTemplate;
         [Tooltip("패링 가능 구간 띠. 두께가 PARRY 스탯에 따라 굵어진다.")]
@@ -60,6 +75,7 @@ namespace ChainRiposte.Game.Combat
 
         private readonly List<RectTransform> _rings = new();
         private readonly List<Image> _ringImages = new();
+        private Coroutine _entranceRoutine;
 
         private CombatSystem _combat;
         private GameSession _session;
@@ -168,6 +184,20 @@ namespace ChainRiposte.Game.Combat
             }
 
             bossBodyImage.color = hasSprite ? Color.white : bossColor;
+
+            if (playerBody != null)
+            {
+                playerBody.localScale = Vector3.one;
+                if (playerSprite != null)
+                {
+                    playerBodyImage.sprite = playerSprite;
+                    playerBodyImage.preserveAspect = true;
+                }
+
+                playerBodyImage.color = playerSprite != null ? Color.white : playerColor;
+            }
+
+            StartEntrance();
             OnPlayerStateChanged(PlayerActionState.Ready);
         }
 
@@ -264,6 +294,9 @@ namespace ChainRiposte.Game.Combat
             ShowPopup(Loc.GetText("combat.popup.parry"), new Color(0.95f, 0.9f, 0.5f));
             StartCoroutine(Flash(new Color(1f, 1f, 0.9f, 0.4f)));
             StartCoroutine(Punch(bossBody, 0.85f));
+            // 쳐낸 쪽도 반응해야 '내가 막았다'가 읽힌다
+            if (playerBody != null)
+                StartCoroutine(Punch(playerBody, 1.12f));
         }
 
         private void OnPlayerHit(BossNoteConfig note, int damage)
@@ -271,7 +304,8 @@ namespace ChainRiposte.Game.Combat
             HideTelegraph();
             ShowPopup($"-{damage}", new Color(0.9f, 0.3f, 0.3f));
             StartCoroutine(Flash(new Color(0.8f, 0.05f, 0.05f, 0.45f)));
-            StartCoroutine(Punch(bossBody, 1.25f));
+            if (playerBody != null)
+                StartCoroutine(Punch(playerBody, 1.3f));
         }
 
         private void OnPlayerAttackLanded(float damage)
@@ -302,7 +336,14 @@ namespace ChainRiposte.Game.Combat
             StartCoroutine(Flash(new Color(1f, 1f, 1f, 0.9f)));
         }
 
-        private void OnPlayerStateChanged(PlayerActionState state) => RefreshButtons(state);
+        private void OnPlayerStateChanged(PlayerActionState state)
+        {
+            RefreshButtons(state);
+
+            // 커밋이 시작되는 순간 찔러 들어간다 — 피해가 들어오는 커밋 종료 시점에 맞추면 늦어 보인다
+            if (state == PlayerActionState.Attacking)
+                StartCoroutine(Lunge());
+        }
 
         private void OnPlayerHealthChanged(int current, int max)
         {
@@ -389,6 +430,68 @@ namespace ChainRiposte.Game.Combat
                 yield return null;
             }
             flashOverlay.color = Color.clear;
+        }
+
+        // ── 등장 연출 ──
+
+        /// <summary>
+        /// 둘이 각자 자기 쪽 화면 밖에서 미끄러져 들어온다 (플레이어는 왼쪽, 보스는 오른쪽).
+        /// 첫 공격까지의 대기(BossConfig.FirstAttackDelaySeconds) 안에 끝나야 등장 중에 얻어맞지 않는다.
+        /// </summary>
+        private void StartEntrance()
+        {
+            if (_entranceRoutine != null)
+                StopCoroutine(_entranceRoutine);
+            _entranceRoutine = StartCoroutine(EntranceRoutine());
+        }
+
+        private IEnumerator EntranceRoutine()
+        {
+            Vector2 playerHome = playerBody != null ? playerBody.anchoredPosition : Vector2.zero;
+            Vector2 bossHome = bossBody.anchoredPosition;
+
+            Vector2 playerStart = playerHome + Vector2.left * entranceOffsetX;
+            Vector2 bossStart = bossHome + Vector2.right * entranceOffsetX;
+
+            for (float t = 0f; t < entranceSeconds; t += Time.deltaTime)
+            {
+                // 끝에서 부드럽게 멎도록 감속 — 미끄러져 '자리 잡는' 느낌
+                float eased = 1f - Mathf.Pow(1f - t / entranceSeconds, 3f);
+                if (playerBody != null)
+                    playerBody.anchoredPosition = Vector2.LerpUnclamped(playerStart, playerHome, eased);
+                bossBody.anchoredPosition = Vector2.LerpUnclamped(bossStart, bossHome, eased);
+                yield return null;
+            }
+
+            if (playerBody != null)
+                playerBody.anchoredPosition = playerHome;
+            bossBody.anchoredPosition = bossHome;
+            _entranceRoutine = null;
+        }
+
+        /// <summary>공격 커밋 동안 보스 쪽으로 찔러 들어갔다 돌아온다.</summary>
+        private IEnumerator Lunge()
+        {
+            if (playerBody == null)
+                yield break;
+
+            Vector2 home = playerBody.anchoredPosition;
+            Vector2 toward = home + (bossBody.anchoredPosition - home).normalized * lungeDistance;
+
+            float half = Mathf.Max(0.05f, lungeSeconds * 0.5f);
+            for (float t = 0f; t < half; t += Time.deltaTime)
+            {
+                playerBody.anchoredPosition = Vector2.Lerp(home, toward, t / half);
+                yield return null;
+            }
+
+            for (float t = 0f; t < half; t += Time.deltaTime)
+            {
+                playerBody.anchoredPosition = Vector2.Lerp(toward, home, t / half);
+                yield return null;
+            }
+
+            playerBody.anchoredPosition = home;
         }
 
         private IEnumerator Punch(RectTransform target, float scale)
