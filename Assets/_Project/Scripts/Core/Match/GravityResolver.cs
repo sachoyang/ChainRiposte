@@ -32,10 +32,33 @@ namespace ChainRiposte.Core.Match
                 if (moves.Count == 0 && spawns.Count == 0)
                     break;
 
-                phases.Add(new FallPhase(moves, spawns));
+                phases.Add(new FallPhase(Coalesce(moves), spawns));
             }
 
             return phases;
+        }
+
+        /// <summary>
+        /// 한 웨이브 안에서 같은 타일이 두 번 움직인 기록(낙하 → 벽에서 슬라이드)을 하나로 합친다.
+        /// 뷰는 이동을 '칸 좌표'로 추적하므로 중간 좌표가 남으면 뷰가 어긋난다 (FallPhase 주석 참조).
+        /// </summary>
+        private static List<TileMove> Coalesce(List<TileMove> moves)
+        {
+            var indexByTile = new Dictionary<long, int>();
+            var merged = new List<TileMove>(moves.Count);
+
+            foreach (TileMove move in moves)
+            {
+                if (indexByTile.TryGetValue(move.Tile.InstanceId, out int index))
+                    merged[index] = new TileMove(move.Tile, merged[index].From, move.To);
+                else
+                {
+                    indexByTile[move.Tile.InstanceId] = merged.Count;
+                    merged.Add(move);
+                }
+            }
+
+            return merged;
         }
 
         /// <summary>직선 낙하 압축. 타일은 구멍을 통과하고 벽 위에 쌓인다.</summary>

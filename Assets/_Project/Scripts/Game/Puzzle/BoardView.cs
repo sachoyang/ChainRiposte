@@ -293,6 +293,13 @@ namespace ChainRiposte.Game.Puzzle
             Sprite sprite = SpriteFor(tile);
             // 스프라이트가 있으면 원색 그대로(흰 틴트), 없으면 플레이스홀더 착색
             Color color = sprite != null ? Color.white : ColorFor(tile);
+            // 안전망: 같은 칸에 뷰가 남아 있으면 스프라이트가 겹쳐 보인다 (모델은 한 칸에 타일 하나)
+            if (_views.TryGetValue(pos, out TileView stale))
+            {
+                Debug.LogWarning($"[BoardView] {pos}에 뷰가 이미 있음 — 모델/뷰 불일치. 옛 뷰를 제거한다.");
+                Destroy(stale.gameObject);
+            }
+
             var view = TileView.Create(_tileRoot, tile, color, sprite);
             view.transform.localPosition = GridToLocal(pos);
             view.ApplyStatus(tile, chainSprite); // 사슬/폭탄 뱃지 (GDD §3.6)

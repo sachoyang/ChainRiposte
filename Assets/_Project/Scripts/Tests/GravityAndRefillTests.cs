@@ -1,3 +1,4 @@
+using System.Linq;
 using ChainRiposte.Core.Board;
 using ChainRiposte.Core.Match;
 using NUnit.Framework;
@@ -143,6 +144,31 @@ namespace ChainRiposte.Core.Tests
             // 벽/구멍 제외 전 칸이 채워졌는지 — "모두 채워져야 함" 요구사항
             foreach (GridPos pos in board.ActivePositions())
                 Assert.That(board.GetTile(pos), Is.Not.Null, $"{pos} 칸이 비어 있음");
+        }
+
+        [Test]
+        public void 한_웨이브에서_낙하와_슬라이드가_겹쳐도_이동기록은_타일당_하나다()
+        {
+            // 3x3, 벽 (0,0). T는 같은 웨이브에서 (0,2)→(0,1) 낙하 후 (0,1)→(1,0) 슬라이드한다.
+            // 기록이 둘로 남으면 뷰가 중간 좌표에 뷰를 남겨 '빈 칸 + 겹친 타일'이 생긴다.
+            (bool[,] mask, _) = TestUtils.ParseRows("OOO", "OOO", "WOO");
+            var board = new BoardGrid(mask);
+            board.PlaceTile(new GridPos(0, 0), new Tile(new TileDefinition("Wall", TileCategory.Wall, maxHp: 2)));
+            var tile = new Tile(TestUtils.Skull);
+            board.PlaceTile(new GridPos(0, 2), tile);
+
+            var phases = GravityResolver.Settle(board, new SequenceSpawner(new TileDefinition[0]));
+
+            var first = phases[0].Moves;
+            Assert.That(first.Where(m => m.Tile == tile).ToList(), Has.Count.EqualTo(1), "타일당 이동 기록 1개");
+            Assert.That(first.Single(m => m.Tile == tile).From, Is.EqualTo(new GridPos(0, 2)));
+            Assert.That(first.Single(m => m.Tile == tile).To, Is.EqualTo(new GridPos(1, 0)), "출발지와 최종 도착지로 합쳐짐");
+
+            foreach (FallPhase phase in phases)
+            {
+                var ids = phase.Moves.Select(m => m.Tile.InstanceId).ToList();
+                Assert.That(ids, Is.Unique, "한 웨이브에 같은 타일이 두 번 등장하면 안 됨");
+            }
         }
 
         [Test]
