@@ -283,13 +283,24 @@ namespace ChainRiposte.Editor
                 TextAlignmentOptions.Center, new Vector2(1000f, 110f), FontStyles.Bold);
             title.color = new Color(0.95f, 0.83f, 0.35f);
 
+            TMP_Text warning = EditorUiFactory.Text(
+                panel, "Warning", new Vector2(0f, 40f), new Vector2(0.5f, 0.5f), 40f,
+                TextAlignmentOptions.Center, new Vector2(1000f, 110f));
+            warning.color = new Color(0.92f, 0.72f, 0.70f);
+
             TMP_Text points = EditorUiFactory.Text(
-                panel, "Points", new Vector2(0f, 20f), new Vector2(0.5f, 0.5f), 44f,
-                TextAlignmentOptions.Center, new Vector2(1000f, 80f));
+                panel, "Points", new Vector2(0f, -40f), new Vector2(0.5f, 0.5f), 40f,
+                TextAlignmentOptions.Center, new Vector2(1000f, 70f));
+
+            // 업그레이드 NPC — 좌우에 하나씩. 스프라이트는 비워 두고 나중에 교체한다.
+            Image saint = NpcSlot(panel, "SaintNpc", new Vector2(-380f, 10f), out TextMeshProUGUI saintLabel,
+                "intermission.npc.saint");
+            Image blacksmith = NpcSlot(panel, "BlacksmithNpc", new Vector2(380f, 10f), out TextMeshProUGUI smithLabel,
+                "intermission.npc.blacksmith");
 
             Button fight = EditorUiFactory.Button(
-                panel, "FightButton", new Vector2(0f, -110f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
-                new Vector2(520f, 140f), AccentButtonColor, "intermission.fight", 56f,
+                panel, "FightButton", new Vector2(0f, -150f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
+                new Vector2(520f, 130f), AccentButtonColor, "intermission.fight", 56f,
                 out _, out TextMeshProUGUI fightLabel);
             EditorUiFactory.Localize(fightLabel, "intermission.fight");
 
@@ -300,10 +311,35 @@ namespace ChainRiposte.Editor
             var so = new SerializedObject(screen);
             Set(so, "panelRoot", panel.gameObject);
             Set(so, "titleText", title);
+            Set(so, "warningText", warning);
             Set(so, "pointsText", points);
             Set(so, "fightButton", fight);
+            Set(so, "saintImage", saint);
+            Set(so, "saintLabel", saintLabel);
+            Set(so, "blacksmithImage", blacksmith);
+            Set(so, "blacksmithLabel", smithLabel);
             so.ApplyModifiedPropertiesWithoutUndo();
             EditorUtility.SetDirty(screen);
+        }
+
+        /// <summary>NPC 자리 — 그림 + 이름표. 스프라이트는 비워 두고 씬에서 드래그로 넣는다.</summary>
+        private static Image NpcSlot(Transform parent, string name, Vector2 position, out TextMeshProUGUI label, string locKey)
+        {
+            RectTransform rect = EditorUiFactory.NewRect(name, parent);
+            rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(0.5f, 0.5f);
+            rect.anchoredPosition = position;
+            rect.sizeDelta = new Vector2(180f, 180f);
+
+            var image = rect.gameObject.AddComponent<Image>();
+            image.sprite = EditorUiFactory.Square; // 스프라이트를 넣으면 교체된다
+            image.preserveAspect = true;
+            image.raycastTarget = false;
+
+            label = EditorUiFactory.Text(
+                rect, "Label", new Vector2(0f, -110f), new Vector2(0.5f, 0.5f), 32f,
+                TextAlignmentOptions.Center, new Vector2(280f, 50f));
+            EditorUiFactory.Localize(label, locKey);
+            return image;
         }
 
         // ── 공통 ──

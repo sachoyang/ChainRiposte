@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Boss_01
   m_EditorClassIdentifier: ChainRiposte.Game::ChainRiposte.Game.Config.BossDataSO
   displayName: Mushroom King
-  portrait: {fileID: -4273023745370305303, guid: d2639096d2858da468b38ea594cf4441, type: 3}
+  portrait: {fileID: 357749872346554099, guid: f2316670ef79ad34d9d26cbe7bff1cf8, type: 3}
   battleSprite: {fileID: 357749872346554099, guid: f2316670ef79ad34d9d26cbe7bff1cf8, type: 3}
   maxHp: 120
   maxPosture: 100

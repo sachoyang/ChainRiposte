@@ -21,9 +21,21 @@ namespace ChainRiposte.Game.UI
         [Tooltip("이 페이즈 동안만 켜지는 패널")]
         [SerializeField] private GameObject panelRoot;
         [SerializeField] private TMP_Text titleText;
+        [Tooltip("보스가 다가온다는 경고 + 업그레이드 재촉")]
+        [SerializeField] private TMP_Text warningText;
         [Tooltip("남은 포인트 안내")]
         [SerializeField] private TMP_Text pointsText;
         [SerializeField] private Button fightButton;
+
+        [Header("업그레이드 NPC — 스프라이트는 비워 두고 나중에 교체")]
+        [Tooltip("성녀 (방어·판정 계열을 봐 주는 느낌)")]
+        [SerializeField] private Image saintImage;
+        [SerializeField] private TMP_Text saintLabel;
+        [Tooltip("대장장이 (공격 계열을 봐 주는 느낌)")]
+        [SerializeField] private Image blacksmithImage;
+        [SerializeField] private TMP_Text blacksmithLabel;
+        [Tooltip("스프라이트가 비었을 때 자리를 보여 줄 색")]
+        [SerializeField] private Color npcPlaceholderColor = new(0.30f, 0.28f, 0.38f, 1f);
 
         private GameSession _session;
 
@@ -76,6 +88,9 @@ namespace ChainRiposte.Game.UI
             if (titleText != null)
                 titleText.text = Loc.GetText("intermission.title");
 
+            if (warningText != null)
+                warningText.text = Loc.GetText("intermission.warning");
+
             if (pointsText != null)
             {
                 int points = _session.Stats.PendingPoints;
@@ -83,6 +98,18 @@ namespace ChainRiposte.Game.UI
                     ? Loc.GetText("intermission.points", points)
                     : Loc.GetText("intermission.nopoints");
             }
+
+            RefreshNpc(saintImage, saintLabel, "intermission.npc.saint");
+            RefreshNpc(blacksmithImage, blacksmithLabel, "intermission.npc.blacksmith");
+        }
+
+        /// <summary>스프라이트를 아직 안 넣었어도 자리가 보이도록 플레이스홀더 색을 칠한다.</summary>
+        private void RefreshNpc(Image image, TMP_Text label, string locKey)
+        {
+            if (image != null)
+                image.color = image.sprite != null ? Color.white : npcPlaceholderColor;
+            if (label != null)
+                label.text = Loc.GetText(locKey);
         }
     }
 }

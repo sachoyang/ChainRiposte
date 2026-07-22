@@ -13,7 +13,10 @@ namespace ChainRiposte.Core.Flow
         private static readonly Dictionary<GamePhase, GamePhase[]> ValidTransitions = new()
         {
             { GamePhase.None,    new[] { GamePhase.Puzzle } },
-            { GamePhase.Puzzle,  new[] { GamePhase.Combat, GamePhase.Defeat } },
+            // 퍼즐에서 곧바로 전투로 갈 수도 있다 — 준비 화면을 거치지 않는 경로를 막지 않는다
+            { GamePhase.Puzzle,  new[] { GamePhase.Intermission, GamePhase.Combat, GamePhase.Defeat } },
+            // 준비 중에도 기믹/기습 피해로 죽을 수 있다
+            { GamePhase.Intermission, new[] { GamePhase.Combat, GamePhase.Defeat } },
             { GamePhase.Combat,  new[] { GamePhase.Victory, GamePhase.Defeat } },
             { GamePhase.Victory, Array.Empty<GamePhase>() },
             { GamePhase.Defeat,  Array.Empty<GamePhase>() },
@@ -38,8 +41,10 @@ namespace ChainRiposte.Core.Flow
 
         public void StartPuzzle() => TransitionTo(GamePhase.Puzzle);
 
-        /// <summary>보스 타일이 바닥에 닿거나 강제 조우가 발생했을 때 호출된다.</summary>
-        /// <summary>보스 돌입 직전의 스탯 분배 시간으로 넘어간다 (시간 제한 없음).</summary>
+        /// <summary>
+        /// 보스 타일이 바닥에 닿거나 강제 조우가 발생했을 때 호출된다.
+        /// 곧바로 전투로 가지 않고 스탯 분배 시간을 먼저 준다 (시간 제한 없음).
+        /// </summary>
         public void StartIntermission() => TransitionTo(GamePhase.Intermission);
 
         public void StartCombat() => TransitionTo(GamePhase.Combat);

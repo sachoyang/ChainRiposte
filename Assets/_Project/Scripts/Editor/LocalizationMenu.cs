@@ -573,6 +573,11 @@ namespace ChainRiposte.Editor
 
             // 보스 돌입 준비 (시간 제한 없음)
             Row(builder, "intermission.title", "보스 돌입 준비", "BOSS INCOMING");
+            Row(builder, "intermission.warning",
+                "위에서 보스가 다가오고 있습니다!\\n필요한 능력치를 올리세요",
+                "THE BOSS IS CLOSING IN!\\nSpend your points now");
+            Row(builder, "intermission.npc.saint", "성녀", "SAINT");
+            Row(builder, "intermission.npc.blacksmith", "대장장이", "BLACKSMITH");
             Row(builder, "intermission.points", "남은 포인트 {0}점 — 지금 분배하세요", "{0} POINT(S) TO SPEND");
             Row(builder, "intermission.nopoints", "준비되면 시작하세요", "READY WHEN YOU ARE");
             Row(builder, "intermission.fight", "전투 시작", "FIGHT");
