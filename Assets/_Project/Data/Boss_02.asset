@@ -13,6 +13,8 @@ MonoBehaviour:
   m_Name: Boss_02
   m_EditorClassIdentifier: ChainRiposte.Game::ChainRiposte.Game.Config.BossDataSO
   displayName: The Butcher
+  portrait: {fileID: 0}
+  battleSprite: {fileID: 0}
   maxHp: 160
   maxPosture: 120
   parryPostureGain: 25
@@ -20,24 +22,6 @@ MonoBehaviour:
   postureDecayPerSecond: 6
   scaleDecayWithHp: 1
   firstAttackDelaySeconds: 1.5
-  pattern:
-  - telegraphSeconds: 1
-    damage: 12
-    parryable: 1
-    recoverySeconds: 0.8
-  - telegraphSeconds: 1
-    damage: 12
-    parryable: 1
-    recoverySeconds: 0.3
-  - telegraphSeconds: 0.45
-    damage: 16
-    parryable: 1
-    recoverySeconds: 1.2
-  - telegraphSeconds: 1.6
-    damage: 20
-    parryable: 1
-    recoverySeconds: 1
-  - telegraphSeconds: 0.7
-    damage: 10
-    parryable: 0
-    recoverySeconds: 1.4
+  patternGapSeconds: 0.6
+  patterns: []
+  phases: []

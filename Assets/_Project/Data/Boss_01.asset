@@ -30,19 +30,19 @@ MonoBehaviour:
     speedMultiplier: 1
     notes:
     - beat: 1
-      telegraphBeats: 1.5
+      telegraphBeats: 2.25
       speedMultiplier: 1
       damage: 12
     - beat: 3
-      telegraphBeats: 1.5
+      telegraphBeats: 2.25
       speedMultiplier: 1
       damage: 12
     - beat: 5
-      telegraphBeats: 1.5
+      telegraphBeats: 2.25
       speedMultiplier: 1
       damage: 12
     - beat: 7
-      telegraphBeats: 1.5
+      telegraphBeats: 2.25
       speedMultiplier: 1
       damage: 12
   - name: Double Sweep
@@ -51,19 +51,19 @@ MonoBehaviour:
     speedMultiplier: 1
     notes:
     - beat: 2
-      telegraphBeats: 2
+      telegraphBeats: 3
       speedMultiplier: 1
       damage: 14
     - beat: 4
-      telegraphBeats: 1
+      telegraphBeats: 1.5
       speedMultiplier: 1
       damage: 10
     - beat: 4.5
-      telegraphBeats: 1
+      telegraphBeats: 1.5
       speedMultiplier: 1
       damage: 10
     - beat: 7
-      telegraphBeats: 1.5
+      telegraphBeats: 2.25
       speedMultiplier: 1
       damage: 16
   - name: Flurry
@@ -72,23 +72,23 @@ MonoBehaviour:
     speedMultiplier: 1
     notes:
     - beat: 2
-      telegraphBeats: 2
+      telegraphBeats: 3
       speedMultiplier: 1
       damage: 12
     - beat: 5
-      telegraphBeats: 1
+      telegraphBeats: 1.5
       speedMultiplier: 1
       damage: 8
     - beat: 5.25
-      telegraphBeats: 1
+      telegraphBeats: 1.5
       speedMultiplier: 1
       damage: 8
     - beat: 5.5
-      telegraphBeats: 1
+      telegraphBeats: 1.5
       speedMultiplier: 1
       damage: 8
     - beat: 7.5
-      telegraphBeats: 1.5
+      telegraphBeats: 2.25
       speedMultiplier: 2
       damage: 18
   phases:

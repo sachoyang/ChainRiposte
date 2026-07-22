@@ -52,8 +52,8 @@ namespace ChainRiposte.Game.Config
         {
             [Tooltip("타격 시점 (패턴 시작 기준 박). 3.5 = 엇박")]
             [Min(0f)] public float beat;
-            [Tooltip("예비동작 길이 (박). 길수록 읽기 쉽다")]
-            [Min(0.05f)] public float telegraphBeats = 1f;
+            [Tooltip("예비동작 길이 (박). 이게 곧 플레이어의 준비 시간이자 원이 나타나는 거리다")]
+            [Min(0.05f)] public float telegraphBeats = 1.5f;
             [Tooltip("이 노트만의 속도 배율. 1보다 크면 예비동작이 짧아진다")]
             [Min(0.05f)] public float speedMultiplier = 1f;
             [Tooltip("패링 실패 시 피해 (DEF 적용 전)")]

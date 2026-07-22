@@ -253,7 +253,8 @@ namespace ChainRiposte.Editor
             notes.InsertArrayElementAtIndex(index);
             SerializedProperty note = notes.GetArrayElementAtIndex(index);
             note.FindPropertyRelative("beat").floatValue = beat;
-            note.FindPropertyRelative("telegraphBeats").floatValue = 1f;
+            // 1박은 준비 시간이 짧아 원이 갑자기 튀어나온다 — 읽을 수 있는 기본값으로 둔다
+            note.FindPropertyRelative("telegraphBeats").floatValue = 1.5f;
             note.FindPropertyRelative("speedMultiplier").floatValue = 1f;
             note.FindPropertyRelative("damage").floatValue = 12f;
             return index;
