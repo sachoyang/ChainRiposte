@@ -20,9 +20,19 @@ namespace ChainRiposte.Game.Combat
         [SerializeField] private CombatInput input;
 
         [Header("연출 색")]
-        [SerializeField] private Color parryableRingColor = new(0.95f, 0.85f, 0.45f);
-        [SerializeField] private Color unparryableRingColor = new(0.75f, 0.15f, 0.55f);
         [SerializeField] private Color bossColor = new(0.62f, 0.08f, 0.12f);
+
+        [Header("패링 타이밍 원")]
+        [Tooltip("다가오는 노트를 나타내는 원의 색")]
+        [SerializeField] private Color noteRingColor = Color.white;
+        [Tooltip("패링 가능 구간을 나타내는 띠의 색 — 연한 회색")]
+        [SerializeField] private Color parryBandColor = new(1f, 1f, 1f, 0.22f);
+        [Tooltip("원이 다가오는 속도 (초당 스케일). 모든 노트가 같은 속도로 와야 회색 띠가 의미를 갖는다.")]
+        [SerializeField, Min(0.05f)] private float approachSpeed = 0.9f;
+        [Tooltip("이 스케일보다 멀리 있는 노트는 아직 그리지 않는다")]
+        [SerializeField, Min(1.1f)] private float maxVisibleScale = 3.2f;
+        [Tooltip("가장 멀리 있는 원의 투명도 — 임박할수록 진해진다")]
+        [SerializeField, Range(0f, 1f)] private float farthestRingAlpha = 0.2f;
 
         [Header("씬 참조 (빌더가 자동 배선)")]
         [Tooltip("전투 동안만 활성화되는 화면 루트")]
@@ -34,8 +44,11 @@ namespace ChainRiposte.Game.Combat
         [SerializeField] private TMP_Text playerHpText;
         [SerializeField] private RectTransform bossBody;
         [SerializeField] private Image bossBodyImage;
-        [SerializeField] private RectTransform telegraphRing;
-        [SerializeField] private Image telegraphRingImage;
+        [Tooltip("노트 원의 복제 원본. 개수가 채보로 정해지므로 이것만 씬에 두고 필요한 만큼 복제한다.")]
+        [SerializeField] private RectTransform noteRingTemplate;
+        [Tooltip("패링 가능 구간 띠. 두께가 PARRY 스탯에 따라 굵어진다.")]
+        [SerializeField] private RectTransform parryBand;
+        [SerializeField] private Image parryBandImage;
         [SerializeField] private TMP_Text popupText;
         [SerializeField] private TMP_Text executeText;
         [SerializeField] private Image flashOverlay;
@@ -45,9 +58,11 @@ namespace ChainRiposte.Game.Combat
         [SerializeField] private Image parryButtonImage;
         [SerializeField] private Image attackButtonImage;
 
+        private readonly List<RectTransform> _rings = new();
+        private readonly List<Image> _ringImages = new();
+
         private CombatSystem _combat;
         private GameSession _session;
-        private Coroutine _telegraphRoutine;
         private Sprite _bossSprite;
         private string _bossName;
         private Coroutine _executePulseRoutine;
@@ -136,7 +151,8 @@ namespace ChainRiposte.Game.Combat
             postureFill.fillAmount = _combat.Posture / _combat.MaxPosture;
             bossHpFill.fillAmount = _combat.BossHp / _combat.BossMaxHp;
             OnPlayerHealthChanged(_session.Health.Current, _session.Health.Max);
-            telegraphRing.gameObject.SetActive(false);
+            HideTelegraph();
+            noteRingTemplate.gameObject.SetActive(false); // 복제 원본은 항상 꺼 둔다
             popupText.text = string.Empty;
             executeText.gameObject.SetActive(false);
             flashOverlay.color = Color.clear;
@@ -158,29 +174,88 @@ namespace ChainRiposte.Game.Combat
         // ── CombatSystem 이벤트 연출 ──
 
         /// <summary>
-        /// 수축하는 원이 보스 크기(×1)에 닿는 순간이 타격 시점 — 유일한 타이밍 큐.
-        /// 지금은 가장 임박한 노트 하나만 그린다. 여러 개를 동시에 그리는 것과
-        /// 패링 구간 회색 띠는 C3-2에서 붙인다.
+        /// 다가오는 노트를 흰 원으로 그린다. 원이 보스 크기(×1)에 닿는 순간이 타격 시점이다.
+        ///
+        /// 원은 <b>모두 같은 속도로</b> 다가온다(진행률이 아니라 남은 시간 × 속도로 크기를 정함).
+        /// 그래야 "보스에서 이만큼 떨어진 거리 = 이만큼의 시간"이 항상 같고,
+        /// 패링 구간을 두께가 고정된 회색 띠 하나로 표현할 수 있다.
+        /// 예비동작이 긴 노트는 그만큼 더 멀리서부터 보인다.
         /// </summary>
         private void Update()
         {
             if (_combat == null || _combat.Finished)
-                return;
-
-            IReadOnlyList<ActiveNote> notes = _combat.ActiveNotes;
-            if (notes.Count == 0)
             {
-                if (telegraphRing.gameObject.activeSelf)
-                    telegraphRing.gameObject.SetActive(false);
+                SetRingCount(0);
                 return;
             }
 
-            ActiveNote nearest = notes[0];
-            if (!telegraphRing.gameObject.activeSelf)
-                telegraphRing.gameObject.SetActive(true);
+            UpdateParryBand();
 
-            telegraphRingImage.color = parryableRingColor;
-            telegraphRing.localScale = Vector3.one * Mathf.Lerp(2.4f, 1f, nearest.Progress);
+            IReadOnlyList<ActiveNote> notes = _combat.ActiveNotes;
+            int drawn = 0;
+
+            for (int i = 0; i < notes.Count; i++)
+            {
+                float scale = 1f + notes[i].SecondsUntilHit * approachSpeed;
+                if (scale > maxVisibleScale)
+                    continue; // 아직 멀다 — 화면 밖
+
+                RectTransform ring = GetRing(drawn);
+                ring.localScale = Vector3.one * scale;
+
+                // 임박할수록 진하게 — 어느 것을 먼저 쳐야 하는지가 한눈에 읽힌다
+                float nearness = Mathf.InverseLerp(maxVisibleScale, 1f, scale);
+                Color color = noteRingColor;
+                color.a *= Mathf.Lerp(farthestRingAlpha, 1f, nearness);
+                _ringImages[drawn].color = color;
+
+                drawn++;
+            }
+
+            SetRingCount(drawn);
+        }
+
+        /// <summary>패링 구간 띠 — 두께가 곧 PARRY 스탯이다. 스탯을 올리면 눈에 보이게 굵어진다.</summary>
+        private void UpdateParryBand()
+        {
+            if (parryBand == null)
+                return;
+
+            bool visible = _combat.ActiveNotes.Count > 0;
+            if (parryBand.gameObject.activeSelf != visible)
+                parryBand.gameObject.SetActive(visible);
+            if (!visible)
+                return;
+
+            // 띠의 바깥 지름 = 패링 윈도우 동안 원이 지나가는 거리
+            float outerScale = 1f + _combat.ParryWindowSeconds * approachSpeed;
+            parryBand.localScale = Vector3.one * outerScale;
+
+            if (parryBandImage != null)
+                parryBandImage.color = parryBandColor;
+        }
+
+        private RectTransform GetRing(int index)
+        {
+            while (_rings.Count <= index)
+            {
+                RectTransform ring = Instantiate(noteRingTemplate, noteRingTemplate.parent);
+                ring.gameObject.name = $"NoteRing_{_rings.Count}";
+                _rings.Add(ring);
+                _ringImages.Add(ring.GetComponent<Image>());
+            }
+
+            RectTransform result = _rings[index];
+            if (!result.gameObject.activeSelf)
+                result.gameObject.SetActive(true);
+            return result;
+        }
+
+        private void SetRingCount(int active)
+        {
+            for (int i = active; i < _rings.Count; i++)
+                if (_rings[i].gameObject.activeSelf)
+                    _rings[i].gameObject.SetActive(false);
         }
 
         private void OnAttackParried(BossNoteConfig note)
@@ -235,14 +310,12 @@ namespace ChainRiposte.Game.Combat
             playerHpText.text = Loc.GetText("combat.hp", current, max);
         }
 
+        /// <summary>타격이 해결된 직후 원을 즉시 치운다 — 다음 Update가 남은 노트로 다시 채운다.</summary>
         private void HideTelegraph()
         {
-            if (_telegraphRoutine != null)
-            {
-                StopCoroutine(_telegraphRoutine);
-                _telegraphRoutine = null;
-            }
-            telegraphRing.gameObject.SetActive(false);
+            SetRingCount(0);
+            if (parryBand != null)
+                parryBand.gameObject.SetActive(false);
         }
 
         private void RefreshButtons(PlayerActionState state)
@@ -256,7 +329,7 @@ namespace ChainRiposte.Game.Combat
 
             bool ready = state == PlayerActionState.Ready;
             SetButtonVisual(parryButton, parryButtonImage,
-                state == PlayerActionState.Parrying ? parryableRingColor : (ready ? ParryButtonColor : ButtonDisabledColor),
+                state == PlayerActionState.Parrying ? noteRingColor : (ready ? ParryButtonColor : ButtonDisabledColor),
                 "PARRY\n[<-]", ready);
             SetButtonVisual(attackButton, attackButtonImage,
                 state == PlayerActionState.Attacking ? AttackButtonColor : (ready ? AttackButtonColor : ButtonDisabledColor),
