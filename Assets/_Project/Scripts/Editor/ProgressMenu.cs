@@ -31,14 +31,27 @@ namespace ChainRiposte.Editor
             Debug.Log($"[Progress] 스테이지 {ids.Count}개를 클리어 처리했습니다.");
         }
 
+        [MenuItem("Tools/ChainRiposte/Progress/Reveal All Stages (정보만 공개)")]
+        private static void RevealAll()
+        {
+            List<string> ids = AllStageIds();
+            foreach (string id in ids)
+                ProgressService.Current.MarkAttempted(id);
+            ProgressService.Save();
+            Debug.Log($"[Progress] 스테이지 {ids.Count}개를 '진입함'으로 표시했습니다 (해금은 그대로).");
+        }
+
         [MenuItem("Tools/ChainRiposte/Progress/Log Progress (현재 상태 출력)")]
         private static void LogProgress()
         {
             var cleared = new List<string>(ProgressService.Current.ClearedStageIds);
-            Debug.Log(cleared.Count == 0
-                ? "[Progress] 클리어 기록 없음."
-                : $"[Progress] 클리어 {cleared.Count}개: {string.Join(", ", cleared)}");
+            var attempted = new List<string>(ProgressService.Current.AttemptedStageIds);
+            Debug.Log(
+                $"[Progress] 클리어 {cleared.Count}개: {Join(cleared)}\n" +
+                $"[Progress] 진입(정보 공개) {attempted.Count}개: {Join(attempted)}");
         }
+
+        private static string Join(List<string> ids) => ids.Count == 0 ? "(없음)" : string.Join(", ", ids);
 
         private static List<string> AllStageIds()
         {

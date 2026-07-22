@@ -103,7 +103,8 @@ namespace ChainRiposte.Editor
                 new Vector3(0.5f, 0.6f, 1f), new Color(0.92f, 0.88f, 0.75f), CharSort, square);
 
             // ── 정보 패널 (Canvas + TMP) ──
-            BuildUi(root, out GameObject infoPanel, out TMP_Text titleText, out TMP_Text infoText, out Button startButton);
+            BuildUi(root, out GameObject infoPanel, out TMP_Text titleText, out TMP_Text infoText,
+                out Button startButton, out Image bossPortrait);
 
             // ── 컨트롤러 참조 배선 ──
             CameraFit2D cameraFit = EnsureCameraFit();
@@ -116,6 +117,7 @@ namespace ChainRiposte.Editor
             so.FindProperty("titleText").objectReferenceValue = titleText;
             so.FindProperty("infoText").objectReferenceValue = infoText;
             so.FindProperty("startButton").objectReferenceValue = startButton;
+            so.FindProperty("bossPortrait").objectReferenceValue = bossPortrait;
             so.ApplyModifiedPropertiesWithoutUndo();
 
             EditorUtility.SetDirty(controller);
@@ -225,7 +227,9 @@ namespace ChainRiposte.Editor
 
         // ── 정보 패널 UI (TMP) ──
 
-        private static void BuildUi(Transform parent, out GameObject infoPanel, out TMP_Text titleText, out TMP_Text infoText, out Button startButton)
+        private static void BuildUi(
+            Transform parent, out GameObject infoPanel, out TMP_Text titleText,
+            out TMP_Text infoText, out Button startButton, out Image bossPortrait)
         {
             var canvasGo = new GameObject("MapCanvas", typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
             Undo.RegisterCreatedObjectUndo(canvasGo, "Build StageSelect");
@@ -253,6 +257,20 @@ namespace ChainRiposte.Editor
             titleText.fontStyle = FontStyles.Bold;
             infoText = CreatePanelText(infoPanel.transform, "Info", new Vector2(50f, -120f), 42f, "WORLD 1 ...");
 
+            // 보스 초상 — 스프라이트를 꽂기 전까지는 런타임에 꺼진 채로 있는다.
+            // 아직 안 가본 스테이지에서는 컨트롤러가 검은 실루엣으로 칠한다.
+            var portraitGo = new GameObject("BossPortrait", typeof(RectTransform), typeof(Image));
+            Undo.RegisterCreatedObjectUndo(portraitGo, "Build StageSelect");
+            portraitGo.transform.SetParent(infoPanel.transform, false);
+            var portraitRect = (RectTransform)portraitGo.transform;
+            portraitRect.anchorMin = portraitRect.anchorMax = new Vector2(1f, 0.5f);
+            portraitRect.pivot = new Vector2(1f, 0.5f);
+            portraitRect.anchoredPosition = new Vector2(-390f, 0f);
+            portraitRect.sizeDelta = new Vector2(260f, 260f);
+            bossPortrait = portraitGo.GetComponent<Image>();
+            bossPortrait.preserveAspect = true;
+            bossPortrait.raycastTarget = false;
+
             var buttonGo = new GameObject("StartButton", typeof(RectTransform), typeof(Image), typeof(Button));
             Undo.RegisterCreatedObjectUndo(buttonGo, "Build StageSelect");
             buttonGo.transform.SetParent(infoPanel.transform, false);
@@ -269,6 +287,8 @@ namespace ChainRiposte.Editor
                 new Vector2(0.62f, 0f), new Vector2(1f, 1f), new Vector2(0.5f, 0.5f), Vector2.zero, Vector2.zero);
             EditorUiFactory.Orient(buttonGo.transform,
                 new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 60f), new Vector2(380f, 160f));
+            EditorUiFactory.Orient(portraitGo.transform,
+                new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -300f), new Vector2(340f, 340f));
 
             TMP_Text label = CreatePanelText(buttonGo.transform, "Label", Vector2.zero, 56f, "START");
             var labelRect = (RectTransform)label.transform;

@@ -9,6 +9,7 @@ namespace ChainRiposte.Game.Progress
     /// </summary>
     public static class ProgressService
     {
+        // 키는 그대로 두고 저장 형식 안에 버전을 넣는다 — 기존 세이브가 v2로 자동 마이그레이션된다.
         private const string Key = "ChainRiposte.Progress.v1";
 
         private static StageProgress _current;
@@ -24,6 +25,16 @@ namespace ChainRiposte.Game.Progress
 
             Save();
             Debug.Log($"[Progress] '{stageId}' 클리어 저장. 누적 {Current.ClearedStageIds.Count}개.");
+        }
+
+        /// <summary>스테이지 진입 기록. 이 기록이 있어야 월드맵에서 보스·기믹 정보가 공개된다.</summary>
+        public static void MarkAttempted(string stageId)
+        {
+            if (!Current.MarkAttempted(stageId))
+                return;
+
+            Save();
+            Debug.Log($"[Progress] '{stageId}' 첫 진입 저장 — 월드맵 정보 공개.");
         }
 
         public static void Save()

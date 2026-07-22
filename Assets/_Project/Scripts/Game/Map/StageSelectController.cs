@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using ChainRiposte.Core.Progress;
 using ChainRiposte.Core.Stage;
 using ChainRiposte.Game.Config;
@@ -36,6 +37,10 @@ namespace ChainRiposte.Game.Map
         [SerializeField] private TMP_Text titleText;
         [SerializeField] private TMP_Text infoText;
         [SerializeField] private Button startButton;
+        [Tooltip("보스 초상. 아직 안 가본 스테이지에서는 검은 실루엣으로 칠한다. 비워도 동작한다.")]
+        [SerializeField] private Image bossPortrait;
+        [Tooltip("정보가 공개되지 않은 스테이지의 초상 색 (검은 그림자)")]
+        [SerializeField] private Color silhouetteTint = new(0f, 0f, 0f, 0.85f);
 
         [Header("동작 값")]
         [SerializeField, Min(0.5f)] private float moveSpeed = 6f;
@@ -45,6 +50,8 @@ namespace ChainRiposte.Game.Map
         [SerializeField, Min(0.1f)] private float clickRadius = 0.8f;
         [Tooltip("카메라가 노드 전체를 담을 때 가장자리 여백")]
         [SerializeField, Min(0f)] private float cameraPadding = 1.5f;
+
+        private const string Unknown = "???";
 
         private StageConfig[] _configs;
         private string[] _stageIds;
@@ -176,6 +183,9 @@ namespace ChainRiposte.Game.Map
             int width = config.ActiveMask.GetLength(0);
             int height = config.ActiveMask.GetLength(1);
 
+            // 한 번이라도 들어가 본 스테이지만 보스·기믹을 공개한다 (GDD §9.2).
+            bool revealed = _progress.IsRevealed(_stageIds[index]);
+
             if (titleText != null)
                 titleText.text = _progress.IsCleared(_stageIds[index])
                     ? $"STAGE {DisplayName(index)}  - CLEAR"
@@ -183,14 +193,18 @@ namespace ChainRiposte.Game.Map
             if (infoText != null)
                 infoText.text =
                     $"WORLD {index / 3 + 1}   BOARD {width}x{height}   TURNS {config.TurnLimit}\n" +
-                    $"BOSS  {config.Boss?.Name ?? "???"}";
+                    $"BOSS  {(revealed ? BossName(stage) : Unknown)}\n" +
+                    $"HAZARD  {(revealed ? GimmickSummary(stage) : Unknown)}";
             if (startButton != null)
                 startButton.interactable = true;
+
+            ApplyPortrait(stage, revealed);
+
             if (infoPanel != null)
                 infoPanel.SetActive(true);
         }
 
-        /// <summary>잠긴 노드를 눌렀을 때 — 이동은 하지 않고 패널로 이유만 표시한다.</summary>
+        /// <summary>잠긴 노드를 눌렀을 때 — 이동은 하지 않고 패널로 이유만 표시한다. 정보는 일절 공개하지 않는다.</summary>
         private void ShowLocked(int index)
         {
             // 기본 TMP 폰트에 한글 글리프가 없으므로 패널 문구는 영문으로 둔다.
@@ -200,9 +214,51 @@ namespace ChainRiposte.Game.Map
                 infoText.text = "LOCKED\nCLEAR THE PREVIOUS STAGE FIRST";
             if (startButton != null)
                 startButton.interactable = false;
+
+            ApplyPortrait(nodes[index].Stage, revealed: false);
+
             if (infoPanel != null)
                 infoPanel.SetActive(true);
         }
+
+        /// <summary>공개 전에는 초상을 검은 실루엣으로 칠한다 — 실루엣만으로 다음 보스를 예고한다.</summary>
+        private void ApplyPortrait(StageDataSO stage, bool revealed)
+        {
+            if (bossPortrait == null)
+                return;
+
+            Sprite portrait = stage != null && stage.BossData != null ? stage.BossData.Portrait : null;
+            bossPortrait.enabled = portrait != null;
+            if (portrait == null)
+                return;
+
+            bossPortrait.sprite = portrait;
+            bossPortrait.color = revealed ? Color.white : silhouetteTint;
+        }
+
+        private static string BossName(StageDataSO stage) =>
+            stage.BossData != null ? stage.BossData.DisplayName : Unknown;
+
+        /// <summary>이 스테이지에 나오는 기믹 이름들. 없으면 NONE.</summary>
+        private static string GimmickSummary(StageDataSO stage)
+        {
+            IReadOnlyList<GimmickType> gimmicks = stage.Gimmicks;
+            if (gimmicks == null || gimmicks.Count == 0)
+                return "NONE";
+
+            var names = new string[gimmicks.Count];
+            for (int i = 0; i < gimmicks.Count; i++)
+                names[i] = GimmickLabel(gimmicks[i]);
+            return string.Join(" / ", names);
+        }
+
+        private static string GimmickLabel(GimmickType type) => type switch
+        {
+            GimmickType.SpreadingCorruption => "CORRUPTION",
+            GimmickType.TickingDeath => "TIME BOMB",
+            GimmickType.LockedTiles => "CHAINS",
+            _ => type.ToString().ToUpperInvariant(),
+        };
 
         private void StartStage()
         {

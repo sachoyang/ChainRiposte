@@ -73,6 +73,56 @@ namespace ChainRiposte.Core.Tests
         }
 
         [Test]
+        public void 진입해야_정보가_공개된다()
+        {
+            var progress = new StageProgress();
+
+            Assert.That(progress.IsRevealed("Stage_1_2"), Is.False, "해금만으로는 공개하지 않는다");
+
+            Assert.That(progress.MarkAttempted("Stage_1_2"), Is.True);
+            Assert.That(progress.MarkAttempted("Stage_1_2"), Is.False, "두 번째부터는 저장할 필요 없다");
+            Assert.That(progress.IsRevealed("Stage_1_2"), Is.True);
+            Assert.That(progress.IsCleared("Stage_1_2"), Is.False, "진입은 클리어가 아니다");
+        }
+
+        [Test]
+        public void 클리어하면_진입_기록도_함께_남는다()
+        {
+            var progress = new StageProgress();
+
+            progress.MarkCleared("Stage_1_1");
+
+            Assert.That(progress.IsRevealed("Stage_1_1"), Is.True, "깼다면 당연히 들어가 본 것");
+        }
+
+        [Test]
+        public void 시도_기록도_직렬화된다()
+        {
+            var progress = new StageProgress();
+            progress.MarkCleared("Stage_1_1");
+            progress.MarkAttempted("Stage_1_2");
+
+            StageProgress restored = StageProgress.Deserialize(progress.Serialize());
+
+            Assert.That(restored.IsCleared("Stage_1_1"), Is.True);
+            Assert.That(restored.IsCleared("Stage_1_2"), Is.False);
+            Assert.That(restored.IsRevealed("Stage_1_2"), Is.True, "시도만 한 스테이지도 공개 상태가 유지돼야 한다");
+            Assert.That(restored.IsRevealed("Stage_1_3"), Is.False);
+        }
+
+        [Test]
+        public void 기존_v1_세이브를_읽으면_클리어분이_공개상태로_올라온다()
+        {
+            // v1 형식 = 클리어 id를 ';'로 이은 것뿐. 사용자의 기존 세이브가 이 형식이다.
+            StageProgress restored = StageProgress.Deserialize("Stage_1_1;Stage_1_2");
+
+            Assert.That(restored.IsCleared("Stage_1_1"), Is.True);
+            Assert.That(restored.IsCleared("Stage_1_2"), Is.True);
+            Assert.That(restored.IsRevealed("Stage_1_1"), Is.True, "깬 스테이지는 공개 상태여야 한다");
+            Assert.That(restored.IsRevealed("Stage_1_3"), Is.False);
+        }
+
+        [Test]
         public void 빈_세이브를_읽어도_안전하다()
         {
             StageProgress progress = StageProgress.Deserialize(null);

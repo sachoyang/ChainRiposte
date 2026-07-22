@@ -12,8 +12,12 @@ namespace ChainRiposte.Game.Config
     [CreateAssetMenu(menuName = "ChainRiposte/Boss Data", fileName = "Boss_")]
     public sealed class BossDataSO : ScriptableObject
     {
-        [Header("생존/체간")]
+        [Header("표시")]
         [SerializeField] private string displayName = "Boss";
+        [Tooltip("월드맵 정보 패널에 띄울 보스 이미지. 아직 안 가본 스테이지에서는 검은 실루엣으로 나온다.")]
+        [SerializeField] private Sprite portrait;
+
+        [Header("생존/체간")]
         [SerializeField, Min(1f)] private float maxHp = 120f;
         [Tooltip("체간 한계치 — 도달 시 인살 가능")]
         [SerializeField, Min(1f)] private float maxPosture = 100f;
@@ -45,6 +49,11 @@ namespace ChainRiposte.Game.Config
             [Tooltip("타격 후 다음 공격까지의 후딜레이")]
             [Min(0f)] public float recoverySeconds;
         }
+
+        public string DisplayName => displayName;
+
+        /// <summary>월드맵 표시용 초상. 없으면 컨트롤러가 이미지를 숨긴다.</summary>
+        public Sprite Portrait => portrait;
 
         public BossConfig ToConfig()
         {

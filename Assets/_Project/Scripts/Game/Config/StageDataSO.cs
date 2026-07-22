@@ -122,6 +122,12 @@ namespace ChainRiposte.Game.Config
         /// <summary>진행도 세이브가 이 스테이지를 가리키는 이름 (GDD §9.2).</summary>
         public string StageId => string.IsNullOrWhiteSpace(stageId) ? name : stageId;
 
+        /// <summary>월드맵 정보 표시용 — 보스 초상/이름을 읽는다 (Core의 BossConfig에는 스프라이트를 담을 수 없다).</summary>
+        public BossDataSO BossData => bossData;
+
+        /// <summary>이 스테이지에 켜진 기믹 — 월드맵에서 '어떤 기믹이 나오는지' 표시에 쓴다.</summary>
+        public IReadOnlyList<GimmickType> Gimmicks => gimmicks;
+
         public StageConfig ToConfig()
         {
             ParseBoardRows(out bool[,] activeMask, out List<GridPos> wallPositions);

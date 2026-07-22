@@ -34,6 +34,9 @@ namespace ChainRiposte.Game
                 return;
             }
 
+            // 진입 자체를 기록한다 — 월드맵은 이 기록이 있어야 보스·기믹을 공개한다 (클리어 못 해도 공개).
+            ProgressService.MarkAttempted(stageData.StageId);
+
             StageConfig = stageData.ToConfig();
             Session = new GameSession(statsConfig.ToConfig());
             Session.PhaseChanged += OnPhaseChanged;
