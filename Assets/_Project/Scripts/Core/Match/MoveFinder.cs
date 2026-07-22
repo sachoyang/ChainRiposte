@@ -26,15 +26,29 @@ namespace ChainRiposte.Core.Match
         /// 매치를 만드는 인접 스왑이 하나라도 있는가. 없으면 데드락 — 턴이 영영 안 넘어간다.
         /// 정착이 끝나 매치가 남아 있지 않은 보드를 전제로 한다(엔진이 연쇄를 다 턴 뒤 상태).
         /// </summary>
-        public static bool HasAnyValidMove(BoardGrid board)
+        public static bool HasAnyValidMove(BoardGrid board) => TryFindMove(board, out _, out _);
+
+        /// <summary>매치를 만드는 인접 스왑을 하나 찾는다 (아래·왼쪽 우선의 결정적 탐색). 힌트 표시에도 쓸 수 있다.</summary>
+        public static bool TryFindMove(BoardGrid board, out GridPos a, out GridPos b)
         {
             // 각 쌍을 한 번만 보면 되므로 오른쪽·위 두 방향만 검사한다
             foreach (GridPos pos in board.ActivePositions())
             {
-                if (CreatesMatch(board, pos, pos.Right) || CreatesMatch(board, pos, pos.Up))
+                if (CreatesMatch(board, pos, pos.Right))
+                {
+                    (a, b) = (pos, pos.Right);
                     return true;
+                }
+
+                if (CreatesMatch(board, pos, pos.Up))
+                {
+                    (a, b) = (pos, pos.Up);
+                    return true;
+                }
             }
 
+            a = default;
+            b = default;
             return false;
         }
 

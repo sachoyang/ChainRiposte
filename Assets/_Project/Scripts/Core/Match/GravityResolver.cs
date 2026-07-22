@@ -132,7 +132,11 @@ namespace ChainRiposte.Core.Match
             // 좌상단 우선 — 결정적 동작 (밸런스상 좌우 무작위가 필요해지면 이곳만 수정)
             foreach (int dx in new[] { -1, +1 })
             {
-                var source = new GridPos(empty.X + dx, empty.Y + 1);
+                // 대각선 위 칸이 구멍이면 그 위의 첫 활성 칸을 본다 — 타일은 구멍을 통과해 떨어지므로
+                // 구멍은 대각선 경로를 끊지 않는다 (비정형 보드에서 벽 그늘이 영영 안 채워지는 것을 막는다)
+                if (!TryFirstActiveAbove(board, empty.X + dx, empty.Y + 1, out GridPos source))
+                    continue;
+
                 Tile tile = board.GetTile(source);
                 if (tile == null || tile.IsFixed)
                     continue;
@@ -147,6 +151,23 @@ namespace ChainRiposte.Core.Match
                 moves.Add(new TileMove(tile, source, empty));
                 return;
             }
+        }
+
+        /// <summary>해당 열에서 fromY 이상의 첫 활성 셀 (구멍은 건너뛴다). 없으면 false.</summary>
+        private static bool TryFirstActiveAbove(BoardGrid board, int column, int fromY, out GridPos found)
+        {
+            for (int y = fromY; y < board.Height; y++)
+            {
+                var pos = new GridPos(column, y);
+                if (!board.IsActive(pos))
+                    continue;
+
+                found = pos;
+                return true;
+            }
+
+            found = default;
+            return false;
         }
 
         /// <summary>이 타일이 고정 타일(벽·결박) 바로 위에 얹혀 있는가 (구멍은 통과하므로 첫 활성 셀 기준).</summary>
