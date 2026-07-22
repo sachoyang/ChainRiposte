@@ -100,7 +100,7 @@ namespace ChainRiposte.Editor
             Image bossHp = EditorUiFactory.Bar(root, "BossHpBar", new Vector2(0f, -170f), new Vector2(0.5f, 1f), new Vector2(900f, 26f), new Color(0.55f, 0.10f, 0.12f));
             Image posture = EditorUiFactory.Bar(root, "PostureBar", new Vector2(0f, -225f), new Vector2(0.5f, 1f), new Vector2(900f, 46f), new Color(0.95f, 0.62f, 0.12f));
             TMP_Text postureLabel = EditorUiFactory.Text(root, "PostureLabel", new Vector2(0f, -280f), new Vector2(0.5f, 1f), 32f, TextAlignmentOptions.Center, new Vector2(1000f, 140f));
-            postureLabel.text = "POSTURE";
+            EditorUiFactory.Localize(postureLabel, "combat.posture");
             postureLabel.color = new Color(0.95f, 0.62f, 0.12f);
 
             RectTransform ring = EditorUiFactory.NewRect("TelegraphRing", root);
@@ -121,14 +121,16 @@ namespace ChainRiposte.Editor
             bossBodyImg.raycastTarget = false;
 
             TMP_Text execute = EditorUiFactory.Text(root, "ExecuteMark", new Vector2(0f, 470f), new Vector2(0.5f, 0.5f), 96f, TextAlignmentOptions.Center, new Vector2(1000f, 140f), FontStyles.Bold);
-            execute.text = "EXECUTE!!";
+            EditorUiFactory.Localize(execute, "combat.execute");
             TMP_Text popup = EditorUiFactory.Text(root, "Popup", new Vector2(0f, 560f), new Vector2(0.5f, 0.5f), 72f, TextAlignmentOptions.Center, new Vector2(1000f, 140f), FontStyles.Bold);
 
             Image playerHp = EditorUiFactory.Bar(root, "PlayerHpBar", new Vector2(0f, 430f), new Vector2(0.5f, 0f), new Vector2(900f, 40f), new Color(0.25f, 0.62f, 0.30f));
             TMP_Text playerHpText = EditorUiFactory.Text(root, "PlayerHpText", new Vector2(0f, 490f), new Vector2(0.5f, 0f), 40f, TextAlignmentOptions.Center, new Vector2(1000f, 140f));
 
-            Button parry = EditorUiFactory.Button(root, "ParryButton", new Vector2(-270f, 60f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(440f, 300f), Color.white, "PARRY", 52f, out Image parryImg, out _);
-            Button attack = EditorUiFactory.Button(root, "AttackButton", new Vector2(270f, 60f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(440f, 300f), Color.white, "ATTACK", 52f, out Image attackImg, out _);
+            Button parry = EditorUiFactory.Button(root, "ParryButton", new Vector2(-270f, 60f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(440f, 300f), Color.white, "PARRY", 52f, out Image parryImg, out TextMeshProUGUI parryLabel);
+            Button attack = EditorUiFactory.Button(root, "AttackButton", new Vector2(270f, 60f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(440f, 300f), Color.white, "ATTACK", 52f, out Image attackImg, out TextMeshProUGUI attackLabel);
+            EditorUiFactory.Localize(parryLabel, "combat.parry");
+            EditorUiFactory.Localize(attackLabel, "combat.attack");
 
             Image flash = EditorUiFactory.Stretch(root, "FlashOverlay", Color.clear, raycast: false);
 
@@ -153,7 +155,7 @@ namespace ChainRiposte.Editor
                 new Vector2(-60f, -120f), new Vector2(340f, 420f));
 
             TMP_Text intro = EditorUiFactory.Text(root, "Intro", Vector2.zero, new Vector2(0.5f, 0.5f), 130f, TextAlignmentOptions.Center, new Vector2(1000f, 240f), FontStyles.Bold);
-            intro.text = "BOSS BATTLE";
+            EditorUiFactory.Localize(intro, "combat.intro");
 
             var so = new SerializedObject(screen);
             Set(so, "root", root);
@@ -188,8 +190,10 @@ namespace ChainRiposte.Editor
             Transform panel = dim.transform;
 
             TMP_Text title = EditorUiFactory.Text(panel, "Title", new Vector2(0f, 160f), new Vector2(0.5f, 0.5f), 120f, TextAlignmentOptions.Center, new Vector2(1000f, 240f), FontStyles.Bold);
-            Button restart = EditorUiFactory.Button(panel, "RestartButton", new Vector2(0f, -120f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(460f, 160f), PanelButtonColor, "RESTART", 56f, out _, out _);
-            Button map = EditorUiFactory.Button(panel, "MapButton", new Vector2(0f, -320f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(460f, 160f), PanelButtonColor, "MAP", 56f, out _, out _);
+            Button restart = EditorUiFactory.Button(panel, "RestartButton", new Vector2(0f, -120f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(460f, 160f), PanelButtonColor, "RESTART", 56f, out _, out TextMeshProUGUI restartLabel);
+            Button map = EditorUiFactory.Button(panel, "MapButton", new Vector2(0f, -320f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(460f, 160f), PanelButtonColor, "MAP", 56f, out _, out TextMeshProUGUI mapLabel);
+            EditorUiFactory.Localize(restartLabel, "result.restart");
+            EditorUiFactory.Localize(mapLabel, "result.map");
 
             var so = new SerializedObject(result);
             Set(so, "panelRoot", dim.gameObject);

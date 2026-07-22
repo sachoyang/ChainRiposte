@@ -362,29 +362,105 @@ namespace ChainRiposte.Editor
             return builder.ToString();
         }
 
+        /// <summary>
+        /// 게임에서 실제로 쓰는 키 전부. 이걸 구글 시트에 붙여넣고 이후로는 시트에서 관리한다.
+        /// 문구를 새로 추가할 때는 여기가 아니라 <b>시트</b>에 넣을 것 — 이 목록은 최초 부팅용이다.
+        /// </summary>
         private static string StarterCsv()
         {
             var builder = new StringBuilder();
             builder.AppendLine("Key,Korean,English");
-            builder.AppendLine("title.continue,이어하기,CONTINUE");
-            builder.AppendLine("title.newgame,새 게임,NEW GAME");
-            builder.AppendLine("title.options,옵션,OPTIONS");
-            builder.AppendLine("title.quit,나가기,QUIT");
-            builder.AppendLine("title.newgame.confirm,\"새로 시작하면 지금까지의 진행도가 모두 지워집니다.\\n계속할까요?\",\"Starting a new game erases all progress.\\nContinue?\"");
-            builder.AppendLine("options.title,옵션,OPTIONS");
-            builder.AppendLine("options.bgm,배경음,MUSIC");
-            builder.AppendLine("options.sfx,효과음,SFX");
-            builder.AppendLine("options.orientation,화면 방향,SCREEN");
-            builder.AppendLine("options.orientation.auto,자동,AUTO");
-            builder.AppendLine("options.orientation.portrait,세로 고정,PORTRAIT");
-            builder.AppendLine("options.orientation.landscape,가로 고정,LANDSCAPE");
-            builder.AppendLine("options.language,언어,LANGUAGE");
-            builder.AppendLine("options.reset,진행도 초기화,RESET PROGRESS");
-            builder.AppendLine("options.reset.confirm,\"저장된 진행도를 모두 지웁니다.\\n되돌릴 수 없습니다. 계속할까요?\",\"This erases all saved progress.\\nThis cannot be undone.\"");
-            builder.AppendLine("common.yes,예,YES");
-            builder.AppendLine("common.no,아니오,NO");
-            builder.AppendLine("common.back,뒤로,BACK");
+
+            // 타이틀
+            Row(builder, "title.continue", "이어하기", "CONTINUE");
+            Row(builder, "title.newgame", "새 게임", "NEW GAME");
+            Row(builder, "title.options", "옵션", "OPTIONS");
+            Row(builder, "title.quit", "나가기", "QUIT");
+            Row(builder, "title.newgame.confirm",
+                "새로 시작하면 지금까지의 진행도가 모두 지워집니다.\\n계속할까요?",
+                "Starting a new game erases all progress.\\nContinue?");
+
+            // 옵션
+            Row(builder, "options.title", "옵션", "OPTIONS");
+            Row(builder, "options.bgm", "배경음", "MUSIC");
+            Row(builder, "options.sfx", "효과음", "SFX");
+            Row(builder, "options.orientation", "화면 방향", "SCREEN");
+            Row(builder, "options.orientation.auto", "자동", "AUTO");
+            Row(builder, "options.orientation.portrait", "세로 고정", "PORTRAIT");
+            Row(builder, "options.orientation.landscape", "가로 고정", "LANDSCAPE");
+            Row(builder, "options.language", "언어", "LANGUAGE");
+            Row(builder, "options.reset", "진행도 초기화", "RESET PROGRESS");
+            Row(builder, "options.reset.confirm",
+                "저장된 진행도를 모두 지웁니다.\\n되돌릴 수 없습니다. 계속할까요?",
+                "This erases all saved progress.\\nThis cannot be undone.");
+
+            // 월드맵
+            Row(builder, "map.start", "시작", "START");
+            Row(builder, "map.title", "스테이지 {0}", "STAGE {0}");
+            Row(builder, "map.title.clear", "스테이지 {0}  - 클리어", "STAGE {0}  - CLEAR");
+            Row(builder, "map.title.locked", "스테이지 {0}  - 잠김", "STAGE {0}  - LOCKED");
+            Row(builder, "map.locked.body", "잠김\\n이전 스테이지를 먼저 클리어하세요", "LOCKED\\nCLEAR THE PREVIOUS STAGE FIRST");
+            Row(builder, "map.info",
+                "월드 {0}   보드 {1}x{2}   턴 {3}\\n보스  {4}\\n위험  {5}",
+                "WORLD {0}   BOARD {1}x{2}   TURNS {3}\\nBOSS  {4}\\nHAZARD  {5}");
+            Row(builder, "map.unknown", "???", "???");
+            Row(builder, "map.hazard.none", "없음", "NONE");
+
+            // 기믹 이름 (GDD 3.6)
+            Row(builder, "gimmick.corruption", "전염", "CORRUPTION");
+            Row(builder, "gimmick.timebomb", "시한폭탄", "TIME BOMB");
+            Row(builder, "gimmick.chains", "사슬 결박", "CHAINS");
+
+            // 퍼즐 HUD
+            Row(builder, "puzzle.hp", "체력 {0}/{1}", "HP {0}/{1}");
+            Row(builder, "puzzle.turns", "턴 {0}", "TURNS {0}");
+            Row(builder, "puzzle.souls", "Lv {0}   영혼석 {1}/{2}   포인트 {3}", "Lv {0}   Souls {1}/{2}   Points {3}");
+            Row(builder, "puzzle.stats",
+                "공격 {0:0}   방어 {1:0}   패링 {2:0.00}초",
+                "ATK {0:0}   DEF {1:0}   PARRY {2:0.00}s");
+            Row(builder, "puzzle.alloc.attack", "+공격\\nLv {0}", "+ATK\\nLv {0}");
+            Row(builder, "puzzle.alloc.defense", "+방어\\nLv {0}", "+DEF\\nLv {0}");
+            Row(builder, "puzzle.alloc.parry", "+패링\\nLv {0}", "+PARRY\\nLv {0}");
+            Row(builder, "puzzle.alloc.attack.max", "+공격\\n최대", "+ATK\\nMAX");
+            Row(builder, "puzzle.alloc.defense.max", "+방어\\n최대", "+DEF\\nMAX");
+            Row(builder, "puzzle.alloc.parry.max", "+패링\\n최대", "+PARRY\\nMAX");
+            Row(builder, "puzzle.banner.victory", "스테이지 클리어", "STAGE CLEAR");
+            Row(builder, "puzzle.banner.defeat", "패배", "DEFEAT");
+            Row(builder, "puzzle.banner.combat", "보스!", "BOSS!");
+            Row(builder, "puzzle.banner.noMoves", "둘 수 있는 수 없음 — 섞는 중", "NO MOVES — SHUFFLING");
+            Row(builder, "puzzle.countdown", "{0}초|{1}턴", "{0}s|{1}t");
+
+            // 전투
+            Row(builder, "combat.boss", "보스", "BOSS");
+            Row(builder, "combat.hp", "체력 {0}/{1}", "HP {0}/{1}");
+            Row(builder, "combat.posture", "체간", "POSTURE");
+            Row(builder, "combat.parry", "패링", "PARRY");
+            Row(builder, "combat.attack", "공격", "ATTACK");
+            Row(builder, "combat.execute", "인살!!", "EXECUTE!!");
+            Row(builder, "combat.intro", "보스 전투", "BOSS BATTLE");
+            Row(builder, "combat.popup.parry", "패링!", "PARRY!");
+
+            // 결과
+            Row(builder, "result.victory", "스테이지 클리어", "STAGE CLEAR");
+            Row(builder, "result.defeat", "패배", "DEFEAT");
+            Row(builder, "result.restart", "다시 시작", "RESTART");
+            Row(builder, "result.map", "지도", "MAP");
+
+            // 공통
+            Row(builder, "common.yes", "예", "YES");
+            Row(builder, "common.no", "아니오", "NO");
+            Row(builder, "common.back", "뒤로", "BACK");
+
             return builder.ToString();
         }
+
+        /// <summary>콤마·큰따옴표가 든 값을 CSV 규격대로 감싼다.</summary>
+        private static void Row(StringBuilder builder, string key, string korean, string english) =>
+            builder.AppendLine($"{key},{Escape(korean)},{Escape(english)}");
+
+        private static string Escape(string value) =>
+            value.Contains(",") || value.Contains("\"")
+                ? $"\"{value.Replace("\"", "\"\"")}\""
+                : value;
     }
 }

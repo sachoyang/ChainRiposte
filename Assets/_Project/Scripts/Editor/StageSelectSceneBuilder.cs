@@ -291,6 +291,7 @@ namespace ChainRiposte.Editor
                 new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -300f), new Vector2(340f, 340f));
 
             TMP_Text label = CreatePanelText(buttonGo.transform, "Label", Vector2.zero, 56f, "START");
+            EditorUiFactory.Localize(label, "map.start");
             var labelRect = (RectTransform)label.transform;
             labelRect.anchorMin = Vector2.zero;
             labelRect.anchorMax = Vector2.one;

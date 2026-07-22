@@ -1,5 +1,6 @@
 using System.Collections;
 using ChainRiposte.Core.Flow;
+using ChainRiposte.Game.Localization;
 using ChainRiposte.Core.Match;
 using ChainRiposte.Core.Stats;
 using TMPro;
@@ -27,7 +28,8 @@ namespace ChainRiposte.Game.UI
 
         private GameSession _session;
         private PuzzleEngine _engine;
-        private string _flashMessage;
+        private string _bannerKey;
+        private string _flashKey;
         private float _flashSeconds;
 
         private void Awake()
@@ -47,23 +49,34 @@ namespace ChainRiposte.Game.UI
 
         private void OnDestroy() => Unbind();
 
+        // 코드가 직접 채우는 텍스트(HP·턴 등)는 LocalizedText가 못 잡으므로 여기서 다시 그린다.
+        private void OnEnable() => Loc.LanguageChanged += OnLanguageChanged;
+        private void OnDisable() => Loc.LanguageChanged -= OnLanguageChanged;
+
+        private void OnLanguageChanged()
+        {
+            if (_session != null && _engine != null)
+                RefreshAll();
+        }
+
         /// <summary>배너에 잠깐 문구를 띄운다 (데드락 리롤 등). 페이즈 배너와 같은 자리를 쓴다.</summary>
-        public void FlashBanner(string message, float seconds)
+        public void FlashBanner(string locKey, float seconds)
         {
             if (bannerText == null)
                 return;
 
             StopCoroutine(nameof(FlashBannerRoutine));
-            _flashMessage = message;
+            _flashKey = locKey;
             _flashSeconds = seconds;
             StartCoroutine(nameof(FlashBannerRoutine));
         }
 
         private IEnumerator FlashBannerRoutine()
         {
-            bannerText.text = _flashMessage;
+            bannerText.text = Loc.GetText(_flashKey);
             yield return new WaitForSeconds(_flashSeconds);
-            bannerText.text = string.Empty;
+            _flashKey = null;
+            bannerText.text = _bannerKey == null ? string.Empty : Loc.GetText(_bannerKey);
         }
 
         /// <summary>퍼즐 시작 시 컨트롤러가 호출한다. 엔진은 스테이지마다 새로 생성되므로 매번 다시 바인딩.</summary>
@@ -110,13 +123,15 @@ namespace ChainRiposte.Game.UI
 
         private void OnPhaseChanged(GamePhase previous, GamePhase next)
         {
-            bannerText.text = next switch
+            _bannerKey = next switch
             {
-                GamePhase.Victory => "STAGE CLEAR",
-                GamePhase.Defeat => "DEFEAT",
-                GamePhase.Combat => "BOSS!",
-                _ => string.Empty,
+                GamePhase.Victory => "puzzle.banner.victory",
+                GamePhase.Defeat => "puzzle.banner.defeat",
+                GamePhase.Combat => "puzzle.banner.combat",
+                _ => null,
             };
+
+            bannerText.text = _bannerKey == null ? string.Empty : Loc.GetText(_bannerKey);
         }
 
         private void RequestAllocate(StatType stat)
@@ -134,40 +149,43 @@ namespace ChainRiposte.Game.UI
             RefreshSouls();
             RefreshTurns();
             RefreshStats();
-            bannerText.text = string.Empty;
+            bannerText.text = _bannerKey == null ? string.Empty : Loc.GetText(_bannerKey);
         }
 
         private void RefreshHealth() =>
-            hpText.text = $"HP {_session.Health.Current}/{_session.Health.Max}";
+            hpText.text = Loc.GetText("puzzle.hp", _session.Health.Current, _session.Health.Max);
 
         private void RefreshSouls()
         {
             PlayerStats stats = _session.Stats;
-            soulsText.text = $"Lv {stats.Level}   Souls {stats.Souls}/{stats.SoulsToNextLevel}   Points {stats.PendingPoints}";
+            soulsText.text = Loc.GetText(
+                "puzzle.souls", stats.Level, stats.Souls, stats.SoulsToNextLevel, stats.PendingPoints);
             RefreshStats();
         }
 
         private void RefreshTurns() =>
-            turnsText.text = $"Turns {_engine.TurnsRemaining}";
+            turnsText.text = Loc.GetText("puzzle.turns", _engine.TurnsRemaining);
 
         private void RefreshStats()
         {
             PlayerStats stats = _session.Stats;
-            statsText.text =
-                $"ATK {stats.AttackDamage:0}   DEF {stats.DamageReduction:0}   PARRY {stats.ParryWindowSeconds:0.00}s";
+            statsText.text = Loc.GetText(
+                "puzzle.stats", stats.AttackDamage, stats.DamageReduction, stats.ParryWindowSeconds);
 
-            SetButton(attackButton, $"+ATK\nLv {stats.GetStatLevel(StatType.Attack)}", stats.CanAllocate(StatType.Attack));
-            SetButton(defenseButton, $"+DEF\nLv {stats.GetStatLevel(StatType.Defense)}", stats.CanAllocate(StatType.Defense));
-            bool parryCapped = stats.PendingPoints > 0 && !stats.CanAllocate(StatType.Parry);
-            SetButton(parryButton,
-                parryCapped ? "+PARRY\nMAX" : $"+PARRY\nLv {stats.GetStatLevel(StatType.Parry)}",
-                stats.CanAllocate(StatType.Parry));
+            SetButton(attackButton, "puzzle.alloc.attack", stats.GetStatLevel(StatType.Attack), StatType.Attack, stats);
+            SetButton(defenseButton, "puzzle.alloc.defense", stats.GetStatLevel(StatType.Defense), StatType.Defense, stats);
+            SetButton(parryButton, "puzzle.alloc.parry", stats.GetStatLevel(StatType.Parry), StatType.Parry, stats);
         }
 
-        private static void SetButton(Button button, string label, bool interactable)
+        private static void SetButton(Button button, string locKey, int level, StatType stat, PlayerStats stats)
         {
-            button.interactable = interactable;
+            // 포인트가 있는데 못 올리면 상한에 걸린 것 (패링 윈도우만 상한이 있다)
+            bool capped = stats.PendingPoints > 0 && !stats.CanAllocate(stat);
+            string label = capped ? Loc.GetText(locKey + ".max") : Loc.GetText(locKey, level);
+
+            button.interactable = stats.CanAllocate(stat);
             button.GetComponentInChildren<TMP_Text>().text = label;
         }
+
     }
 }

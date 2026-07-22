@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using ChainRiposte.Core.Progress;
 using ChainRiposte.Core.Stage;
 using ChainRiposte.Game.Config;
+using ChainRiposte.Game.Localization;
 using ChainRiposte.Game.Progress;
 using TMPro;
 using UnityEngine;
@@ -50,8 +51,6 @@ namespace ChainRiposte.Game.Map
         [SerializeField, Min(0.1f)] private float clickRadius = 0.8f;
         [Tooltip("카메라가 노드 전체를 담을 때 가장자리 여백")]
         [SerializeField, Min(0f)] private float cameraPadding = 1.5f;
-
-        private const string Unknown = "???";
 
         private StageConfig[] _configs;
         private string[] _stageIds;
@@ -187,14 +186,14 @@ namespace ChainRiposte.Game.Map
             bool revealed = _progress.IsRevealed(_stageIds[index]);
 
             if (titleText != null)
-                titleText.text = _progress.IsCleared(_stageIds[index])
-                    ? $"STAGE {DisplayName(index)}  - CLEAR"
-                    : $"STAGE {DisplayName(index)}";
+                titleText.text = Loc.GetText(
+                    _progress.IsCleared(_stageIds[index]) ? "map.title.clear" : "map.title", DisplayName(index));
             if (infoText != null)
-                infoText.text =
-                    $"WORLD {index / 3 + 1}   BOARD {width}x{height}   TURNS {config.TurnLimit}\n" +
-                    $"BOSS  {(revealed ? BossName(stage) : Unknown)}\n" +
-                    $"HAZARD  {(revealed ? GimmickSummary(stage) : Unknown)}";
+                infoText.text = Loc.GetText(
+                    "map.info",
+                    index / 3 + 1, width, height, config.TurnLimit,
+                    revealed ? BossName(stage) : Loc.GetText("map.unknown"),
+                    revealed ? GimmickSummary(stage) : Loc.GetText("map.unknown"));
             if (startButton != null)
                 startButton.interactable = true;
 
@@ -207,11 +206,10 @@ namespace ChainRiposte.Game.Map
         /// <summary>잠긴 노드를 눌렀을 때 — 이동은 하지 않고 패널로 이유만 표시한다. 정보는 일절 공개하지 않는다.</summary>
         private void ShowLocked(int index)
         {
-            // 기본 TMP 폰트에 한글 글리프가 없으므로 패널 문구는 영문으로 둔다.
             if (titleText != null)
-                titleText.text = $"STAGE {DisplayName(index)}  - LOCKED";
+                titleText.text = Loc.GetText("map.title.locked", DisplayName(index));
             if (infoText != null)
-                infoText.text = "LOCKED\nCLEAR THE PREVIOUS STAGE FIRST";
+                infoText.text = Loc.GetText("map.locked.body");
             if (startButton != null)
                 startButton.interactable = false;
 
@@ -237,14 +235,14 @@ namespace ChainRiposte.Game.Map
         }
 
         private static string BossName(StageDataSO stage) =>
-            stage.BossData != null ? stage.BossData.DisplayName : Unknown;
+            stage.BossData != null ? stage.BossData.DisplayName : Loc.GetText("map.unknown");
 
-        /// <summary>이 스테이지에 나오는 기믹 이름들. 없으면 NONE.</summary>
+        /// <summary>이 스테이지에 나오는 기믹 이름들. 없으면 '없음'.</summary>
         private static string GimmickSummary(StageDataSO stage)
         {
             IReadOnlyList<GimmickType> gimmicks = stage.Gimmicks;
             if (gimmicks == null || gimmicks.Count == 0)
-                return "NONE";
+                return Loc.GetText("map.hazard.none");
 
             var names = new string[gimmicks.Count];
             for (int i = 0; i < gimmicks.Count; i++)
@@ -254,9 +252,9 @@ namespace ChainRiposte.Game.Map
 
         private static string GimmickLabel(GimmickType type) => type switch
         {
-            GimmickType.SpreadingCorruption => "CORRUPTION",
-            GimmickType.TickingDeath => "TIME BOMB",
-            GimmickType.LockedTiles => "CHAINS",
+            GimmickType.SpreadingCorruption => Loc.GetText("gimmick.corruption"),
+            GimmickType.TickingDeath => Loc.GetText("gimmick.timebomb"),
+            GimmickType.LockedTiles => Loc.GetText("gimmick.chains"),
             _ => type.ToString().ToUpperInvariant(),
         };
 

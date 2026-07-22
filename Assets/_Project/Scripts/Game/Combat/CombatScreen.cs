@@ -1,6 +1,7 @@
 using System.Collections;
 using ChainRiposte.Core.Combat;
 using ChainRiposte.Core.Flow;
+using ChainRiposte.Game.Localization;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -120,7 +121,7 @@ namespace ChainRiposte.Game.Combat
 
         private void ResetVisuals()
         {
-            bossNameText.text = "BOSS";
+            bossNameText.text = Loc.GetText("combat.boss");
             postureFill.fillAmount = _combat.Posture / _combat.MaxPosture;
             bossHpFill.fillAmount = _combat.BossHp / _combat.BossMaxHp;
             OnPlayerHealthChanged(_session.Health.Current, _session.Health.Max);
@@ -165,7 +166,7 @@ namespace ChainRiposte.Game.Combat
         private void OnAttackParried(BossAttackConfig attack)
         {
             HideTelegraph();
-            ShowPopup("PARRY!", new Color(0.95f, 0.9f, 0.5f));
+            ShowPopup(Loc.GetText("combat.popup.parry"), new Color(0.95f, 0.9f, 0.5f));
             StartCoroutine(Flash(new Color(1f, 1f, 0.9f, 0.4f)));
             StartCoroutine(Punch(bossBody, 0.85f));
         }
@@ -211,7 +212,7 @@ namespace ChainRiposte.Game.Combat
         private void OnPlayerHealthChanged(int current, int max)
         {
             playerHpFill.fillAmount = max > 0 ? (float)current / max : 0f;
-            playerHpText.text = $"HP {current}/{max}";
+            playerHpText.text = Loc.GetText("combat.hp", current, max);
         }
 
         private void HideTelegraph()

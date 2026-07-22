@@ -1,4 +1,5 @@
 using ChainRiposte.Core.Flow;
+using ChainRiposte.Game.Localization;
 using TMPro;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -50,7 +51,7 @@ namespace ChainRiposte.Game.UI
                 return;
 
             bool victory = next == GamePhase.Victory;
-            titleText.text = victory ? "STAGE CLEAR" : "DEFEAT";
+            titleText.text = Loc.GetText(victory ? "result.victory" : "result.defeat");
             titleText.color = victory ? new Color(0.95f, 0.83f, 0.35f) : new Color(0.85f, 0.2f, 0.25f);
             panelRoot.SetActive(true);
         }

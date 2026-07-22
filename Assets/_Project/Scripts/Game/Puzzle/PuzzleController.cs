@@ -48,7 +48,7 @@ namespace ChainRiposte.Game.Puzzle
         private void OnShuffling()
         {
             if (hud != null)
-                hud.FlashBanner("NO MOVES — SHUFFLING", 1.2f);
+                hud.FlashBanner("puzzle.banner.noMoves", 1.2f);
         }
 
         private void OnPhaseChanged(GamePhase previous, GamePhase next)

@@ -1,3 +1,4 @@
+using ChainRiposte.Game.Localization;
 using ChainRiposte.Game.UI;
 using TMPro;
 using UnityEditor;
@@ -57,6 +58,16 @@ namespace ChainRiposte.Editor
             Component target, Vector2 landscapeAnchor, Vector2 landscapePivot,
             Vector2 landscapePosition, Vector2 landscapeSize) =>
             Orient(target, landscapeAnchor, landscapeAnchor, landscapePivot, landscapePosition, landscapeSize);
+
+        /// <summary>
+        /// 정적 문구에 키를 물린다. 코드가 매번 다시 채우는 텍스트(HP·스탯 버튼 등)에는 붙이지 말 것 —
+        /// 언어 전환 때 서로 덮어쓴다. 그런 텍스트는 그 컨트롤러가 Loc.GetText로 직접 채운다.
+        /// </summary>
+        internal static void Localize(TMP_Text label, string key)
+        {
+            if (label != null)
+                label.gameObject.AddComponent<LocalizedText>().Key = key;
+        }
 
         internal static RectTransform NewRect(string name, Transform parent)
         {

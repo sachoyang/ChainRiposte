@@ -48,7 +48,7 @@ namespace ChainRiposte.Game.Puzzle
             if (_countdownText == null)
                 _countdownText = CreateCountdownText();
 
-            _countdownText.text = $"{Mathf.CeilToInt(seconds)}s|{turns}t";
+            _countdownText.text = Localization.Loc.GetText("puzzle.countdown", Mathf.CeilToInt(seconds), turns);
         }
 
         /// <summary>기믹 상태(사슬/폭탄)를 타일에 반영한다 (GDD §3.6).</summary>

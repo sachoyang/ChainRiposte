@@ -17,6 +17,12 @@
 - **이벤트 기반 연출**: Core가 C# event 발행 → Game이 구독해 VFX/SFX/UI 갱신.
 - **비주얼은 씬 오서링(중요)**: 손으로 배치·디자인하는 것(맵 노드, 배경, 캐릭터, UI 패널)은 **런타임 `new GameObject()`로 만들지 말고 씬/프리팹에 실물로 두고 컨트롤러가 참조만** 한다. 컨트롤러는 "행동"만. → 에셋/디자인 교체 = 씬에서 드래그(코드 0줄). 데이터로 개수가 정해지는 것(퍼즐 보드 타일 등)만 코드 생성 유지. UI 텍스트는 **TextMeshPro** 사용(legacy Text 아님).
 - **초기 레이아웃은 에디터 빌더로**: 씬을 빈 채로 두지 말고 `Tools ▸ ChainRiposte ▸ ...` 빌더가 한 번 실물로 깔아주고, 이후 사용자가 씬에서 편집. (예: `StageSelectSceneBuilder`)
+- **화면에 나오는 글씨는 전부 현지화(중요)**: 문자열을 코드/씬에 하드코딩하지 말 것. 원천은 **구글 시트 → CSV 한 장**(`Assets/_Project/Data/Resources/Localization.csv`)뿐이다.
+  - 정적 문구 = TMP에 `LocalizedText` 컴포넌트 + 키 (빌더에서는 `EditorUiFactory.Localize(label, key)`).
+  - 코드가 매번 채우는 문구(HP·턴 등) = `Loc.GetText(key, args)`. 이런 텍스트에는 `LocalizedText`를 붙이지 말 것(언어 전환 시 서로 덮어씀). 대신 그 컨트롤러가 `Loc.LanguageChanged`를 구독해 다시 그린다.
+  - 새 키는 **시트에 추가**한다. `LocalizationMenu.StarterCsv()`는 최초 부팅용 목록일 뿐이다.
+  - 검사: `Tools ▸ ChainRiposte ▸ Localization ▸ Find Missing Keys In Scene`. 설계 배경과 함정은 `.claude/skills/unity-localization/` 참조.
+  - 한글 TMP 폰트가 준비되기 전까지 `Loc.UseDeviceLanguage = false`(영어 시작). 폰트가 들어오면 true로.
 
 ## 워크플로 지시 (메모리에도 저장됨)
 - 세션 토큰 **90% 초과 시**: 하던 일 정리하고 아래 `## 세션 인수인계` 섹션 갱신 (①한 일 ②다음 할 일).
