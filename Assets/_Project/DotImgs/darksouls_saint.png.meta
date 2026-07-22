@@ -1,10 +1,13 @@
 fileFormatVersion: 2
-guid: abaf3914218e9af45ba8585dced8592c
+guid: fd65b623a2c1073448549f6fb9ca2d38
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: 5037631765875594351
-    second: player_knight_0
+      213: -3242487531188796878
+    second: darksouls_saint_0
+  - first:
+      213: -1982580905823771535
+    second: darksouls_saint_1
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -37,7 +40,7 @@ TextureImporter:
   maxTextureSize: 2048
   textureSettings:
     serializedVersion: 2
-    filterMode: 0
+    filterMode: 1
     aniso: 1
     mipBias: 0
     wrapU: 1
@@ -75,7 +78,7 @@ TextureImporter:
     maxTextureSize: 2048
     resizeAlgorithm: 0
     textureFormat: -1
-    textureCompression: 0
+    textureCompression: 1
     compressionQuality: 50
     crunchedCompression: 0
     allowsAlphaSplitting: 0
@@ -113,23 +116,45 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: player_knight_0
+      name: darksouls_saint_0
       rect:
         serializedVersion: 2
-        x: 0
-        y: 0
-        width: 60
-        height: 78
+        x: 1
+        y: 1
+        width: 33
+        height: 71
       alignment: 0
-      pivot: {x: 0.5, y: 0.5}
+      pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: f641d3a866349e540800000000000000
-      internalID: 5037631765875594351
+      spriteID: 232cbd215ce5003d0800000000000000
+      internalID: -3242487531188796878
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: darksouls_saint_1
+      rect:
+        serializedVersion: 2
+        x: 4
+        y: 71
+        width: 29
+        height: 10
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 174e6e99b257c74e0800000000000000
+      internalID: -1982580905823771535
       vertices: []
       indices: 
       edges: []
@@ -138,7 +163,7 @@ TextureImporter:
     customData: 
     physicsShape: []
     bones: []
-    spriteID: bd6e34dee9630b34fbdf28420cbf6d52
+    spriteID: 
     internalID: 0
     vertices: []
     indices: 
@@ -148,7 +173,8 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      player_knight_0: 5037631765875594351
+      darksouls_saint_0: -3242487531188796878
+      darksouls_saint_1: -1982580905823771535
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 
