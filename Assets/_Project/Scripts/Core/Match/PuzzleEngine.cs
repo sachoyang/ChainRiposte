@@ -15,8 +15,10 @@ namespace ChainRiposte.Core.Match
     {
         private const int MaxRerolls = 16;    // 초기 배치 시 즉시 매치 회피 재추첨 상한
         private const int MaxCascades = 100;  // 연쇄 폭주 안전 상한
+        private const int MaxShuffles = 32;   // 데드락 해소 리롤 시도 상한
 
         private readonly ITileSpawner _spawner;
+        private readonly Random _rng;
         private readonly float _comboMultiplierStep;
         private readonly IReadOnlyList<IStageGimmick> _gimmicks;
         private readonly GimmickContext _gimmickContext;
@@ -34,6 +36,7 @@ namespace ChainRiposte.Core.Match
                 throw new ArgumentNullException(nameof(config));
 
             _spawner = spawner ?? throw new ArgumentNullException(nameof(spawner));
+            _rng = rng ?? new Random();
             _comboMultiplierStep = config.ComboSoulMultiplierStep;
             TurnsRemaining = config.TurnLimit;
             Board = config.CreateBoard();
@@ -45,13 +48,17 @@ namespace ChainRiposte.Core.Match
             FillInitialBoard();
 
             _gimmicks = GimmickFactory.CreateAll(config.Gimmicks);
-            if (_gimmicks.Count == 0)
-                return;
+            if (_gimmicks.Count > 0)
+            {
+                _gimmickContext = new GimmickContext(Board, _rng, config.GimmickSettings);
+                foreach (IStageGimmick gimmick in _gimmicks)
+                    gimmick.OnBoardInitialized(_gimmickContext);
+                _gimmickContext.BeginTurn(); // 초기 배치 기록은 연출 대상이 아니다
+            }
 
-            _gimmickContext = new GimmickContext(Board, rng ?? new Random(), config.GimmickSettings);
-            foreach (IStageGimmick gimmick in _gimmicks)
-                gimmick.OnBoardInitialized(_gimmickContext);
-            _gimmickContext.BeginTurn(); // 초기 배치 기록은 연출 대상이 아니다
+            // 사슬·부패가 깔린 뒤에 판정해야 한다 — 기믹이 보드를 조각내 시작부터 데드락일 수 있다.
+            // 아직 아무것도 그려지지 않았으므로 이동 기록은 버린다.
+            ShuffleIfDeadlocked();
         }
 
         /// <summary>
@@ -77,19 +84,16 @@ namespace ChainRiposte.Core.Match
             TurnsRemaining--;
             TurnsChanged?.Invoke(TurnsRemaining);
 
-            var result = SwapResult.Resolved(a, b, steps, RunTurnEndGimmicks());
+            GimmickPhase gimmickPhase = RunTurnEndGimmicks();
+
+            // 판이 굳었으면 여기서 푼다 — 이 게임은 매치 없는 스왑이 턴을 소모하지 않으므로
+            // 수가 없으면 턴이 영영 안 넘어가고, 보스 카운트다운의 실시간 축만 흘러간다.
+            var result = SwapResult.Resolved(a, b, steps, gimmickPhase, ShuffleIfDeadlocked());
             SwapResolved?.Invoke(result);
             return result;
         }
 
-        private bool AreSwappable(GridPos a, GridPos b)
-        {
-            bool adjacent = Math.Abs(a.X - b.X) + Math.Abs(a.Y - b.Y) == 1;
-            return adjacent && IsSwappable(Board.GetTile(a)) && IsSwappable(Board.GetTile(b));
-        }
-
-        /// <summary>사슬에 결박된 타일은 그 자리에 고정 — 스왑 불가 (GDD §3.6).</summary>
-        private static bool IsSwappable(Tile tile) => MatchFinder.IsMatchable(tile) && !tile.Status.Chained;
+        private bool AreSwappable(GridPos a, GridPos b) => MoveFinder.AreSwappable(Board, a, b);
 
         private void SwapTiles(GridPos a, GridPos b)
         {
@@ -240,6 +244,76 @@ namespace ChainRiposte.Core.Match
             }
 
             return hits;
+        }
+
+        /// <summary>
+        /// 둘 수 있는 수가 하나도 없으면 보드를 섞는다. 턴은 소모하지 않는다.
+        /// 섞는 대상은 '움직일 수 있는 타일'뿐 — 벽·보스(하강 위치가 곧 게임플레이)·부패·사슬은 제자리다.
+        /// 정의값이 아니라 Tile 객체째로 자리를 바꾸므로 폭탄 카운트 같은 상태는 따라간다.
+        /// </summary>
+        /// <returns>뷰가 재생할 이동 기록. 데드락이 아니었으면 비어 있다.</returns>
+        private IReadOnlyList<TileMove> ShuffleIfDeadlocked()
+        {
+            if (MoveFinder.HasAnyValidMove(Board))
+                return Array.Empty<TileMove>();
+
+            var slots = new List<GridPos>();
+            foreach (GridPos pos in Board.ActivePositions())
+                if (MoveFinder.IsSwappable(Board.GetTile(pos)))
+                    slots.Add(pos);
+
+            if (slots.Count < 3)
+                return Array.Empty<TileMove>(); // 섞을 것이 없다 — 어떻게 배치해도 매치가 안 나온다
+
+            var tiles = new List<Tile>(slots.Count);
+            var originBySlot = new Dictionary<long, GridPos>(slots.Count);
+            foreach (GridPos pos in slots)
+            {
+                Tile tile = Board.GetTile(pos);
+                tiles.Add(tile);
+                originBySlot[tile.InstanceId] = pos;
+            }
+
+            for (int attempt = 0; attempt < MaxShuffles; attempt++)
+            {
+                ShuffleInPlace(tiles);
+                Rearrange(slots, tiles);
+
+                // 섞자마자 매치가 터져 있으면 공짜 콤보가 되므로 다시 뽑는다
+                if (MatchFinder.FindAll(Board).Count == 0 && MoveFinder.HasAnyValidMove(Board))
+                    break;
+            }
+
+            // 상한까지 실패했더라도 마지막 배치를 그대로 둔다 — 뷰와 모델은 어긋나지 않는다.
+            // (자유 타일이 극단적으로 적은 판에서만 일어나며, 그건 스테이지 설계 쪽 문제다)
+            var moves = new List<TileMove>();
+            for (int i = 0; i < slots.Count; i++)
+            {
+                GridPos origin = originBySlot[tiles[i].InstanceId];
+                if (!origin.Equals(slots[i]))
+                    moves.Add(new TileMove(tiles[i], origin, slots[i]));
+            }
+
+            return moves;
+        }
+
+        /// <summary>Fisher–Yates. 주입된 Random을 쓰므로 테스트에서 결정적으로 재현된다.</summary>
+        private void ShuffleInPlace(List<Tile> tiles)
+        {
+            for (int i = tiles.Count - 1; i > 0; i--)
+            {
+                int j = _rng.Next(i + 1);
+                (tiles[i], tiles[j]) = (tiles[j], tiles[i]);
+            }
+        }
+
+        private void Rearrange(List<GridPos> slots, List<Tile> tiles)
+        {
+            foreach (GridPos pos in slots)
+                Board.RemoveTile(pos);
+
+            for (int i = 0; i < slots.Count; i++)
+                Board.PlaceTile(slots[i], tiles[i]);
         }
 
         /// <summary>초기 배치. 시작부터 매치가 존재하지 않도록 즉시 매치를 만드는 종류는 재추첨한다.</summary>

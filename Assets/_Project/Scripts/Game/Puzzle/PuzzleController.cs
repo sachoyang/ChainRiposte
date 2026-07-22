@@ -31,14 +31,24 @@ namespace ChainRiposte.Game.Puzzle
         private void Awake()
         {
             input.SwapRequested += OnSwapRequested;
+            boardView.Shuffling += OnShuffling;
             gameManager.Session.PhaseChanged += OnPhaseChanged;
         }
 
         private void OnDestroy()
         {
             input.SwapRequested -= OnSwapRequested;
+            if (boardView != null)
+                boardView.Shuffling -= OnShuffling;
             if (gameManager != null && gameManager.Session != null)
                 gameManager.Session.PhaseChanged -= OnPhaseChanged;
+        }
+
+        /// <summary>둘 수 있는 수가 없어 보드를 섞는 중 — 플레이어에게 무슨 일이 났는지 알린다.</summary>
+        private void OnShuffling()
+        {
+            if (hud != null)
+                hud.FlashBanner("NO MOVES — SHUFFLING", 1.2f);
         }
 
         private void OnPhaseChanged(GamePhase previous, GamePhase next)

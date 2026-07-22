@@ -1,3 +1,4 @@
+using System.Collections;
 using ChainRiposte.Core.Flow;
 using ChainRiposte.Core.Match;
 using ChainRiposte.Core.Stats;
@@ -26,6 +27,8 @@ namespace ChainRiposte.Game.UI
 
         private GameSession _session;
         private PuzzleEngine _engine;
+        private string _flashMessage;
+        private float _flashSeconds;
 
         private void Awake()
         {
@@ -43,6 +46,25 @@ namespace ChainRiposte.Game.UI
         }
 
         private void OnDestroy() => Unbind();
+
+        /// <summary>배너에 잠깐 문구를 띄운다 (데드락 리롤 등). 페이즈 배너와 같은 자리를 쓴다.</summary>
+        public void FlashBanner(string message, float seconds)
+        {
+            if (bannerText == null)
+                return;
+
+            StopCoroutine(nameof(FlashBannerRoutine));
+            _flashMessage = message;
+            _flashSeconds = seconds;
+            StartCoroutine(nameof(FlashBannerRoutine));
+        }
+
+        private IEnumerator FlashBannerRoutine()
+        {
+            bannerText.text = _flashMessage;
+            yield return new WaitForSeconds(_flashSeconds);
+            bannerText.text = string.Empty;
+        }
 
         /// <summary>퍼즐 시작 시 컨트롤러가 호출한다. 엔진은 스테이지마다 새로 생성되므로 매번 다시 바인딩.</summary>
         public void Bind(GameSession session, PuzzleEngine engine)

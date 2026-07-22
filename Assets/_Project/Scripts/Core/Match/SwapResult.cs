@@ -17,19 +17,30 @@ namespace ChainRiposte.Core.Match
         /// <summary>턴 종료 후 기믹이 일으킨 일 (GDD §3.6). 기믹이 없으면 <see cref="GimmickPhase.Empty"/>.</summary>
         public GimmickPhase Gimmicks { get; }
 
+        /// <summary>
+        /// 턴이 끝난 뒤 둘 수 있는 수가 없어 보드를 섞었다면 그 이동 기록. 아니면 비어 있다.
+        /// 리롤은 턴을 소모하지 않는다 — 플레이어 잘못이 아니기 때문.
+        /// </summary>
+        public IReadOnlyList<TileMove> ShuffleMoves { get; }
+
+        public bool Shuffled => ShuffleMoves.Count > 0;
+
         public int TotalSouls { get; }
         public int TotalPotions { get; }
 
         /// <summary>최종 콤보 수 (= 연쇄 단계 수).</summary>
         public int ComboCount => Steps.Count;
 
-        private SwapResult(bool success, GridPos a, GridPos b, IReadOnlyList<CascadeStep> steps, GimmickPhase gimmicks)
+        private SwapResult(
+            bool success, GridPos a, GridPos b, IReadOnlyList<CascadeStep> steps,
+            GimmickPhase gimmicks, IReadOnlyList<TileMove> shuffleMoves)
         {
             Success = success;
             A = a;
             B = b;
             Steps = steps;
             Gimmicks = gimmicks ?? GimmickPhase.Empty;
+            ShuffleMoves = shuffleMoves ?? Array.Empty<TileMove>();
 
             foreach (CascadeStep step in steps)
             {
@@ -46,10 +57,11 @@ namespace ChainRiposte.Core.Match
         }
 
         public static SwapResult Failed(GridPos a, GridPos b) =>
-            new(false, a, b, Array.Empty<CascadeStep>(), GimmickPhase.Empty);
+            new(false, a, b, Array.Empty<CascadeStep>(), GimmickPhase.Empty, Array.Empty<TileMove>());
 
         public static SwapResult Resolved(
-            GridPos a, GridPos b, IReadOnlyList<CascadeStep> steps, GimmickPhase gimmicks = null) =>
-            new(true, a, b, steps, gimmicks);
+            GridPos a, GridPos b, IReadOnlyList<CascadeStep> steps,
+            GimmickPhase gimmicks = null, IReadOnlyList<TileMove> shuffleMoves = null) =>
+            new(true, a, b, steps, gimmicks, shuffleMoves);
     }
 }

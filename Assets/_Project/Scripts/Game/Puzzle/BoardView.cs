@@ -44,6 +44,8 @@ namespace ChainRiposte.Game.Puzzle
         [SerializeField, Min(0.01f)] private float clearDuration = 0.18f;
         [SerializeField, Min(0.01f)] private float fallDurationPerCell = 0.07f;
         [SerializeField, Min(0f)] private float stepPause = 0.05f;
+        [Tooltip("데드락 리롤 — 타일이 새 자리로 날아가는 시간")]
+        [SerializeField, Min(0.01f)] private float shuffleDuration = 0.45f;
 
         private readonly Dictionary<GridPos, TileView> _views = new();
         private readonly Dictionary<TileDefinition, Color> _colorByDefinition = new();
@@ -56,6 +58,9 @@ namespace ChainRiposte.Game.Puzzle
 
         /// <summary>캐스케이드 한 단계의 파괴 연출이 시작되는 순간 — 타일 깨짐 SFX/VFX 훅 (콤보는 step.ComboIndex).</summary>
         public event Action<CascadeStep> StepCleared;
+
+        /// <summary>데드락 리롤이 시작되는 순간 — 배너/SFX 훅.</summary>
+        public event Action Shuffling;
 
         public void Build(BoardGrid board)
         {
@@ -124,6 +129,32 @@ namespace ChainRiposte.Game.Puzzle
 
             if (!result.Gimmicks.IsEmpty)
                 yield return PlayGimmickPhase(result.Gimmicks);
+
+            if (result.Shuffled)
+                yield return PlayShuffle(result.ShuffleMoves);
+        }
+
+        /// <summary>데드락 리롤 — 타일들이 한꺼번에 새 자리로 날아간다 (낙하가 아니므로 등속 이동).</summary>
+        private IEnumerator PlayShuffle(IReadOnlyList<TileMove> moves)
+        {
+            Shuffling?.Invoke();
+
+            // 낙하와 같은 규칙 — From을 전부 비운 뒤 To로 재등록해야 순열이 안 깨진다
+            var moving = new List<(TileMove move, TileView view)>();
+            foreach (TileMove move in moves)
+            {
+                if (_views.Remove(move.From, out TileView view))
+                    moving.Add((move, view));
+            }
+
+            var anims = new List<IEnumerator>();
+            foreach ((TileMove move, TileView view) in moving)
+            {
+                _views[move.To] = view;
+                anims.Add(view.MoveTo(GridToLocal(move.To), shuffleDuration));
+            }
+
+            yield return WhenAll(anims);
         }
 
         private IEnumerator PlayStep(CascadeStep step)
