@@ -21,6 +21,9 @@ namespace ChainRiposte.Game
         /// <summary>이번 씬에서 플레이할 스테이지. 퍼즐/전투 컨트롤러가 공유한다.</summary>
         public StageConfig StageConfig { get; private set; }
 
+        /// <summary>스테이지 데이터 원본 — 순수 C# config에 담을 수 없는 것(보스 스프라이트 등)을 읽을 때 쓴다.</summary>
+        public StageDataSO StageData => stageData;
+
         private void Awake()
         {
             // 월드맵에서 선택하고 들어왔다면 그 스테이지를 우선한다

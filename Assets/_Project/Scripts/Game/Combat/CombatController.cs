@@ -1,5 +1,6 @@
 using ChainRiposte.Core.Combat;
 using ChainRiposte.Core.Flow;
+using ChainRiposte.Game.Config;
 using UnityEngine;
 
 namespace ChainRiposte.Game.Combat
@@ -67,6 +68,12 @@ namespace ChainRiposte.Game.Combat
 
             if (puzzleBoardRoot != null)
                 puzzleBoardRoot.SetActive(false);
+
+            // 보스 생김새는 SO에서 직접 읽는다 — 스프라이트는 순수 C# BossConfig에 담을 수 없다
+            BossDataSO bossData = gameManager.StageData != null ? gameManager.StageData.BossData : null;
+            screen.SetBossVisual(
+                bossData != null ? bossData.BattleSprite : null,
+                bossData != null ? bossData.DisplayName : null);
 
             screen.Bind(_combat, gameManager.Session);
             if (juice != null)

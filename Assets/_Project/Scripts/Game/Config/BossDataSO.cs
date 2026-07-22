@@ -16,6 +16,8 @@ namespace ChainRiposte.Game.Config
         [SerializeField] private string displayName = "Boss";
         [Tooltip("월드맵 정보 패널에 띄울 보스 이미지. 아직 안 가본 스테이지에서는 검은 실루엣으로 나온다.")]
         [SerializeField] private Sprite portrait;
+        [Tooltip("전투 화면에 서는 보스 이미지. 비우면 위 초상을 그대로 쓴다.")]
+        [SerializeField] private Sprite battleSprite;
 
         [Header("생존/체간")]
         [SerializeField, Min(1f)] private float maxHp = 120f;
@@ -54,6 +56,9 @@ namespace ChainRiposte.Game.Config
 
         /// <summary>월드맵 표시용 초상. 없으면 컨트롤러가 이미지를 숨긴다.</summary>
         public Sprite Portrait => portrait;
+
+        /// <summary>전투 화면의 보스 본체. 전용 이미지가 없으면 초상으로 대체한다.</summary>
+        public Sprite BattleSprite => battleSprite != null ? battleSprite : portrait;
 
         public BossConfig ToConfig()
         {

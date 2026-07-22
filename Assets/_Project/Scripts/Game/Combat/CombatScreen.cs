@@ -47,6 +47,8 @@ namespace ChainRiposte.Game.Combat
         private CombatSystem _combat;
         private GameSession _session;
         private Coroutine _telegraphRoutine;
+        private Sprite _bossSprite;
+        private string _bossName;
         private Coroutine _executePulseRoutine;
         private Vector2 _popupOrigin;
         private bool _popupPlaying;
@@ -72,6 +74,16 @@ namespace ChainRiposte.Game.Combat
         }
 
         private void OnDestroy() => Unbind();
+
+        /// <summary>
+        /// 전투에 설 보스 이미지를 지정한다. 보스 <b>타일</b>은 종류와 무관하게 하나로 통일하고
+        /// (플레이어가 "이게 보스 타일이다"를 한눈에 알아야 한다), 실제 생김새는 이 화면에서만 다르다.
+        /// </summary>
+        public void SetBossVisual(Sprite sprite, string displayName)
+        {
+            _bossSprite = sprite;
+            _bossName = displayName;
+        }
 
         /// <summary>전투 돌입 시 컨트롤러가 호출한다.</summary>
         public void Bind(CombatSystem combat, GameSession session)
@@ -121,7 +133,7 @@ namespace ChainRiposte.Game.Combat
 
         private void ResetVisuals()
         {
-            bossNameText.text = Loc.GetText("combat.boss");
+            bossNameText.text = string.IsNullOrWhiteSpace(_bossName) ? Loc.GetText("combat.boss") : _bossName;
             postureFill.fillAmount = _combat.Posture / _combat.MaxPosture;
             bossHpFill.fillAmount = _combat.BossHp / _combat.BossMaxHp;
             OnPlayerHealthChanged(_session.Health.Current, _session.Health.Max);
@@ -131,7 +143,16 @@ namespace ChainRiposte.Game.Combat
             flashOverlay.color = Color.clear;
             introText.color = new Color(0.85f, 0.2f, 0.25f, 1f);
             bossBody.localScale = Vector3.one;
-            bossBodyImage.color = bossColor;
+
+            // 스프라이트가 지정되면 원색 그대로(흰 틴트), 없으면 기존 색 사각형 플레이스홀더
+            bool hasSprite = _bossSprite != null;
+            if (hasSprite)
+            {
+                bossBodyImage.sprite = _bossSprite;
+                bossBodyImage.preserveAspect = true;
+            }
+
+            bossBodyImage.color = hasSprite ? Color.white : bossColor;
             OnPlayerStateChanged(PlayerActionState.Ready);
         }
 
