@@ -13,7 +13,8 @@ MonoBehaviour:
   m_Name: Boss_01
   m_EditorClassIdentifier: ChainRiposte.Game::ChainRiposte.Game.Config.BossDataSO
   displayName: Mushroom King
-  portrait: {fileID: 357749872346554099, guid: f2316670ef79ad34d9d26cbe7bff1cf8, type: 3}
+  portrait: {fileID: -4273023745370305303, guid: d2639096d2858da468b38ea594cf4441, type: 3}
+  battleSprite: {fileID: 357749872346554099, guid: f2316670ef79ad34d9d26cbe7bff1cf8, type: 3}
   maxHp: 120
   maxPosture: 100
   parryPostureGain: 25
@@ -21,24 +22,85 @@ MonoBehaviour:
   postureDecayPerSecond: 6
   scaleDecayWithHp: 1
   firstAttackDelaySeconds: 1.5
-  pattern:
-  - telegraphSeconds: 1
-    damage: 12
-    parryable: 1
-    recoverySeconds: 0.8
-  - telegraphSeconds: 1
-    damage: 12
-    parryable: 1
-    recoverySeconds: 0.3
-  - telegraphSeconds: 0.45
-    damage: 16
-    parryable: 1
-    recoverySeconds: 1.2
-  - telegraphSeconds: 1.6
-    damage: 20
-    parryable: 1
-    recoverySeconds: 1
-  - telegraphSeconds: 0.7
-    damage: 10
-    parryable: 0
-    recoverySeconds: 1.4
+  patternGapSeconds: 0.6
+  patterns:
+  - name: Steady
+    bpm: 110
+    lengthBeats: 8
+    speedMultiplier: 1
+    notes:
+    - beat: 1
+      telegraphBeats: 1.5
+      speedMultiplier: 1
+      damage: 12
+    - beat: 3
+      telegraphBeats: 1.5
+      speedMultiplier: 1
+      damage: 12
+    - beat: 5
+      telegraphBeats: 1.5
+      speedMultiplier: 1
+      damage: 12
+    - beat: 7
+      telegraphBeats: 1.5
+      speedMultiplier: 1
+      damage: 12
+  - name: Double Sweep
+    bpm: 120
+    lengthBeats: 8
+    speedMultiplier: 1
+    notes:
+    - beat: 2
+      telegraphBeats: 2
+      speedMultiplier: 1
+      damage: 14
+    - beat: 4
+      telegraphBeats: 1
+      speedMultiplier: 1
+      damage: 10
+    - beat: 4.5
+      telegraphBeats: 1
+      speedMultiplier: 1
+      damage: 10
+    - beat: 7
+      telegraphBeats: 1.5
+      speedMultiplier: 1
+      damage: 16
+  - name: Flurry
+    bpm: 120
+    lengthBeats: 8
+    speedMultiplier: 1
+    notes:
+    - beat: 2
+      telegraphBeats: 2
+      speedMultiplier: 1
+      damage: 12
+    - beat: 5
+      telegraphBeats: 1
+      speedMultiplier: 1
+      damage: 8
+    - beat: 5.25
+      telegraphBeats: 1
+      speedMultiplier: 1
+      damage: 8
+    - beat: 5.5
+      telegraphBeats: 1
+      speedMultiplier: 1
+      damage: 8
+    - beat: 7.5
+      telegraphBeats: 1.5
+      speedMultiplier: 2
+      damage: 18
+  phases:
+  - hpRatioAtOrBelow: 1
+    patterns:
+    - patternIndex: 0
+      weight: 2
+    - patternIndex: 1
+      weight: 1
+  - hpRatioAtOrBelow: 0.5
+    patterns:
+    - patternIndex: 1
+      weight: 1
+    - patternIndex: 2
+      weight: 2
