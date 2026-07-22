@@ -5,6 +5,7 @@ using System.Text.RegularExpressions;
 using ChainRiposte.Game.Localization;
 using TMPro;
 using UnityEditor;
+using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.Networking;
 
@@ -23,6 +24,12 @@ namespace ChainRiposte.Editor
         private const string SheetIdPrefsKey = "ChainRiposte.Localization.SheetId";
         private const string GidPrefsKey = "ChainRiposte.Localization.Gid";
         private const string KeysOutputPath = "Assets/_Project/Scripts/Game/Localization/LocKeys.cs";
+
+        /// <summary>
+        /// TMP 아틀라스를 구울 때의 샘플링 크기. 픽셀 폰트는 <b>원본 설계 크기의 정수배</b>여야
+        /// 획이 뭉개지지 않는다 (네오둥근모는 16px 설계 → 64 = 4배).
+        /// </summary>
+        private const int samplingPointSize = 64;
 
         private static string CsvPath => $"{CsvDirectory}/{Loc.CsvResourceName}.csv";
 
@@ -226,9 +233,11 @@ namespace ChainRiposte.Editor
 
             string sourcePath = AssetDatabase.GetAssetPath(font);
             string outputPath = System.IO.Path.ChangeExtension(sourcePath, null) + " SDF.asset";
+            string assetName = System.IO.Path.GetFileNameWithoutExtension(outputPath);
 
+            // 픽셀 폰트는 원본 설계 크기의 정수배로 샘플링해야 획이 뭉개지지 않는다 (네오둥근모 16px → 64).
             TMP_FontAsset fontAsset = TMP_FontAsset.CreateFontAsset(
-                font, 90, 9, UnityEngine.TextCore.LowLevel.GlyphRenderMode.SDFAA,
+                font, samplingPointSize, 6, UnityEngine.TextCore.LowLevel.GlyphRenderMode.SDFAA,
                 1024, 1024, AtlasPopulationMode.Dynamic, enableMultiAtlasSupport: true);
 
             if (fontAsset == null)
@@ -237,15 +246,98 @@ namespace ChainRiposte.Editor
                 return;
             }
 
-            fontAsset.name = System.IO.Path.GetFileNameWithoutExtension(outputPath);
+            fontAsset.name = assetName;
             AssetDatabase.CreateAsset(fontAsset, outputPath);
+
+            // 아틀라스 텍스처와 머티리얼을 서브에셋으로 함께 저장해야 한다.
+            // 빠뜨리면 도메인 리로드 후 m_AtlasTextures 가 허공을 가리켜
+            // 새 글리프(한글 등)를 채우는 순간 UnassignedReferenceException 이 난다.
+            if (fontAsset.atlasTextures is { Length: > 0 } && fontAsset.atlasTextures[0] != null)
+            {
+                fontAsset.atlasTextures[0].name = assetName + " Atlas";
+                fontAsset.atlasTextures[0].hideFlags = HideFlags.HideInHierarchy;
+                AssetDatabase.AddObjectToAsset(fontAsset.atlasTextures[0], fontAsset);
+            }
+
+            if (fontAsset.material != null)
+            {
+                fontAsset.material.name = assetName + " Material";
+                fontAsset.material.hideFlags = HideFlags.HideInHierarchy;
+                AssetDatabase.AddObjectToAsset(fontAsset.material, fontAsset);
+            }
+
+            EditorUtility.SetDirty(fontAsset);
             AssetDatabase.SaveAssets();
+            AssetDatabase.ImportAsset(outputPath);
 
             Debug.Log(
                 $"[Loc] TMP 폰트 에셋 생성: {outputPath}\n" +
-                "Project Settings ▸ TextMeshPro ▸ Settings 의 Default Font Asset 으로 지정하면 기존 UI까지 한 번에 적용됩니다. " +
-                "또는 Fallback Font Assets 에 추가하세요.", fontAsset);
-            Selection.activeObject = fontAsset;
+                "Project Settings ▸ TextMeshPro ▸ Settings 의 Default Font Asset 으로 지정하면 새로 만드는 텍스트에 적용됩니다. " +
+                "이미 씬에 있는 텍스트는 예전 폰트를 명시적으로 물고 있으므로 " +
+                "Tools ▸ ChainRiposte ▸ Localization ▸ Apply Default Font To All Scenes 를 함께 실행하세요.",
+                AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(outputPath));
+            Selection.activeObject = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(outputPath);
+        }
+
+        [MenuItem("Tools/ChainRiposte/Localization/Apply Default Font To All Scenes (전 씬 폰트 통일)")]
+        private static void ApplyDefaultFontToAllScenes()
+        {
+            TMP_FontAsset target = TMP_Settings.defaultFontAsset;
+            if (target == null)
+            {
+                EditorUtility.DisplayDialog(
+                    "폰트 통일",
+                    "TMP Settings 의 Default Font Asset 이 비어 있습니다.\n" +
+                    "Project Settings ▸ TextMeshPro ▸ Settings 에서 먼저 지정하세요.",
+                    "확인");
+                return;
+            }
+
+            if (!EditorUtility.DisplayDialog(
+                    "폰트 통일",
+                    $"빌드 설정의 모든 씬에서 TMP 텍스트 폰트를 '{target.name}' 으로 바꾸고 저장합니다.\n" +
+                    "열려 있는 씬은 저장 여부를 먼저 확인하세요.",
+                    "실행", "취소"))
+                return;
+
+            if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo())
+                return;
+
+            SceneSetup[] setup = EditorSceneManager.GetSceneManagerSetup();
+            int total = 0;
+
+            foreach (EditorBuildSettingsScene entry in EditorBuildSettings.scenes)
+            {
+                UnityEngine.SceneManagement.Scene scene =
+                    EditorSceneManager.OpenScene(entry.path, OpenSceneMode.Single);
+
+                int changed = 0;
+                foreach (GameObject root in scene.GetRootGameObjects())
+                {
+                    foreach (TMP_Text text in root.GetComponentsInChildren<TMP_Text>(true))
+                    {
+                        if (text.font == target)
+                            continue;
+                        text.font = target;
+                        EditorUtility.SetDirty(text);
+                        changed++;
+                    }
+                }
+
+                if (changed > 0)
+                {
+                    EditorSceneManager.MarkSceneDirty(scene);
+                    EditorSceneManager.SaveScene(scene);
+                }
+
+                total += changed;
+                Debug.Log($"[Loc] {System.IO.Path.GetFileNameWithoutExtension(entry.path)}: 텍스트 {changed}개 교체");
+            }
+
+            if (setup is { Length: > 0 })
+                EditorSceneManager.RestoreSceneManagerSetup(setup);
+
+            Debug.Log($"[Loc] 폰트 통일 완료 — 총 {total}개.");
         }
 
         // ── 내부 ───────────────────────────────────────────────────────
