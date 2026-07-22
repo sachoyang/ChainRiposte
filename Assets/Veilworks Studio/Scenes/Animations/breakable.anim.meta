@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: d98f68deec6ea0e4e875b5341f545d42
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 7400000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 318437
+  packageName: 2D Pixel Art Blocks
+  packageVersion: 1.1.0
+  assetPath: Assets/Veilworks Studio/Scenes/Animations/breakable.anim
+  uploadId: 831590
