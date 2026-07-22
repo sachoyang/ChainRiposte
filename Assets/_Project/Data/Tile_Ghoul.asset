@@ -16,4 +16,4 @@ MonoBehaviour:
   baseSouls: 15
   maxHp: 0
   placeholderColor: {r: 0.42, g: 0.55, b: 0.62, a: 1}
-  sprite: {fileID: 0}
+  sprite: {fileID: -697763020151794088, guid: 053ea93ee80e06a4389cc3fea36a524f, type: 3}

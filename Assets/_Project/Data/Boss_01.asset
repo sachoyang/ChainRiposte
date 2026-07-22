@@ -12,7 +12,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 404a7ca429d088f4984370d133fa87e2, type: 3}
   m_Name: Boss_01
   m_EditorClassIdentifier: ChainRiposte.Game::ChainRiposte.Game.Config.BossDataSO
-  displayName: The Warden
+  displayName: Mushroom King
+  portrait: {fileID: 357749872346554099, guid: f2316670ef79ad34d9d26cbe7bff1cf8, type: 3}
   maxHp: 120
   maxPosture: 100
   parryPostureGain: 25
