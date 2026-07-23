@@ -141,8 +141,16 @@ namespace ChainRiposte.Game.Map
                 }
             }
 
-            if (nearest < 0 || nearest == _currentIndex)
+            if (nearest < 0)
                 return;
+
+            // 서 있는 노드를 다시 누르면 정보 패널을 되살린다.
+            // 잠긴 노드를 눌러 LOCKED(START 비활성)가 떠 있을 때, 여기로 돌아올 방법이 이것뿐이다.
+            if (nearest == _currentIndex)
+            {
+                ShowInfo(_currentIndex);
+                return;
+            }
 
             StartCoroutine(nodes[nearest].IsLocked ? BlockedRoutine(nearest) : MoveRoutine(nearest));
         }
