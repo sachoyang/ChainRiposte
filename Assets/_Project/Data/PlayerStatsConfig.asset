@@ -23,5 +23,8 @@ MonoBehaviour:
   parryWindowPerLevelSeconds: 0.015
   parryLateGraceSeconds: 0.12
   parryLevelHardCap: 5
+  attackPointCost: 1
+  defensePointCost: 1
+  parryPointCost: 2
   attackCommitSeconds: 0.4
   parryWhiffLockSeconds: 0.35

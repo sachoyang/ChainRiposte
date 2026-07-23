@@ -33,6 +33,12 @@ namespace ChainRiposte.Game.Config
         [Tooltip("하드 캡: 이 레벨에 도달하면 더 이상 분배할 수 없다")]
         [SerializeField, Min(0)] private int parryLevelHardCap = 5;
 
+        [Header("분배 비용 (레벨 1당 포인트)")]
+        [SerializeField, Min(1)] private int attackPointCost = 1;
+        [SerializeField, Min(1)] private int defensePointCost = 1;
+        [Tooltip("판정 폭은 실수 자체를 없애 주므로 같은 값이면 늘 최선이 된다 — 폭을 더 깎는 대신 비싸게 매긴다")]
+        [SerializeField, Min(1)] private int parryPointCost = 2;
+
         [Header("전투 템포 (7단계)")]
         [Tooltip("공격 커밋 시간 — 이 동안 패링 불가, 끝나는 순간 타격")]
         [SerializeField, Min(0f)] private float attackCommitSeconds = 0.4f;
@@ -51,6 +57,9 @@ namespace ChainRiposte.Game.Config
             BaseParryWindowSeconds = baseParryWindowSeconds,
             ParryWindowPerLevelSeconds = parryWindowPerLevelSeconds,
             ParryLevelHardCap = parryLevelHardCap,
+            AttackPointCost = attackPointCost,
+            DefensePointCost = defensePointCost,
+            ParryPointCost = parryPointCost,
             AttackCommitSeconds = attackCommitSeconds,
             ParryWhiffLockSeconds = parryWhiffLockSeconds,
             ParryLateGraceSeconds = parryLateGraceSeconds,

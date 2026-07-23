@@ -61,10 +61,21 @@ namespace ChainRiposte.Core.Stats
 
         public int GetStatLevel(StatType stat) => _statLevels[(int)stat];
 
-        /// <summary>판정치는 하드 캡 도달 이후 선택할 수 없다.</summary>
+        /// <summary>이 스탯을 한 단계 올리는 데 드는 포인트. 판정치는 더 비싸다.</summary>
+        public int GetPointCost(StatType stat) => stat switch
+        {
+            StatType.Attack => Math.Max(1, _config.AttackPointCost),
+            StatType.Defense => Math.Max(1, _config.DefensePointCost),
+            _ => Math.Max(1, _config.ParryPointCost),
+        };
+
+        /// <summary>상한에 걸려 더 못 올리는가 — '포인트가 모자란 것'과 구분해야 UI가 MAX를 잘못 띄우지 않는다.</summary>
+        public bool IsAtCap(StatType stat) =>
+            stat == StatType.Parry && GetStatLevel(StatType.Parry) >= _config.ParryLevelHardCap;
+
+        /// <summary>판정치는 하드 캡 도달 이후 선택할 수 없고, 값만큼 포인트가 있어야 한다.</summary>
         public bool CanAllocate(StatType stat) =>
-            PendingPoints > 0 &&
-            (stat != StatType.Parry || GetStatLevel(StatType.Parry) < _config.ParryLevelHardCap);
+            !IsAtCap(stat) && PendingPoints >= GetPointCost(stat);
 
         /// <summary>매치 결과로 획득한 영혼석을 적립하고, 요구량을 넘길 때마다 레벨업한다.</summary>
         public void AddSouls(int amount)
@@ -89,9 +100,9 @@ namespace ChainRiposte.Core.Stats
         {
             if (!CanAllocate(stat))
                 throw new InvalidOperationException(
-                    $"스탯 분배 불가: {stat} (포인트 {PendingPoints}, 현재 레벨 {GetStatLevel(stat)})");
+                    $"스탯 분배 불가: {stat} (포인트 {PendingPoints}/{GetPointCost(stat)}, 현재 레벨 {GetStatLevel(stat)})");
 
-            PendingPoints--;
+            PendingPoints -= GetPointCost(stat);
             _statLevels[(int)stat]++;
             StatAllocated?.Invoke(stat, GetStatLevel(stat));
         }

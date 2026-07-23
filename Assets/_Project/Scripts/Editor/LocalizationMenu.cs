@@ -562,6 +562,7 @@ namespace ChainRiposte.Editor
             Row(builder, "puzzle.alloc.attack", "+공격\\nLv {0}", "+ATK\\nLv {0}");
             Row(builder, "puzzle.alloc.defense", "+방어\\nLv {0}", "+DEF\\nLv {0}");
             Row(builder, "puzzle.alloc.parry", "+패링\\nLv {0}", "+PARRY\\nLv {0}");
+            Row(builder, "puzzle.alloc.cost", "\\n{0}P", "\\n{0}P");
             Row(builder, "puzzle.alloc.attack.max", "+공격\\n최대", "+ATK\\nMAX");
             Row(builder, "puzzle.alloc.defense.max", "+방어\\n최대", "+DEF\\nMAX");
             Row(builder, "puzzle.alloc.parry.max", "+패링\\n최대", "+PARRY\\nMAX");

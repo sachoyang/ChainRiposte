@@ -36,6 +36,16 @@ namespace ChainRiposte.Core.Stats
         /// <summary>판정치 하드 캡 — 이 레벨에 도달하면 더 이상 분배할 수 없다.</summary>
         public int ParryLevelHardCap = 5;
 
+        public int AttackPointCost = 1;
+        public int DefensePointCost = 1;
+
+        /// <summary>
+        /// 판정치 1레벨에 드는 포인트.
+        /// 판정 폭은 다른 스탯과 달리 <b>실수 자체를 없애 주기 때문에</b> 같은 값이면 언제나 최선의 선택이 된다.
+        /// 폭 증가량을 더 깎으면 눈에 보이는 성장이 사라지므로, 대신 값을 비싸게 매겨 속도를 늦춘다.
+        /// </summary>
+        public int ParryPointCost = 2;
+
         /// <summary>공격 커밋 시간 — 이 동안 패링 불가, 끝나는 순간 타격 (리스크/리턴).</summary>
         public float AttackCommitSeconds = 0.4f;
 

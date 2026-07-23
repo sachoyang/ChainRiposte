@@ -7,12 +7,15 @@ namespace ChainRiposte.Core.Tests
     public sealed class PlayerStatsTests
     {
         // 밸런스 기본값이 바뀌어도 테스트가 깨지지 않도록 여기서 쓰는 값은 명시한다
-        private static PlayerStats CreateStats(int parryCap = 5) =>
+        private static PlayerStats CreateStats(int parryCap = 5, int parryCost = 2) =>
             new(new PlayerStatsConfig
             {
                 ParryLevelHardCap = parryCap,
                 BaseParryWindowSeconds = 0.15f,
                 ParryWindowPerLevelSeconds = 0.03f,
+                AttackPointCost = 1,
+                DefensePointCost = 1,
+                ParryPointCost = parryCost,
             });
 
         [Test]
@@ -53,7 +56,7 @@ namespace ChainRiposte.Core.Tests
         public void 스탯_할당은_파생_수치에_반영된다()
         {
             PlayerStats stats = CreateStats();
-            stats.AddSouls(200);
+            stats.AddSouls(400); // 셋을 다 찍으려면 4포인트 (판정치가 2)
 
             stats.Allocate(StatType.Attack);
             stats.Allocate(StatType.Defense);
@@ -62,6 +65,25 @@ namespace ChainRiposte.Core.Tests
             Assert.That(stats.AttackDamage, Is.EqualTo(13f), "기본 10 + 3");
             Assert.That(stats.DamageReduction, Is.EqualTo(2f), "기본 0 + 2");
             Assert.That(stats.ParryWindowSeconds, Is.EqualTo(0.18f).Within(1e-5), "기본 0.15 + 0.03");
+        }
+
+        [Test]
+        public void 판정치는_값이_비싸서_포인트가_모자라면_못_올린다()
+        {
+            PlayerStats stats = CreateStats();
+            stats.AddSouls(30); // 정확히 1포인트
+
+            Assert.That(stats.GetPointCost(StatType.Parry), Is.EqualTo(2));
+            Assert.That(stats.CanAllocate(StatType.Attack), Is.True, "1포인트로 살 수 있다");
+            Assert.That(stats.CanAllocate(StatType.Parry), Is.False, "2포인트가 필요하다");
+            Assert.That(stats.IsAtCap(StatType.Parry), Is.False, "상한이 아니라 포인트가 모자란 것");
+
+            stats.AddSouls(45); // 2포인트째
+            Assert.That(stats.CanAllocate(StatType.Parry), Is.True);
+
+            stats.Allocate(StatType.Parry);
+            Assert.That(stats.PendingPoints, Is.Zero, "값만큼 빠져나간다");
+            Assert.That(stats.GetStatLevel(StatType.Parry), Is.EqualTo(1));
         }
 
         [Test]
@@ -74,6 +96,7 @@ namespace ChainRiposte.Core.Tests
             stats.Allocate(StatType.Parry);
 
             Assert.That(stats.GetStatLevel(StatType.Parry), Is.EqualTo(2));
+            Assert.That(stats.IsAtCap(StatType.Parry), Is.True, "하드 캡 도달");
             Assert.That(stats.CanAllocate(StatType.Parry), Is.False, "하드 캡 도달");
             Assert.That(stats.CanAllocate(StatType.Attack), Is.True, "다른 스탯은 가능");
             Assert.Throws<InvalidOperationException>(() => stats.Allocate(StatType.Parry));

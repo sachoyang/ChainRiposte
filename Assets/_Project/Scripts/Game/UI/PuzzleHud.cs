@@ -180,9 +180,15 @@ namespace ChainRiposte.Game.UI
 
         private static void SetButton(Button button, string locKey, int level, StatType stat, PlayerStats stats)
         {
-            // 포인트가 있는데 못 올리면 상한에 걸린 것 (패링 윈도우만 상한이 있다)
-            bool capped = stats.PendingPoints > 0 && !stats.CanAllocate(stat);
-            string label = capped ? Loc.GetText(locKey + ".max") : Loc.GetText(locKey, level);
+            // 상한에 걸린 것과 포인트가 모자란 것은 다르다 — 비용이 2 이상인 스탯이 생기면서 갈렸다.
+            string label = stats.IsAtCap(stat)
+                ? Loc.GetText(locKey + ".max")
+                : Loc.GetText(locKey, level);
+
+            // 값이 1보다 비싸면 얼마가 드는지 버튼에 적는다 — 안 적으면 왜 안 눌리는지 알 수 없다.
+            int cost = stats.GetPointCost(stat);
+            if (cost > 1 && !stats.IsAtCap(stat))
+                label += Loc.GetText("puzzle.alloc.cost", cost);
 
             button.interactable = stats.CanAllocate(stat);
             button.GetComponentInChildren<TMP_Text>().text = label;
