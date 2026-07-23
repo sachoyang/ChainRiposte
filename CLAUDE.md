@@ -85,6 +85,12 @@
 - `PlayerStats.IsAtCap(stat)` 추가 — **상한**과 **포인트 부족**을 구분해야 HUD가 MAX를 잘못 띄우지 않는다. 버튼에 `2P` 표시(`puzzle.alloc.cost`).
 - 더 조일 순서: `parryPointCost` 3 → 그래도 넓으면 `baseParryWindowSeconds`(0.25).
 
+**스탯 분배를 퍼즐 → 준비 화면으로 이동**
+- `Game/UI/StatAllocationPanel` 신규 — +ATK/+DEF/+PARRY 버튼 묶음 + 분배 로직. `IntermissionScreen`의 자식(FIGHT 아래)으로 살고 그 페이즈에만 켜진다. `PuzzleHud`에서 버튼 필드·분배 로직 전부 제거(HP·영혼석·턴·현재 수치 표시만 남음).
+- 준비 화면 구조 변경: `Root`(화면 전체 딤, raycast로 퍼즐 입력 차단) → `Band`(아래쪽 띠, 높이 420→700). `IntermissionScreen ▸ dimColor` 기본 검정 알파 0.45 — **판이 비쳐 보일 정도로만** (다음 판을 눈으로 재야 한다).
+- ⚠ **`Build Main Scene UI` 재실행 필수.** 안 하면 퍼즐 화면에 옛 버튼이 배선 끊긴 채 남는다.
+- 사용자 메모: "나중에 UI 확장할 것" — 지금은 버튼만 옮긴 상태.
+
 **타일 배경판 (배선만, 아트는 사용자가 나중에)**
 - 아이콘만 있어 타일 경계가 안 읽히는 문제. `TileDefinitionSO`에 `backgroundSprite` + `backgroundColor`, `BoardView`에 공용 `tileBackgroundSprite` / `tileBackgroundScale`(1.05) / `backgroundOnWalls`.
 - 우선순위: 타일 전용 그림 → 공용 그림 → **그림이 없고 색만 있으면 사각형**. 알파 0이면 안 그리므로 **아무것도 안 하면 지금과 동일**하게 보인다(색만 넣어도 즉시 받침이 생긴다).
