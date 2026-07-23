@@ -265,44 +265,52 @@ namespace ChainRiposte.Editor
             panel.anchorMin = new Vector2(0f, 0.5f);
             panel.anchorMax = new Vector2(1f, 0.5f);
             panel.pivot = new Vector2(0.5f, 0.5f);
-            panel.anchoredPosition = new Vector2(0f, 120f);
-            panel.sizeDelta = new Vector2(0f, 700f);
+            panel.anchoredPosition = new Vector2(0f, -60f);
+            panel.sizeDelta = new Vector2(0f, 860f);
             var backdrop = panel.gameObject.AddComponent<Image>();
             backdrop.sprite = EditorUiFactory.Square;
-            backdrop.color = new Color(0.06f, 0.05f, 0.09f, 0.92f);
+            // 완전 불투명이 아니다 — 뒤 퍼즐판이 어렴풋이 비쳐야 '같은 판 위의 상점'으로 읽힌다
+            backdrop.color = new Color(0.06f, 0.05f, 0.09f, 0.88f);
 
             TMP_Text title = EditorUiFactory.Text(
-                panel, "Title", new Vector2(0f, 260f), new Vector2(0.5f, 0.5f), 76f,
-                TextAlignmentOptions.Center, new Vector2(1000f, 110f), FontStyles.Bold);
+                panel, "Title", new Vector2(0f, 370f), new Vector2(0.5f, 0.5f), 72f,
+                TextAlignmentOptions.Center, new Vector2(1000f, 100f), FontStyles.Bold);
             title.color = new Color(0.95f, 0.83f, 0.35f);
 
             TMP_Text warning = EditorUiFactory.Text(
-                panel, "Warning", new Vector2(0f, 180f), new Vector2(0.5f, 0.5f), 40f,
-                TextAlignmentOptions.Center, new Vector2(1000f, 110f));
+                panel, "Warning", new Vector2(0f, 300f), new Vector2(0.5f, 0.5f), 36f,
+                TextAlignmentOptions.Center, new Vector2(1000f, 90f));
             warning.color = new Color(0.92f, 0.72f, 0.70f);
 
+            // 현황 줄 — 딤에 가려 HUD가 안 읽힌다. 성장을 정하는 화면이니 지갑과 현재 수치를 여기 다시 적는다.
+            TMP_Text hp = StatusLine(panel, "HpText", 240f);
+            TMP_Text souls = StatusLine(panel, "SoulsText", 198f);
+            TMP_Text stats = StatusLine(panel, "StatsText", 156f);
+
             TMP_Text points = EditorUiFactory.Text(
-                panel, "Points", new Vector2(0f, 100f), new Vector2(0.5f, 0.5f), 40f,
-                TextAlignmentOptions.Center, new Vector2(1000f, 70f));
+                panel, "Points", new Vector2(0f, 106f), new Vector2(0.5f, 0.5f), 42f,
+                TextAlignmentOptions.Center, new Vector2(1000f, 70f), FontStyles.Bold);
+            points.color = new Color(0.95f, 0.83f, 0.35f);
 
             // 업그레이드 NPC — 성녀(왼쪽, 공/방)와 대장장이(오른쪽, 판정).
             // 성녀 그림은 고른 캐릭터가 런타임에 채우므로 여기서는 비워 둔다.
-            Image saint = NpcSlot(panel, "SaintNpc", new Vector2(-380f, 150f), out TextMeshProUGUI saintLabel,
+            Image saint = NpcSlot(panel, "SaintNpc", new Vector2(-400f, -30f), out TextMeshProUGUI saintLabel,
                 out NpcReaction saintReaction, "intermission.npc.saint", new Color(1f, 0.95f, 0.75f, 1f));
-            Image blacksmith = NpcSlot(panel, "BlacksmithNpc", new Vector2(380f, 150f), out TextMeshProUGUI smithLabel,
+            Image blacksmith = NpcSlot(panel, "BlacksmithNpc", new Vector2(400f, -30f), out TextMeshProUGUI smithLabel,
                 out NpcReaction smithReaction, "intermission.npc.blacksmith", new Color(1f, 0.72f, 0.35f, 1f));
 
             Button fight = EditorUiFactory.Button(
-                panel, "FightButton", new Vector2(0f, 10f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
-                new Vector2(520f, 130f), AccentButtonColor, "intermission.fight", 56f,
+                panel, "FightButton", new Vector2(0f, -210f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
+                new Vector2(520f, 120f), AccentButtonColor, "intermission.fight", 52f,
                 out _, out TextMeshProUGUI fightLabel);
             EditorUiFactory.Localize(fightLabel, "intermission.fight");
 
-            BuildStatAllocation(panel);
+            // 분배 버튼 3개는 FIGHT '아래'
+            BuildStatAllocation(panel, -355f);
 
-            // 가로에서는 띠를 조금 낮게
+            // 가로에서는 화면이 낮으므로 띠도 낮게 (세부 배치는 씬에서 드래그로 잡는다)
             EditorUiFactory.Orient(panel, new Vector2(0f, 0.5f), new Vector2(1f, 0.5f),
-                new Vector2(0.5f, 0.5f), new Vector2(0f, 0f), new Vector2(0f, 620f));
+                new Vector2(0.5f, 0.5f), new Vector2(0f, 0f), new Vector2(0f, 720f));
 
             var so = new SerializedObject(screen);
             Set(so, "panelRoot", root.gameObject);
@@ -310,6 +318,9 @@ namespace ChainRiposte.Editor
             Set(so, "titleText", title);
             Set(so, "warningText", warning);
             Set(so, "pointsText", points);
+            Set(so, "hpText", hp);
+            Set(so, "soulsText", souls);
+            Set(so, "statsText", stats);
             Set(so, "fightButton", fight);
             Set(so, "saintImage", saint);
             Set(so, "saintLabel", saintLabel);
@@ -361,11 +372,11 @@ namespace ChainRiposte.Editor
         /// 스탯 분배 버튼 3종. 준비 화면의 FIGHT <b>아래</b>에 붙는다 —
         /// 퍼즐 중에는 보드만 보면 되고, 성장은 시간에 안 쫓기는 이 구간에서 정한다.
         /// </summary>
-        private static void BuildStatAllocation(Transform panel)
+        private static void BuildStatAllocation(Transform panel, float y)
         {
             RectTransform group = EditorUiFactory.NewRect("StatAllocation", panel);
             group.anchorMin = group.anchorMax = group.pivot = new Vector2(0.5f, 0.5f);
-            group.anchoredPosition = new Vector2(0f, -160f);
+            group.anchoredPosition = new Vector2(0f, y);
             group.sizeDelta = new Vector2(1000f, 170f);
 
             Button atk = AllocButton(group, "AllocAttack", -330f, "+ATK");
@@ -379,6 +390,16 @@ namespace ChainRiposte.Editor
             Set(so, "defenseButton", def);
             Set(so, "parryButton", parry);
             so.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        /// <summary>현황 한 줄 — 코드가 채우므로 LocalizedText는 붙이지 않는다.</summary>
+        private static TMP_Text StatusLine(Transform parent, string name, float y)
+        {
+            TextMeshProUGUI text = EditorUiFactory.Text(
+                parent, name, new Vector2(0f, y), new Vector2(0.5f, 0.5f), 36f,
+                TextAlignmentOptions.Center, new Vector2(1000f, 50f));
+            text.color = new Color(0.80f, 0.78f, 0.74f);
+            return text;
         }
 
         private static Button AllocButton(Transform parent, string name, float x, string placeholder) =>

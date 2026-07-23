@@ -35,6 +35,14 @@ namespace ChainRiposte.Game.UI
         [SerializeField] private TMP_Text pointsText;
         [SerializeField] private Button fightButton;
 
+        [Header("현황 — 여기서 성장을 정하므로 지갑과 현재 수치가 같이 보여야 한다")]
+        [Tooltip("체력")]
+        [SerializeField] private TMP_Text hpText;
+        [Tooltip("레벨 / 영혼석 / 남은 포인트")]
+        [SerializeField] private TMP_Text soulsText;
+        [Tooltip("현재 공격·방어·판정")]
+        [SerializeField] private TMP_Text statsText;
+
         [Header("업그레이드 NPC")]
         [Tooltip("성녀 — ATK/DEF를 올리면 반응한다. 그림은 고른 캐릭터를 따라간다.")]
         [SerializeField] private Image saintImage;
@@ -66,6 +74,8 @@ namespace ChainRiposte.Game.UI
             _session.PhaseChanged += OnPhaseChanged;
             _session.Stats.StatAllocated += OnStatAllocated;
             _session.Stats.SoulsChanged += OnSoulsChanged;
+            // 코드가 매번 채우는 문구라 LocalizedText가 못 잡는다 — 언어가 바뀌면 여기서 다시 그린다.
+            Loc.LanguageChanged += Refresh;
 
             fightButton.onClick.AddListener(() => _session.StartCombat());
             panelRoot.SetActive(false);
@@ -73,6 +83,7 @@ namespace ChainRiposte.Game.UI
 
         private void OnDestroy()
         {
+            Loc.LanguageChanged -= Refresh;
             if (_session == null)
                 return;
 
@@ -118,9 +129,22 @@ namespace ChainRiposte.Game.UI
             if (warningText != null)
                 warningText.text = Loc.GetText("intermission.warning");
 
+            // HUD는 딤 뒤에 깔려 읽기 어렵다 — 성장을 정하는 화면이니 필요한 숫자는 여기 다시 적는다.
+            Core.Stats.PlayerStats stats = _session.Stats;
+            if (hpText != null)
+                hpText.text = Loc.GetText("puzzle.hp", _session.Health.Current, _session.Health.Max);
+
+            if (soulsText != null)
+                soulsText.text = Loc.GetText(
+                    "puzzle.souls", stats.Level, stats.Souls, stats.SoulsToNextLevel, stats.PendingPoints);
+
+            if (statsText != null)
+                statsText.text = Loc.GetText(
+                    "puzzle.stats", stats.AttackDamage, stats.DamageReduction, stats.ParryWindowSeconds);
+
             if (pointsText != null)
             {
-                int points = _session.Stats.PendingPoints;
+                int points = stats.PendingPoints;
                 pointsText.text = points > 0
                     ? Loc.GetText("intermission.points", points)
                     : Loc.GetText("intermission.nopoints");
