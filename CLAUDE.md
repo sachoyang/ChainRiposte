@@ -44,7 +44,7 @@
 
 - **커밋 규칙**: 메시지에 `Co-Authored-By: Claude` 트레일러를 넣지 않는다.
 - **git**: 세션 6 작업 커밋 완료(주제별 5개). push는 계속 안 하고 있음 — 필요하면 물어볼 것.
-- **테스트**: EditMode **93/93**.
+- **테스트**: EditMode **94/94**.
 
 #### 다음 세션에서 가장 먼저 할 것
 
@@ -76,8 +76,22 @@
 - **`PlayerActionState.Parrying` 제거.** 예전 모델은 "누르면 판정치(초) 동안 자세를 유지하고, 타격이 그 안에 들어오면 성공"이었다(`ResolveStrike`가 Parrying을 보고 판정). 지금은 `PressParry()`가 **그 자리에서** `[타격−윈도우, 타격+유예]` 안의 가장 임박한 노트를 찾아 즉시 `ParryNote`, 없으면 즉시 헛침 잠금.
 - `ParryNote`가 `RebuildActiveNotes()`를 호출해 **막은 노트가 그 프레임에 목록에서 빠진다** — 흰 원이 다음 Tick을 기다리지 않고 사라진다.
 - 부작용: 헛침 총 잠금이 0.45초(윈도우 0.2 + 잠금 0.25) → **0.25초**로 짧아졌다. 연타 방지는 그대로 동작(`parryWhiffLockSeconds`).
-- **판정량 하향** — `parryWindowPerLevelSeconds` 0.03 → **0.015**. 캡(5레벨) 기준 0.40 → 0.325초. 사용자가 5레벨에서 "너무 후하다"고 판단. 더 낮추면 띠가 굵어지는 게 안 보이므로 이 아래로는 신중히.
-- 테스트 2개 갱신 + 1개 추가 → EditMode **93/93**.
+- **판정량 하향 ①** — `parryWindowPerLevelSeconds` 0.03 → **0.015**. 캡(5레벨) 기준 0.40 → 0.325초.
+- **헛침 잠금** 0.25 → **0.35초**. 즉시 결판 모델에서는 이 값이 헛침 벌의 전부다(예전엔 윈도우를 다 기다린 뒤 잠금이 시작돼 실질 0.45초였다).
+
+**판정량 하향 ② — 스탯별 분배 비용** (사용자: "여전히 판정이 넓다")
+- **+PARRY 1레벨 = 2포인트**, +ATK/+DEF는 1포인트. `PlayerStatsConfig`에 `AttackPointCost/DefensePointCost/ParryPointCost`.
+- 폭 증가량을 더 깎지 않고 **비용**을 택한 이유: 폭을 깎으면 "PARRY를 찍었더니 띠가 굵어졌다"는 피드백이 사라진다. 판정 폭은 실수 자체를 없애 주므로 값이 같으면 언제나 최선의 선택이 되는 스탯이라, 값을 비싸게 매기는 쪽이 맞다.
+- `PlayerStats.IsAtCap(stat)` 추가 — **상한**과 **포인트 부족**을 구분해야 HUD가 MAX를 잘못 띄우지 않는다. 버튼에 `2P` 표시(`puzzle.alloc.cost`).
+- 더 조일 순서: `parryPointCost` 3 → 그래도 넓으면 `baseParryWindowSeconds`(0.25).
+
+**타일 배경판 (배선만, 아트는 사용자가 나중에)**
+- 아이콘만 있어 타일 경계가 안 읽히는 문제. `TileDefinitionSO`에 `backgroundSprite` + `backgroundColor`, `BoardView`에 공용 `tileBackgroundSprite` / `tileBackgroundScale`(1.05) / `backgroundOnWalls`.
+- 우선순위: 타일 전용 그림 → 공용 그림 → **그림이 없고 색만 있으면 사각형**. 알파 0이면 안 그리므로 **아무것도 안 하면 지금과 동일**하게 보인다(색만 넣어도 즉시 받침이 생긴다).
+- 받침은 `TileView`의 자식(sortingOrder −1)이라 **낙하·스왑을 따라 움직인다** — 고정된 배경 셀(−10)과 다르다.
+- `TileView.Create` 인자가 늘어 `TileView.Visual` 구조체로 묶었다.
+
+- 테스트 갱신·추가 → EditMode **94/94**.
 
 **캐릭터 특화** — `statsOverride`(설정 통째로 교체) 폐기, **가산 방식**으로 변경. 밸런스 원천을 `PlayerStatsConfigSO` 하나로 유지해야 기본값을 고칠 때 캐릭터 수만큼 따라 고치지 않는다.
 - `PlayerCharacterSO.ApplyBonuses(config)` — `bonusMaxHp` / `bonusDamageReduction` / `bonusAttackDamage` / `bonusParryWindowSeconds`. `GameManager.BuildStatsConfig()`가 공용 config를 만든 뒤 얹는다.
