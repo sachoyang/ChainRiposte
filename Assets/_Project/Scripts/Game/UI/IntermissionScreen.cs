@@ -13,15 +13,21 @@ namespace ChainRiposte.Game.UI
     ///
     /// <b>시간 제한이 없다.</b> 퍼즐은 보스 카운트다운으로 계속 쫓기는 구간이라,
     /// 성장을 결정하는 순간까지 쫓기면 피로해진다. 여기서만큼은 플레이어가 버튼을 눌러야 넘어간다.
-    /// 스탯 분배는 기존 퍼즐 HUD의 +ATK/+DEF/+PARRY 버튼을 그대로 쓴다 — 배우던 UI가 바뀌지 않는다.
+    ///
+    /// 스탯 분배(<see cref="StatAllocationPanel"/>)는 FIGHT 아래에 자식으로 붙어 이 페이즈에만 켜진다 —
+    /// 퍼즐 화면에는 버튼을 두지 않는다. 뒤의 퍼즐판은 살짝 어둡게 덮어 여기가 준비 시간임을 알린다.
     /// </summary>
     public sealed class IntermissionScreen : MonoBehaviour
     {
         [SerializeField] private GameManager gameManager;
 
         [Header("씬 참조 (빌더가 자동 배선)")]
-        [Tooltip("이 페이즈 동안만 켜지는 패널")]
+        [Tooltip("이 페이즈 동안만 켜지는 화면 전체 루트 (딤 + 아래 띠)")]
         [SerializeField] private GameObject panelRoot;
+        [Tooltip("뒤의 퍼즐판을 덮는 어둠. 여기가 준비 화면이라는 것을 한눈에 알리는 장치다.")]
+        [SerializeField] private Image dimOverlay;
+        [Tooltip("어둠의 세기. 퍼즐판이 비쳐 보일 정도로만 — 완전히 가리면 다음 판이 안 읽힌다.")]
+        [SerializeField] private Color dimColor = new(0f, 0f, 0f, 0.45f);
         [SerializeField] private TMP_Text titleText;
         [Tooltip("보스가 다가온다는 경고 + 업그레이드 재촉")]
         [SerializeField] private TMP_Text warningText;
@@ -102,6 +108,9 @@ namespace ChainRiposte.Game.UI
         {
             if (!panelRoot.activeSelf)
                 return;
+
+            if (dimOverlay != null)
+                dimOverlay.color = dimColor;
 
             if (titleText != null)
                 titleText.text = Loc.GetText("intermission.title");

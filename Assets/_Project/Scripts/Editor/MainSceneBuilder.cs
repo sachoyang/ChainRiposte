@@ -82,26 +82,13 @@ namespace ChainRiposte.Editor
             TMP_Text banner = EditorUiFactory.Text(root, "Banner", Vector2.zero, new Vector2(0.5f, 0.5f), 130f, TextAlignmentOptions.Center, new Vector2(1000f, 240f), FontStyles.Bold);
             banner.color = new Color(0.85f, 0.2f, 0.25f);
 
-            Button atk = EditorUiFactory.Button(root, "AllocAttack", new Vector2(-330f, 60f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(300f, 150f), PanelButtonColor, "+ATK", 40f, out _, out _);
-            Button def = EditorUiFactory.Button(root, "AllocDefense", new Vector2(0f, 60f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(300f, 150f), PanelButtonColor, "+DEF", 40f, out _, out _);
-            Button parry = EditorUiFactory.Button(root, "AllocParry", new Vector2(330f, 60f), new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(300f, 150f), PanelButtonColor, "+PARRY", 40f, out _, out _);
-
-            // 가로에서는 스탯 분배 버튼을 오른쪽 가장자리에 세로로 쌓는다 (보드 가림 최소화)
-            var rightEdge = new Vector2(1f, 0.5f);
-            var allocSize = new Vector2(280f, 120f);
-            EditorUiFactory.Orient(atk, rightEdge, rightEdge, new Vector2(-40f, 140f), allocSize);
-            EditorUiFactory.Orient(def, rightEdge, rightEdge, new Vector2(-40f, 0f), allocSize);
-            EditorUiFactory.Orient(parry, rightEdge, rightEdge, new Vector2(-40f, -140f), allocSize);
-
+            // 스탯 분배 버튼은 여기 없다 — 준비 화면(BuildIntermission)으로 옮겼다.
             var so = new SerializedObject(hud);
             Set(so, "hpText", hp);
             Set(so, "soulsText", souls);
             Set(so, "turnsText", turns);
             Set(so, "statsText", stats);
             Set(so, "bannerText", banner);
-            Set(so, "attackButton", atk);
-            Set(so, "defenseButton", def);
-            Set(so, "parryButton", parry);
             so.ApplyModifiedPropertiesWithoutUndo();
             EditorUtility.SetDirty(hud);
         }
@@ -262,56 +249,64 @@ namespace ChainRiposte.Editor
         // ── 보스 돌입 준비 ──
 
         /// <summary>
-        /// 화면 아래쪽만 덮는 얇은 띠로 만든다 — 위쪽 HUD의 +ATK/+DEF/+PARRY 버튼이 그대로 보여야
-        /// 플레이어가 여기서 스탯을 찍을 수 있다.
+        /// 화면 전체를 살짝 덮는 어둠 + 아래쪽 띠. 어둠은 "지금은 퍼즐이 아니라 준비 시간"임을
+        /// 한눈에 알리는 장치이고, 퍼즐판이 비쳐 보일 정도로만 깐다(다음 판을 눈으로 재야 하므로).
+        /// 스탯 분배 버튼 3개는 FIGHT 아래에 붙는다 — 퍼즐 화면에는 더 이상 두지 않는다.
         /// </summary>
         private static void BuildIntermission(IntermissionScreen screen)
         {
             Transform canvas = PrepareCanvas(screen.gameObject, 15);
 
-            RectTransform panel = EditorUiFactory.NewRect("Root", canvas);
+            // 화면 전체 루트 — 이 페이즈 동안 퍼즐 입력도 같이 막는다
+            Image dim = EditorUiFactory.Stretch(canvas, "Root", new Color(0f, 0f, 0f, 0.45f), raycast: true);
+            RectTransform root = dim.rectTransform;
+
+            RectTransform panel = EditorUiFactory.NewRect("Band", root);
             panel.anchorMin = new Vector2(0f, 0.5f);
             panel.anchorMax = new Vector2(1f, 0.5f);
             panel.pivot = new Vector2(0.5f, 0.5f);
-            panel.anchoredPosition = new Vector2(0f, 240f);
-            panel.sizeDelta = new Vector2(0f, 420f);
+            panel.anchoredPosition = new Vector2(0f, 120f);
+            panel.sizeDelta = new Vector2(0f, 700f);
             var backdrop = panel.gameObject.AddComponent<Image>();
             backdrop.sprite = EditorUiFactory.Square;
             backdrop.color = new Color(0.06f, 0.05f, 0.09f, 0.92f);
 
             TMP_Text title = EditorUiFactory.Text(
-                panel, "Title", new Vector2(0f, 120f), new Vector2(0.5f, 0.5f), 76f,
+                panel, "Title", new Vector2(0f, 260f), new Vector2(0.5f, 0.5f), 76f,
                 TextAlignmentOptions.Center, new Vector2(1000f, 110f), FontStyles.Bold);
             title.color = new Color(0.95f, 0.83f, 0.35f);
 
             TMP_Text warning = EditorUiFactory.Text(
-                panel, "Warning", new Vector2(0f, 40f), new Vector2(0.5f, 0.5f), 40f,
+                panel, "Warning", new Vector2(0f, 180f), new Vector2(0.5f, 0.5f), 40f,
                 TextAlignmentOptions.Center, new Vector2(1000f, 110f));
             warning.color = new Color(0.92f, 0.72f, 0.70f);
 
             TMP_Text points = EditorUiFactory.Text(
-                panel, "Points", new Vector2(0f, -40f), new Vector2(0.5f, 0.5f), 40f,
+                panel, "Points", new Vector2(0f, 100f), new Vector2(0.5f, 0.5f), 40f,
                 TextAlignmentOptions.Center, new Vector2(1000f, 70f));
 
             // 업그레이드 NPC — 성녀(왼쪽, 공/방)와 대장장이(오른쪽, 판정).
             // 성녀 그림은 고른 캐릭터가 런타임에 채우므로 여기서는 비워 둔다.
-            Image saint = NpcSlot(panel, "SaintNpc", new Vector2(-380f, 10f), out TextMeshProUGUI saintLabel,
+            Image saint = NpcSlot(panel, "SaintNpc", new Vector2(-380f, 150f), out TextMeshProUGUI saintLabel,
                 out NpcReaction saintReaction, "intermission.npc.saint", new Color(1f, 0.95f, 0.75f, 1f));
-            Image blacksmith = NpcSlot(panel, "BlacksmithNpc", new Vector2(380f, 10f), out TextMeshProUGUI smithLabel,
+            Image blacksmith = NpcSlot(panel, "BlacksmithNpc", new Vector2(380f, 150f), out TextMeshProUGUI smithLabel,
                 out NpcReaction smithReaction, "intermission.npc.blacksmith", new Color(1f, 0.72f, 0.35f, 1f));
 
             Button fight = EditorUiFactory.Button(
-                panel, "FightButton", new Vector2(0f, -150f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
+                panel, "FightButton", new Vector2(0f, 10f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
                 new Vector2(520f, 130f), AccentButtonColor, "intermission.fight", 56f,
                 out _, out TextMeshProUGUI fightLabel);
             EditorUiFactory.Localize(fightLabel, "intermission.fight");
 
-            // 가로에서는 화면 중앙에 조금 더 위로
+            BuildStatAllocation(panel);
+
+            // 가로에서는 띠를 조금 낮게
             EditorUiFactory.Orient(panel, new Vector2(0f, 0.5f), new Vector2(1f, 0.5f),
-                new Vector2(0f, 140f), new Vector2(0f, 340f));
+                new Vector2(0.5f, 0.5f), new Vector2(0f, 0f), new Vector2(0f, 620f));
 
             var so = new SerializedObject(screen);
-            Set(so, "panelRoot", panel.gameObject);
+            Set(so, "panelRoot", root.gameObject);
+            Set(so, "dimOverlay", dim);
             Set(so, "titleText", title);
             Set(so, "warningText", warning);
             Set(so, "pointsText", points);
@@ -361,6 +356,35 @@ namespace ChainRiposte.Editor
 
             return best;
         }
+
+        /// <summary>
+        /// 스탯 분배 버튼 3종. 준비 화면의 FIGHT <b>아래</b>에 붙는다 —
+        /// 퍼즐 중에는 보드만 보면 되고, 성장은 시간에 안 쫓기는 이 구간에서 정한다.
+        /// </summary>
+        private static void BuildStatAllocation(Transform panel)
+        {
+            RectTransform group = EditorUiFactory.NewRect("StatAllocation", panel);
+            group.anchorMin = group.anchorMax = group.pivot = new Vector2(0.5f, 0.5f);
+            group.anchoredPosition = new Vector2(0f, -160f);
+            group.sizeDelta = new Vector2(1000f, 170f);
+
+            Button atk = AllocButton(group, "AllocAttack", -330f, "+ATK");
+            Button def = AllocButton(group, "AllocDefense", 0f, "+DEF");
+            Button parry = AllocButton(group, "AllocParry", 330f, "+PARRY");
+
+            var allocation = group.gameObject.AddComponent<StatAllocationPanel>();
+            var so = new SerializedObject(allocation);
+            Set(so, "gameManager", Object.FindFirstObjectByType<ChainRiposte.Game.GameManager>());
+            Set(so, "attackButton", atk);
+            Set(so, "defenseButton", def);
+            Set(so, "parryButton", parry);
+            so.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        private static Button AllocButton(Transform parent, string name, float x, string placeholder) =>
+            EditorUiFactory.Button(
+                parent, name, new Vector2(x, 0f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
+                new Vector2(300f, 150f), PanelButtonColor, placeholder, 40f, out _, out _);
 
         /// <summary>
         /// NPC 자리 — 그림 + 이름표 + 강화 반응.

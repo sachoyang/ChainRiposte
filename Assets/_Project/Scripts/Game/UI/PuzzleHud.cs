@@ -5,14 +5,15 @@ using ChainRiposte.Core.Match;
 using ChainRiposte.Core.Stats;
 using TMPro;
 using UnityEngine;
-using UnityEngine.UI;
 
 namespace ChainRiposte.Game.UI
 {
     /// <summary>
-    /// 퍼즐 HUD. UI는 <b>씬에 실물로 배치</b>(TMP)하고 이 컴포넌트는 참조만 받아 갱신·버튼 처리만 한다.
+    /// 퍼즐 HUD. UI는 <b>씬에 실물로 배치</b>(TMP)하고 이 컴포넌트는 참조만 받아 갱신만 한다.
     /// 초기 레이아웃은 <c>Tools ▸ ChainRiposte ▸ Build Main Scene UI</c>로 생성 후 씬에서 편집.
-    /// Core 이벤트 구독으로만 갱신되고, 상태 변경은 스탯 분배 버튼뿐이다.
+    ///
+    /// <b>여기에는 버튼이 없다.</b> 스탯 분배는 준비 화면(<see cref="StatAllocationPanel"/>)으로 옮겼다 —
+    /// 퍼즐 중에는 보드를 보는 것이 전부이고, 성장은 시간에 안 쫓기는 구간에서 정하는 편이 낫다.
     /// </summary>
     public sealed class PuzzleHud : MonoBehaviour
     {
@@ -22,30 +23,12 @@ namespace ChainRiposte.Game.UI
         [SerializeField] private TMP_Text turnsText;
         [SerializeField] private TMP_Text statsText;
         [SerializeField] private TMP_Text bannerText;
-        [SerializeField] private Button attackButton;
-        [SerializeField] private Button defenseButton;
-        [SerializeField] private Button parryButton;
 
         private GameSession _session;
         private PuzzleEngine _engine;
         private string _bannerKey;
         private string _flashKey;
         private float _flashSeconds;
-
-        private void Awake()
-        {
-            if (attackButton == null || defenseButton == null || parryButton == null)
-            {
-                Debug.LogError($"{nameof(PuzzleHud)}: UI 참조가 비어 있습니다. " +
-                    "Tools ▸ ChainRiposte ▸ Build Main Scene UI 를 실행하세요.", this);
-                enabled = false;
-                return;
-            }
-
-            attackButton.onClick.AddListener(() => RequestAllocate(StatType.Attack));
-            defenseButton.onClick.AddListener(() => RequestAllocate(StatType.Defense));
-            parryButton.onClick.AddListener(() => RequestAllocate(StatType.Parry));
-        }
 
         private void OnDestroy() => Unbind();
 
@@ -135,15 +118,6 @@ namespace ChainRiposte.Game.UI
             bannerText.text = _bannerKey == null ? string.Empty : Loc.GetText(_bannerKey);
         }
 
-        private void RequestAllocate(StatType stat)
-        {
-            if (_session == null || !_session.Stats.CanAllocate(stat))
-                return;
-
-            _session.Stats.Allocate(stat);
-            RefreshSouls();
-        }
-
         private void RefreshAll()
         {
             RefreshHealth();
@@ -172,27 +146,6 @@ namespace ChainRiposte.Game.UI
             PlayerStats stats = _session.Stats;
             statsText.text = Loc.GetText(
                 "puzzle.stats", stats.AttackDamage, stats.DamageReduction, stats.ParryWindowSeconds);
-
-            SetButton(attackButton, "puzzle.alloc.attack", stats.GetStatLevel(StatType.Attack), StatType.Attack, stats);
-            SetButton(defenseButton, "puzzle.alloc.defense", stats.GetStatLevel(StatType.Defense), StatType.Defense, stats);
-            SetButton(parryButton, "puzzle.alloc.parry", stats.GetStatLevel(StatType.Parry), StatType.Parry, stats);
         }
-
-        private static void SetButton(Button button, string locKey, int level, StatType stat, PlayerStats stats)
-        {
-            // 상한에 걸린 것과 포인트가 모자란 것은 다르다 — 비용이 2 이상인 스탯이 생기면서 갈렸다.
-            string label = stats.IsAtCap(stat)
-                ? Loc.GetText(locKey + ".max")
-                : Loc.GetText(locKey, level);
-
-            // 값이 1보다 비싸면 얼마가 드는지 버튼에 적는다 — 안 적으면 왜 안 눌리는지 알 수 없다.
-            int cost = stats.GetPointCost(stat);
-            if (cost > 1 && !stats.IsAtCap(stat))
-                label += Loc.GetText("puzzle.alloc.cost", cost);
-
-            button.interactable = stats.CanAllocate(stat);
-            button.GetComponentInChildren<TMP_Text>().text = label;
-        }
-
     }
 }
