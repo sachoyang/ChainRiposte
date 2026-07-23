@@ -17,8 +17,24 @@ namespace ChainRiposte.Game.Puzzle
 
         public long TileId { get; private set; }
 
-        /// <param name="sprite">타일 아트. null이면 플레이스홀더 사각형 + color 착색으로 표시.</param>
-        public static TileView Create(Transform parent, Tile tile, Color color, Sprite sprite = null)
+        /// <summary>
+        /// 타일 하나를 그리는 데 필요한 그림 정보. 파라미터가 늘어날 때마다 호출부를 고치지 않으려고 묶었다.
+        /// </summary>
+        public struct Visual
+        {
+            /// <summary>타일 아트. null이면 플레이스홀더 사각형 + <see cref="Color"/> 착색.</summary>
+            public Sprite Sprite;
+            public Color Color;
+
+            /// <summary>아이콘 뒤에 깔리는 받침. null이거나 <see cref="BackgroundColor"/> 알파가 0이면 안 그린다.</summary>
+            public Sprite Background;
+            public Color BackgroundColor;
+
+            /// <summary>받침 크기 (1 = 아이콘과 같은 크기). 살짝 커야 받침으로 읽힌다.</summary>
+            public float BackgroundScale;
+        }
+
+        public static TileView Create(Transform parent, Tile tile, Visual visual)
         {
             var go = new GameObject($"Tile_{tile.Definition.Id}_{tile.InstanceId}");
             go.transform.SetParent(parent, false);
@@ -27,13 +43,34 @@ namespace ChainRiposte.Game.Puzzle
 
             var view = go.AddComponent<TileView>();
             view.TileId = tile.InstanceId;
+            view.CreateBackground(visual);
+
             view._renderer = go.AddComponent<SpriteRenderer>();
-            view._renderer.sprite = sprite != null ? sprite : PlaceholderSprite.Square;
-            view._baseColor = color;
+            view._renderer.sprite = visual.Sprite != null ? visual.Sprite : PlaceholderSprite.Square;
+            view._baseColor = visual.Color;
             view._maxHp = tile.Definition.MaxHp;
             view._remainingHp = tile.RemainingHp;
             view.RefreshColor();
             return view;
+        }
+
+        /// <summary>
+        /// 받침은 아이콘보다 <b>뒤에</b>(sortingOrder -1) 깔리고 타일과 함께 움직인다.
+        /// 배경 셀(고정, -10)과 달리 낙하·스왑을 따라가야 아이콘과 어긋나지 않는다.
+        /// </summary>
+        private void CreateBackground(Visual visual)
+        {
+            if (visual.Background == null || visual.BackgroundColor.a <= 0f)
+                return;
+
+            var go = new GameObject("Background");
+            go.transform.SetParent(transform, false);
+            go.transform.localScale = Vector3.one * (visual.BackgroundScale > 0f ? visual.BackgroundScale : 1f);
+
+            var renderer = go.AddComponent<SpriteRenderer>();
+            renderer.sprite = visual.Background;
+            renderer.color = visual.BackgroundColor;
+            renderer.sortingOrder = -1;
         }
 
         /// <summary>

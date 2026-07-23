@@ -37,6 +37,16 @@ namespace ChainRiposte.Game.Puzzle
         [Tooltip("사슬 결박 오버레이 아트 (비우면 회색 띠)")]
         [SerializeField] private Sprite chainSprite;
 
+        [Header("타일 배경판 — 아이콘만 있으면 타일 경계가 안 읽힌다")]
+        [Tooltip("타일 SO에 전용 배경이 없을 때 쓰는 공용 받침. 비워도 SO의 배경 색만 넣으면 사각 받침이 깔린다.")]
+        [SerializeField] private Sprite tileBackgroundSprite;
+        [Tooltip("받침 크기 (1 = 아이콘과 같은 크기). 살짝 커야 받침으로 읽힌다.")]
+        [SerializeField, Min(0.1f)] private float tileBackgroundScale = 1.05f;
+        [Tooltip("타일 SO가 배경 색을 안 정했을 때(알파 0) 대신 쓸 색. 여기도 알파가 0이면 받침을 안 그린다.")]
+        [SerializeField] private Color tileBackgroundColor = new(1f, 1f, 1f, 0f);
+        [Tooltip("벽에도 받침을 깔지 — 벽은 셀을 꽉 채우는 지형이라 보통은 필요 없다")]
+        [SerializeField] private bool backgroundOnWalls;
+
         [Header("배경 셀 (체커 2색)")]
         [SerializeField] private Color cellColorA = new(0.16f, 0.15f, 0.19f);
         [SerializeField] private Color cellColorB = new(0.13f, 0.12f, 0.16f);
@@ -52,6 +62,8 @@ namespace ChainRiposte.Game.Puzzle
         private readonly Dictionary<GridPos, TileView> _views = new();
         private readonly Dictionary<TileDefinition, Color> _colorByDefinition = new();
         private readonly Dictionary<TileDefinition, Sprite> _spriteByDefinition = new();
+        private readonly Dictionary<TileDefinition, Sprite> _backgroundByDefinition = new();
+        private readonly Dictionary<TileDefinition, Color> _backgroundColorByDefinition = new();
         private BoardGrid _board;
         private Transform _tileRoot;
         private Vector2 _originLocal; // (0,0) 셀의 로컬 위치 — 보드를 중앙 정렬
@@ -333,7 +345,14 @@ namespace ChainRiposte.Game.Puzzle
                 Destroy(stale.gameObject);
             }
 
-            var view = TileView.Create(_tileRoot, tile, color, sprite);
+            var view = TileView.Create(_tileRoot, tile, new TileView.Visual
+            {
+                Sprite = sprite,
+                Color = color,
+                Background = BackgroundFor(tile),
+                BackgroundColor = BackgroundColorFor(tile),
+                BackgroundScale = tileBackgroundScale,
+            });
             if (tile.Category == TileCategory.Wall && wallDamageSprites.Length > 0)
                 view.SetWallStages(wallDamageSprites);
             view.transform.localPosition = GridToLocal(pos);
@@ -366,10 +385,38 @@ namespace ChainRiposte.Game.Puzzle
             }
         }
 
+        /// <summary>
+        /// 타일 받침. 타일 SO가 전용 그림을 가지면 그것, 없으면 공용 그림,
+        /// 둘 다 없는데 색만 정해져 있으면 사각형 — <b>그림 없이 색만 넣어도 받침이 생긴다.</b>
+        /// </summary>
+        private Sprite BackgroundFor(Tile tile)
+        {
+            if (tile.Category == TileCategory.Wall && !backgroundOnWalls)
+                return null;
+
+            if (_backgroundByDefinition.TryGetValue(tile.Definition, out Sprite own) && own != null)
+                return own;
+
+            if (tileBackgroundSprite != null)
+                return tileBackgroundSprite;
+
+            return BackgroundColorFor(tile).a > 0f ? PlaceholderSprite.Square : null;
+        }
+
+        private Color BackgroundColorFor(Tile tile)
+        {
+            if (_backgroundColorByDefinition.TryGetValue(tile.Definition, out Color color) && color.a > 0f)
+                return color;
+
+            return tileBackgroundColor;
+        }
+
         private void BuildColorTable()
         {
             _colorByDefinition.Clear();
             _spriteByDefinition.Clear();
+            _backgroundByDefinition.Clear();
+            _backgroundColorByDefinition.Clear();
             foreach (TileDefinitionSO so in tileVisuals)
             {
                 if (so == null)
@@ -377,6 +424,9 @@ namespace ChainRiposte.Game.Puzzle
                 _colorByDefinition[so.ToDefinition()] = so.PlaceholderColor;
                 if (so.Sprite != null)
                     _spriteByDefinition[so.ToDefinition()] = so.Sprite;
+                if (so.BackgroundSprite != null)
+                    _backgroundByDefinition[so.ToDefinition()] = so.BackgroundSprite;
+                _backgroundColorByDefinition[so.ToDefinition()] = so.BackgroundColor;
             }
         }
 

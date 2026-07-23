@@ -19,9 +19,17 @@ namespace ChainRiposte.Game.Config
         [SerializeField] private Color placeholderColor = Color.white;
         [SerializeField] private Sprite sprite;
 
+        [Header("배경판 — 아이콘 뒤에 깔려 타일 경계를 읽히게 한다")]
+        [Tooltip("이 타일 전용 배경. 비우면 BoardView의 공용 배경을 쓴다.")]
+        [SerializeField] private Sprite backgroundSprite;
+        [Tooltip("배경판 색(틴트). 알파가 0이면 배경을 아예 그리지 않는다 — 그림 없이 색만 넣어도 받침이 생긴다.")]
+        [SerializeField] private Color backgroundColor = new(1f, 1f, 1f, 0f);
+
         public TileCategory Category => category;
         public Color PlaceholderColor => placeholderColor;
         public Sprite Sprite => sprite;
+        public Sprite BackgroundSprite => backgroundSprite;
+        public Color BackgroundColor => backgroundColor;
 
         private TileDefinition _cached;
 
