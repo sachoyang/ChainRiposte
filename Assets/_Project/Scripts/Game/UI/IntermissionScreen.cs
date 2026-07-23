@@ -1,4 +1,6 @@
 using ChainRiposte.Core.Flow;
+using ChainRiposte.Core.Stats;
+using ChainRiposte.Game.Characters;
 using ChainRiposte.Game.Localization;
 using TMPro;
 using UnityEngine;
@@ -27,13 +29,17 @@ namespace ChainRiposte.Game.UI
         [SerializeField] private TMP_Text pointsText;
         [SerializeField] private Button fightButton;
 
-        [Header("업그레이드 NPC — 스프라이트는 비워 두고 나중에 교체")]
-        [Tooltip("성녀 (방어·판정 계열을 봐 주는 느낌)")]
+        [Header("업그레이드 NPC")]
+        [Tooltip("성녀 — ATK/DEF를 올리면 반응한다. 그림은 고른 캐릭터를 따라간다.")]
         [SerializeField] private Image saintImage;
         [SerializeField] private TMP_Text saintLabel;
-        [Tooltip("대장장이 (공격 계열을 봐 주는 느낌)")]
+        [SerializeField] private NpcReaction saintReaction;
+        [Tooltip("캐릭터에 성녀 그림이 없을 때 쓸 기본 그림")]
+        [SerializeField] private Sprite fallbackSaintSprite;
+        [Tooltip("대장장이 — PARRY(판정)를 올리면 반응한다. 캐릭터와 무관하게 한 명.")]
         [SerializeField] private Image blacksmithImage;
         [SerializeField] private TMP_Text blacksmithLabel;
+        [SerializeField] private NpcReaction blacksmithReaction;
         [Tooltip("스프라이트가 비었을 때 자리를 보여 줄 색")]
         [SerializeField] private Color npcPlaceholderColor = new(0.30f, 0.28f, 0.38f, 1f);
 
@@ -69,7 +75,19 @@ namespace ChainRiposte.Game.UI
             _session.Stats.SoulsChanged -= OnSoulsChanged;
         }
 
-        private void OnStatAllocated(Core.Stats.StatType stat, int newLevel) => Refresh();
+        /// <summary>
+        /// 누가 강화해 줬는지를 몸짓으로 보여 준다 —
+        /// <b>성녀는 공격·방어</b>(축복), <b>대장장이는 판정</b>(무기를 벼려 패링 창을 넓힌다).
+        /// </summary>
+        private void OnStatAllocated(StatType stat, int newLevel)
+        {
+            NpcReaction reaction = stat == StatType.Parry ? blacksmithReaction : saintReaction;
+            if (reaction != null)
+                reaction.Play();
+
+            Refresh();
+        }
+
         private void OnSoulsChanged(int souls, int required) => Refresh();
 
         private void OnPhaseChanged(GamePhase previous, GamePhase next)
@@ -99,15 +117,29 @@ namespace ChainRiposte.Game.UI
                     : Loc.GetText("intermission.nopoints");
             }
 
-            RefreshNpc(saintImage, saintLabel, "intermission.npc.saint");
-            RefreshNpc(blacksmithImage, blacksmithLabel, "intermission.npc.blacksmith");
+            // 성녀는 고른 캐릭터를 따라온다. 캐릭터에 그림이 없으면 씬에 꽂아 둔 기본 성녀.
+            PlayerCharacterSO character = CharacterService.Current;
+            Sprite saint = character != null && character.SaintSprite != null
+                ? character.SaintSprite
+                : fallbackSaintSprite;
+            if (saintImage != null && saint != null)
+                saintImage.sprite = saint;
+
+            RefreshNpc(saintImage, saintLabel, saintReaction, "intermission.npc.saint");
+            RefreshNpc(blacksmithImage, blacksmithLabel, blacksmithReaction, "intermission.npc.blacksmith");
         }
 
         /// <summary>스프라이트를 아직 안 넣었어도 자리가 보이도록 플레이스홀더 색을 칠한다.</summary>
-        private void RefreshNpc(Image image, TMP_Text label, string locKey)
+        private void RefreshNpc(Image image, TMP_Text label, NpcReaction reaction, string locKey)
         {
             if (image != null)
+            {
                 image.color = image.sprite != null ? Color.white : npcPlaceholderColor;
+                // 반응이 되돌아갈 '쉬는 색'도 같이 옮겨 준다 — 안 하면 번쩍인 뒤 옛 색으로 돌아간다.
+                if (reaction != null)
+                    reaction.ResetRestColor(image.color);
+            }
+
             if (label != null)
                 label.text = Loc.GetText(locKey);
         }

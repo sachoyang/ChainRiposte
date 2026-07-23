@@ -128,14 +128,15 @@ namespace ChainRiposte.Editor
             var bossHome = new Vector2(250f, 420f);
             var playerHome = new Vector2(-230f, -180f);
 
-            // 패링 가능 구간 — 플레이어를 감싸는 연한 회색 원. 두께(스케일)는 런타임에 PARRY 스탯으로 정해진다.
+            // 패링 가능 구간 — 플레이어를 감싸는 연한 회색 '띠'.
+            // 흰 원이 이 띠에 겹쳐 있는 동안 누르면 패링이다. 두께는 런타임에 판정 폭으로 다시 그려진다.
             RectTransform band = EditorUiFactory.NewRect("ParryBand", root);
             band.anchorMin = band.anchorMax = new Vector2(0.5f, 0.5f);
             band.anchoredPosition = playerHome;
             band.sizeDelta = new Vector2(300f, 300f); // 플레이어 본체와 같은 크기 = 스케일 1이 타격 지점
             var bandImg = band.gameObject.AddComponent<Image>();
-            bandImg.sprite = ChainRiposte.Game.PlaceholderSprite.Ring;
-            bandImg.color = new Color(1f, 1f, 1f, 0.22f);
+            bandImg.sprite = ChainRiposte.Game.PlaceholderSprite.Annulus(0.73f); // 기본 판정 기준 두께
+            bandImg.color = new Color(1f, 1f, 1f, 0.15f);
             bandImg.raycastTarget = false;
 
             // 다가오는 노트 원의 복제 원본 — 개수가 채보로 정해지므로 CombatScreen이 필요한 만큼 복제한다
@@ -292,11 +293,12 @@ namespace ChainRiposte.Editor
                 panel, "Points", new Vector2(0f, -40f), new Vector2(0.5f, 0.5f), 40f,
                 TextAlignmentOptions.Center, new Vector2(1000f, 70f));
 
-            // 업그레이드 NPC — 좌우에 하나씩. 스프라이트는 비워 두고 나중에 교체한다.
+            // 업그레이드 NPC — 성녀(왼쪽, 공/방)와 대장장이(오른쪽, 판정).
+            // 성녀 그림은 고른 캐릭터가 런타임에 채우므로 여기서는 비워 둔다.
             Image saint = NpcSlot(panel, "SaintNpc", new Vector2(-380f, 10f), out TextMeshProUGUI saintLabel,
-                "intermission.npc.saint");
+                out NpcReaction saintReaction, "intermission.npc.saint", new Color(1f, 0.95f, 0.75f, 1f));
             Image blacksmith = NpcSlot(panel, "BlacksmithNpc", new Vector2(380f, 10f), out TextMeshProUGUI smithLabel,
-                "intermission.npc.blacksmith");
+                out NpcReaction smithReaction, "intermission.npc.blacksmith", new Color(1f, 0.72f, 0.35f, 1f));
 
             Button fight = EditorUiFactory.Button(
                 panel, "FightButton", new Vector2(0f, -150f), new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
@@ -316,27 +318,82 @@ namespace ChainRiposte.Editor
             Set(so, "fightButton", fight);
             Set(so, "saintImage", saint);
             Set(so, "saintLabel", saintLabel);
+            Set(so, "saintReaction", saintReaction);
             Set(so, "blacksmithImage", blacksmith);
             Set(so, "blacksmithLabel", smithLabel);
+            Set(so, "blacksmithReaction", smithReaction);
+
+            // 캐릭터와 무관한 그림은 여기서 기본값을 깔아 준다 — 씬에서 바꾸면 그게 이긴다.
+            Set(so, "fallbackSaintSprite", DotSprite("darksouls_saint"));
             so.ApplyModifiedPropertiesWithoutUndo();
+
+            Sprite smithSprite = DotSprite("blacksmith");
+            if (smithSprite != null)
+            {
+                blacksmith.sprite = smithSprite;
+                blacksmith.color = Color.white;
+            }
+
             EditorUtility.SetDirty(screen);
         }
 
-        /// <summary>NPC 자리 — 그림 + 이름표. 스프라이트는 비워 두고 씬에서 드래그로 넣는다.</summary>
-        private static Image NpcSlot(Transform parent, string name, Vector2 position, out TextMeshProUGUI label, string locKey)
+        /// <summary>DotImgs의 시트에서 가장 큰 조각(=본체)을 가져온다. 없으면 null.</summary>
+        private static Sprite DotSprite(string textureName)
         {
-            RectTransform rect = EditorUiFactory.NewRect(name, parent);
-            rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(0.5f, 0.5f);
-            rect.anchoredPosition = position;
-            rect.sizeDelta = new Vector2(180f, 180f);
+            Sprite best = null;
+            float bestArea = 0f;
 
-            var image = rect.gameObject.AddComponent<Image>();
-            image.sprite = EditorUiFactory.Square; // 스프라이트를 넣으면 교체된다
+            foreach (Object asset in AssetDatabase.LoadAllAssetsAtPath($"Assets/_Project/DotImgs/{textureName}.png"))
+            {
+                if (asset is not Sprite sprite)
+                    continue;
+
+                float area = sprite.rect.width * sprite.rect.height;
+                if (area > bestArea)
+                {
+                    bestArea = area;
+                    best = sprite;
+                }
+            }
+
+            if (best == null)
+                Debug.LogWarning($"[MainSceneBuilder] '{textureName}.png' 에서 스프라이트를 찾지 못했습니다.");
+
+            return best;
+        }
+
+        /// <summary>
+        /// NPC 자리 — 그림 + 이름표 + 강화 반응.
+        /// 스프라이트는 <b>비워 둔다</b>(그래야 IntermissionScreen이 자리 색으로 칠하고,
+        /// 성녀는 고른 캐릭터 그림으로 채운다). 이름표는 그림과 같이 움직이면 안 되므로 형제로 둔다.
+        /// </summary>
+        private static Image NpcSlot(
+            Transform parent, string name, Vector2 position,
+            out TextMeshProUGUI label, out NpcReaction reaction, string locKey, Color flash)
+        {
+            RectTransform slot = EditorUiFactory.NewRect(name, parent);
+            slot.anchorMin = slot.anchorMax = slot.pivot = new Vector2(0.5f, 0.5f);
+            slot.anchoredPosition = position;
+            slot.sizeDelta = new Vector2(280f, 260f);
+
+            RectTransform bodyRect = EditorUiFactory.NewRect("Body", slot);
+            bodyRect.anchorMin = bodyRect.anchorMax = bodyRect.pivot = new Vector2(0.5f, 0.5f);
+            bodyRect.anchoredPosition = new Vector2(0f, 20f);
+            bodyRect.sizeDelta = new Vector2(180f, 180f);
+
+            var image = bodyRect.gameObject.AddComponent<Image>();
             image.preserveAspect = true;
             image.raycastTarget = false;
 
+            reaction = bodyRect.gameObject.AddComponent<NpcReaction>();
+            var reactionSo = new SerializedObject(reaction);
+            Set(reactionSo, "body", bodyRect);
+            Set(reactionSo, "tintTarget", image);
+            reactionSo.FindProperty("flashColor").colorValue = flash;
+            reactionSo.ApplyModifiedPropertiesWithoutUndo();
+
             label = EditorUiFactory.Text(
-                rect, "Label", new Vector2(0f, -110f), new Vector2(0.5f, 0.5f), 32f,
+                slot, "Label", new Vector2(0f, -100f), new Vector2(0.5f, 0.5f), 32f,
                 TextAlignmentOptions.Center, new Vector2(280f, 50f));
             EditorUiFactory.Localize(label, locKey);
             return image;
