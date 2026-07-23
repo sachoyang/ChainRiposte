@@ -40,7 +40,65 @@
 
 > **다음 세션은 이 섹션을 먼저 읽고 시작한다.** 세션 종료 시 여기를 갱신할 것.
 
-### 마지막 갱신: 2026-07-22 (세션 5)
+### 마지막 갱신: 2026-07-23 (세션 6)
+
+- **커밋 규칙**: 메시지에 `Co-Authored-By: Claude` 트레일러를 넣지 않는다.
+- **git**: 세션 6 작업 커밋 완료(주제별 5개). push는 계속 안 하고 있음 — 필요하면 물어볼 것.
+- **테스트**: EditMode **93/93**.
+
+#### 다음 세션에서 가장 먼저 할 것
+
+1. **빌더 2종 재실행 확인** — `Build App Scenes` / `Build Main Scene UI`. 안 돌리면 캐릭터 선택 화면과 NPC 반응이 안 보인다.
+2. **대장장이 그림 배선 확인** — `IntermissionScreen` 인스펙터의 `blacksmithImage`. 코드가 안 채우는 유일한 NPC 그림이다.
+3. `Docs/VERIFICATION.md` **§8** 결과 물어보기.
+
+#### 세션 6에서 한 것
+
+**UI 에셋 — 추천만 (배선은 사용자가 직접)**
+- `Docs/UI_ASSETS.md` §2를 전면 개정. 요지: DEVNIK 팩은 밝은 카툰 톤이라 **회색 조각만 쓰고 색은 전부 우리 팔레트로 틴트**한다. 컬러 아이콘·초록 `btn_pill`은 곱하기 틴트가 안 먹으니 회색조 사본을 떠야 한다. 픽셀 뭉개짐(`Sliced` + `pixelsPerUnitMultiplier`), 9슬라이스 border에 그림자 포함, 전투 버튼은 **일부러 마지막에 어둡게**(시선이 패링 원에 있어야 함).
+
+**캐릭터 선택 (신규)** — 타이틀 ▸ 새 게임에서 1회 선택
+- `Game/Characters/PlayerCharacterSO` — 캐릭터 1명 = 에셋 1개. id(세이브 키, 비우면 에셋 이름 폴백) + 이름/설명 로컬 키 + 초상화/전투그림/**성녀그림** + 특화 가산치 4종.
+- `Game/Characters/CharacterService` — 목록은 `Resources/Characters` 스캔, 선택은 PlayerPrefs(`ChainRiposte.Character.v1`). **캐릭터를 늘리려면 에셋만 추가하면 된다** — 코드도 씬 빌더도 안 건드림.
+- `Game/UI/CharacterSelectPanel` — 카드 개수가 데이터로 정해지므로 씬의 템플릿 카드를 복제(옵션의 언어 버튼과 같은 규칙). 카드 안에서 `Portrait`/`Name` 을 **이름으로** 찾으므로 씬에서 카드 모양을 바꿔도 계속 붙는다.
+- `TitleController` — 새 게임 확인 → 캐릭터 선택 → 그때서야 `ProgressService.ResetAll()`. **캐릭터가 1명 이하면 선택 화면을 건너뛴다.**
+- `Editor/CharacterAssetsMenu` — `Tools ▸ ChainRiposte ▸ Create Default Characters`. 기사(`player_knight`+`darksouls_saint`) / 낭인(`player_sekiro`+`sekiro_shaman`) 2종 생성. **재실행해도 비어 있는 슬롯만 채운다**(손으로 고친 값 보존).
+- `CombatScreen` — 플레이어 그림은 고른 캐릭터 우선, 없으면 인스펙터 값(Main 단독 실행용).
+
+**패링 띠 재정의 (사용자 지적 → 버그 수정)**
+- 증상: "회색 원과 흰 원이 겹치는 순간이 패링 타이밍이 아니다". 원인은 회색이 **얇은 원 하나**였고 그 반지름이 `1 + 윈도우×속도`, 즉 **판정이 열리는 가장 이른 순간**이었던 것. 겹침 = 판정 시작이지 타격 시점이 아니었다.
+- 이제 회색은 **두께 있는 띠**이고 그 범위가 곧 판정 범위다: 바깥 `1 + 윈도우×속도`(가장 이른 성공), 안쪽 `1 - 유예×속도`(가장 늦은 성공). **흰 원이 띠에 겹쳐 있는 동안 누르면 반드시 된다.**
+- `PlaceholderSprite.Annulus(innerRatio)` 신규(비율별 캐시, 기존 `Ring`은 innerRatio 0.88로 모양 동일) + `CombatSystem.ParryLateGraceSeconds` 노출.
+- 두께를 판정에서 계산하므로 **보이는 것과 판정이 어긋날 수 없다** — PARRY를 올리면 실제로 굵어진다. 알파 0.22 → 0.15. 실제 아트로 갈아 끼울 땐 `CombatScreen ▸ generateBandSprite` 를 끌 것.
+
+**패링 즉시 결판 (사용자 지적 → 모델 변경)**
+- 증상: "판정 안에서 눌러도 원이 최소로 줄어드는 것까지 본 뒤에야 판정이 난다". 이 장르는 누른 즉시 반응이 나오고 그 공격이 사라져야 한다.
+- **`PlayerActionState.Parrying` 제거.** 예전 모델은 "누르면 판정치(초) 동안 자세를 유지하고, 타격이 그 안에 들어오면 성공"이었다(`ResolveStrike`가 Parrying을 보고 판정). 지금은 `PressParry()`가 **그 자리에서** `[타격−윈도우, 타격+유예]` 안의 가장 임박한 노트를 찾아 즉시 `ParryNote`, 없으면 즉시 헛침 잠금.
+- `ParryNote`가 `RebuildActiveNotes()`를 호출해 **막은 노트가 그 프레임에 목록에서 빠진다** — 흰 원이 다음 Tick을 기다리지 않고 사라진다.
+- 부작용: 헛침 총 잠금이 0.45초(윈도우 0.2 + 잠금 0.25) → **0.25초**로 짧아졌다. 연타 방지는 그대로 동작(`parryWhiffLockSeconds`).
+- **판정량 하향** — `parryWindowPerLevelSeconds` 0.03 → **0.015**. 캡(5레벨) 기준 0.40 → 0.325초. 사용자가 5레벨에서 "너무 후하다"고 판단. 더 낮추면 띠가 굵어지는 게 안 보이므로 이 아래로는 신중히.
+- 테스트 2개 갱신 + 1개 추가 → EditMode **93/93**.
+
+**캐릭터 특화** — `statsOverride`(설정 통째로 교체) 폐기, **가산 방식**으로 변경. 밸런스 원천을 `PlayerStatsConfigSO` 하나로 유지해야 기본값을 고칠 때 캐릭터 수만큼 따라 고치지 않는다.
+- `PlayerCharacterSO.ApplyBonuses(config)` — `bonusMaxHp` / `bonusDamageReduction` / `bonusAttackDamage` / `bonusParryWindowSeconds`. `GameManager.BuildStatsConfig()`가 공용 config를 만든 뒤 얹는다.
+- 기사 = HP+12, DEF+1.0 / 낭인 = ATK+1.5, PARRY+0.015초. **대략 반 레벨씩** — 고르는 재미는 주되 정답이 생기면 안 된다는 기준. 수치는 `Character_*.asset` 인스펙터에서 바로 조절.
+
+**NPC 반응**
+- **담당을 뒤집었다** — 성녀 = **공격·방어**(축복), 대장장이 = **판정/PARRY**(무기를 벼려 패링 창을 넓힌다). 이전 코드 주석과 반대이므로 주의.
+- `Game/UI/NpcReaction` — 정지 그림뿐이라 **코드로** 튀어오르고 번쩍인다(스케일 펀치 + 홉 + 틴트). `animator` 슬롯을 채우면 그쪽이 우선하므로 **스프라이트 시트가 생겨도 이 스크립트를 지울 필요 없다.**
+- `IntermissionScreen` — `StatAllocated`에서 Parry면 대장장이, 아니면 성녀. 성녀 그림은 `CharacterService.Current.SaintSprite` → 없으면 `fallbackSaintSprite`. **대장장이 그림은 코드가 안 채운다**(캐릭터 무관, 인스펙터에서 직접).
+- NPC 자리 구조가 바뀜: `SaintNpc/Body`(Image + NpcReaction) + `SaintNpc/Label`. 이름표가 그림과 같이 튀지 않도록 형제로 분리.
+
+**현지화** — `character.select.title/confirm`, `character.knight(.desc)`, `character.sekiro(.desc)` 를 CSV와 `LocalizationMenu.StarterCsv()` 양쪽에 추가.
+
+#### 세션 6 다음 후보
+
+- **플레이어 선택을 더 키우기** (사용자가 "나중에 더 ㄱㄱ") — 캐릭터 3번째 추가, 전용 시작 스킬/패시브, 캐릭터별 전용 성녀 대사 등. 지금 구조에서는 에셋 추가 + 가산치 조절만으로 붙는다.
+- UI 에셋 배선(사용자가 직접), NPC 스프라이트 시트 → Animator 전환, Boss_02 채보, 채보 미리듣기, 사운드 클립.
+
+---
+
+### 세션 5 갱신: 2026-07-22
 
 - **커밋 규칙**: 메시지에 `Co-Authored-By: Claude` 트레일러를 넣지 않는다.
 - **git**: 세션 5 작업 전부 커밋 완료. 원격 `origin`(GitHub) 있으나 **push는 계속 안 하고 있음** — 필요하면 물어볼 것.
@@ -50,7 +108,7 @@
 
 1. **빌더 3종 재실행이 됐는지 확인.** 세션 5에서 씬 구조가 크게 바뀌어서, 안 돌리면 새 UI가 안 보인다.
    `Build Main Scene UI` / `Build StageSelect Layout` / `Build App Scenes`
-2. **미검증분 물어보기** — `Docs/VERIFICATION.md` §8이 세션 5 몫이다.
+2. **미검증분 물어보기** — `Docs/VERIFICATION.md` §7이 세션 5 몫이다. (세션 5 검증은 2026-07-23에 완료됨)
 3. 그 다음 방향은 아래 「남은 일」에서 사용자와 고를 것.
 
 #### 세션 5에서 한 것 (커밋 순)
