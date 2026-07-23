@@ -89,7 +89,12 @@
 - `Game/UI/StatAllocationPanel` 신규 — +ATK/+DEF/+PARRY 버튼 묶음 + 분배 로직. `IntermissionScreen`의 자식(FIGHT 아래)으로 살고 그 페이즈에만 켜진다. `PuzzleHud`에서 버튼 필드·분배 로직 전부 제거(HP·영혼석·턴·현재 수치 표시만 남음).
 - 준비 화면 구조 변경: `Root`(화면 전체 딤, raycast로 퍼즐 입력 차단) → `Band`(아래쪽 띠, 높이 420→700). `IntermissionScreen ▸ dimColor` 기본 검정 알파 0.45 — **판이 비쳐 보일 정도로만** (다음 판을 눈으로 재야 한다).
 - ⚠ **`Build Main Scene UI` 재실행 필수.** 안 하면 퍼즐 화면에 옛 버튼이 배선 끊긴 채 남는다.
-- 사용자 메모: "나중에 UI 확장할 것" — 지금은 버튼만 옮긴 상태.
+- **준비 화면 = 상점 느낌** (사용자 요청). 딤에 가려 HUD가 안 읽히므로 띠 안에 **체력 / Lv·영혼석·포인트 / 현재 공격·방어·패링**을 다시 적는다(기존 `puzzle.hp`·`puzzle.souls`·`puzzle.stats` 키 재사용). 남은 포인트는 금색 볼드. 띠 알파 0.88로 뒤 판이 어렴풋이 비친다. 배치: 제목 → 경고 → 현황 3줄 → 포인트 → NPC 2명 → FIGHT → **분배 버튼 3개(FIGHT 아래)**.
+- 사용자 메모: "나중에 UI 확장할 것" — 지금은 필요한 숫자만 올려 둔 상태.
+
+**월드맵 버그 — 잠긴 노드를 누른 뒤 원래 스테이지로 못 돌아감 (사용자 보고)**
+- `Update`가 `nearest == _currentIndex`면 그냥 return 했다. 그래서 1-1에서 1-2(잠김)를 눌러 `ShowLocked`(START 비활성)가 뜬 뒤에는 **1-1을 다시 눌러도 아무 일이 없어 START를 되살릴 방법이 없었다.**
+- 서 있는 노드를 다시 누르면 `ShowInfo(_currentIndex)`로 정보 패널을 되살리도록 수정.
 
 **타일 배경판 (배선만, 아트는 사용자가 나중에)**
 - 아이콘만 있어 타일 경계가 안 읽히는 문제. `TileDefinitionSO`에 `backgroundSprite` + `backgroundColor`, `BoardView`에 공용 `tileBackgroundSprite` / `tileBackgroundScale`(1.05) / `backgroundOnWalls`.
