@@ -24,4 +24,4 @@ MonoBehaviour:
   parryLateGraceSeconds: 0.12
   parryLevelHardCap: 5
   attackCommitSeconds: 0.4
-  parryWhiffLockSeconds: 0.25
+  parryWhiffLockSeconds: 0.35

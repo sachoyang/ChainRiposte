@@ -39,7 +39,11 @@ namespace ChainRiposte.Core.Stats
         /// <summary>공격 커밋 시간 — 이 동안 패링 불가, 끝나는 순간 타격 (리스크/리턴).</summary>
         public float AttackCommitSeconds = 0.4f;
 
-        /// <summary>패링 헛침 후딜레이 — 연타로 판정을 도배하는 것을 막는다.</summary>
-        public float ParryWhiffLockSeconds = 0.25f;
+        /// <summary>
+        /// 패링 헛침 후딜레이 — 연타로 판정을 도배하는 것을 막는다.
+        /// 누른 순간 성공/실패가 결판나므로 이 값이 헛침 벌의 <b>전부</b>다
+        /// (예전에는 윈도우를 다 기다린 뒤에 잠금이 시작돼 실질 벌이 더 길었다).
+        /// </summary>
+        public float ParryWhiffLockSeconds = 0.35f;
     }
 }

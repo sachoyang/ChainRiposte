@@ -257,7 +257,7 @@
       (원이 끝까지 줄어드는 것을 보고 있지 않아도 되는지)
 - [ ] 흰 원이 **띠에 겹쳐 있는 동안** 누르면 되는지 — 특히 **띠 안쪽 끝**에서도
 - [ ] 띠보다 **바깥**에서 미리 누르면 실패하고, **잠깐 잠겨서 연타가 안 되는지**
-      (헛침 잠금 0.25초 — `PlayerStatsConfig ▸ parryWhiffLockSeconds`)
+      (헛침 잠금 0.35초 — `PlayerStatsConfig ▸ parryWhiffLockSeconds`)
 - [ ] 흰 원이 띠를 **완전히 지나간 뒤** 누르면 실패하는지
 - [ ] Flurry 3연타에서 **세 번 따로** 눌러야 하고, 한 번 누를 때마다 원이 하나씩 사라지는지
 - [ ] 회색이 너무 진하거나 흐리지 않은지 (`CombatScreen ▸ parryBandColor`, 기본 알파 0.15)

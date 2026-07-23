@@ -36,8 +36,8 @@ namespace ChainRiposte.Game.Config
         [Header("전투 템포 (7단계)")]
         [Tooltip("공격 커밋 시간 — 이 동안 패링 불가, 끝나는 순간 타격")]
         [SerializeField, Min(0f)] private float attackCommitSeconds = 0.4f;
-        [Tooltip("패링 헛침 후딜레이 — 연타 방지")]
-        [SerializeField, Min(0f)] private float parryWhiffLockSeconds = 0.25f;
+        [Tooltip("패링 헛침 후딜레이 — 연타 방지. 누른 순간 결판나므로 이 값이 헛침 벌의 전부다")]
+        [SerializeField, Min(0f)] private float parryWhiffLockSeconds = 0.35f;
 
         public PlayerStatsConfig ToConfig() => new()
         {
