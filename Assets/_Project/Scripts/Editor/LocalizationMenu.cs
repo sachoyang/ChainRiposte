@@ -581,6 +581,14 @@ namespace ChainRiposte.Editor
             Row(builder, "intermission.points", "남은 포인트 {0}점 — 지금 분배하세요", "{0} POINT(S) TO SPEND");
             Row(builder, "intermission.nopoints", "준비되면 시작하세요", "READY WHEN YOU ARE");
             Row(builder, "intermission.fight", "전투 시작", "FIGHT");
+            Row(builder, "character.select.title", "캐릭터 선택", "CHOOSE YOUR CHARACTER");
+            Row(builder, "character.select.confirm", "이 캐릭터로 시작", "START AS THIS ONE");
+            Row(builder, "character.knight", "기사", "KNIGHT");
+            Row(builder, "character.knight.desc", "체력과 방어가 조금 더 높다. 성녀가 곁을 지킨다.",
+                "A little more health and defense. A saint watches over them.");
+            Row(builder, "character.sekiro", "낭인", "WANDERER");
+            Row(builder, "character.sekiro.desc", "공격과 패링 판정이 조금 더 넓다. 무녀가 곁을 지킨다.",
+                "A little more attack and a wider parry. A shrine maiden watches over them.");
             Row(builder, "puzzle.countdown", "{0}초|{1}턴", "{0}s|{1}t");
 
             // 전투

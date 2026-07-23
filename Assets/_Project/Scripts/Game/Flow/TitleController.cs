@@ -1,5 +1,6 @@
 using ChainRiposte.Game.Localization;
 using ChainRiposte.Game.Progress;
+using ChainRiposte.Game.UI;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -29,6 +30,9 @@ namespace ChainRiposte.Game.Flow
         [SerializeField] private Button confirmYesButton;
         [SerializeField] private Button confirmNoButton;
 
+        [Header("캐릭터 선택 (비우거나 캐릭터가 하나뿐이면 건너뛴다)")]
+        [SerializeField] private CharacterSelectPanel characterSelect;
+
         private void Awake()
         {
             if (continueButton == null || newGameButton == null)
@@ -55,6 +59,12 @@ namespace ChainRiposte.Game.Flow
             if (confirmNoButton != null)
                 confirmNoButton.onClick.AddListener(() => SetActive(confirmPanel, false));
 
+            if (characterSelect != null)
+            {
+                characterSelect.Chosen += _ => StartNewGame();
+                characterSelect.Cancelled += () => characterSelect.gameObject.SetActive(false);
+            }
+
             SetActive(optionsPanel, false);
             SetActive(confirmPanel, false);
         }
@@ -73,7 +83,7 @@ namespace ChainRiposte.Game.Flow
         {
             if (!HasSave || confirmPanel == null)
             {
-                StartNewGame();
+                AfterNewGameConfirmed();
                 return;
             }
 
@@ -81,8 +91,25 @@ namespace ChainRiposte.Game.Flow
                 confirmText.text = Loc.GetText("title.newgame.confirm");
 
             confirmYesButton.onClick.RemoveAllListeners();
-            confirmYesButton.onClick.AddListener(StartNewGame);
+            confirmYesButton.onClick.AddListener(AfterNewGameConfirmed);
             SetActive(confirmPanel, true);
+        }
+
+        /// <summary>
+        /// 진행도를 지우기로 한 뒤. 고를 캐릭터가 둘 이상이면 여기서 고르게 하고,
+        /// 하나뿐이면 굳이 화면을 띄우지 않는다 (선택지 없는 선택 화면은 방해일 뿐이다).
+        /// </summary>
+        private void AfterNewGameConfirmed()
+        {
+            SetActive(confirmPanel, false);
+
+            if (characterSelect != null && CharacterSelectPanel.IsNeeded)
+            {
+                characterSelect.Open();
+                return;
+            }
+
+            StartNewGame();
         }
 
         private static void StartNewGame()

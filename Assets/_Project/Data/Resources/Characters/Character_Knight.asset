@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d40bf7d54e90e194bae086b432ebc87e, type: 3}
+  m_Name: Character_Knight
+  m_EditorClassIdentifier: ChainRiposte.Game::ChainRiposte.Game.Characters.PlayerCharacterSO
+  characterId: knight
+  nameKey: character.knight
+  descriptionKey: character.knight.desc
+  sortOrder: 0
+  portrait: {fileID: 0}
+  combatSprite: {fileID: 5037631765875594351, guid: abaf3914218e9af45ba8585dced8592c, type: 3}
+  saintSprite: {fileID: -3242487531188796878, guid: fd65b623a2c1073448549f6fb9ca2d38, type: 3}
+  bonusMaxHp: 12
+  bonusDamageReduction: 1
+  bonusAttackDamage: 0
+  bonusParryWindowSeconds: 0

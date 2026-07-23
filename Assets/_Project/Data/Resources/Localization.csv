@@ -65,3 +65,9 @@ puzzle.banner.intermission,보스 돌입 준비,BOSS INCOMING
 intermission.warning,"위에서 보스가 다가오고 있습니다!\n필요한 능력치를 올리세요","THE BOSS IS CLOSING IN!\nSpend your points now"
 intermission.npc.saint,성녀,SAINT
 intermission.npc.blacksmith,대장장이,BLACKSMITH
+character.select.title,캐릭터 선택,CHOOSE YOUR CHARACTER
+character.select.confirm,이 캐릭터로 시작,START AS THIS ONE
+character.knight,기사,KNIGHT
+character.knight.desc,"체력과 방어가 조금 더 높다. 성녀가 곁을 지킨다.","A little more health and defense. A saint watches over them."
+character.sekiro,낭인,WANDERER
+character.sekiro.desc,"공격과 패링 판정이 조금 더 넓다. 무녀가 곁을 지킨다.","A little more attack and a wider parry. A shrine maiden watches over them."

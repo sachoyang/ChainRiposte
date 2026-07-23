@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d40bf7d54e90e194bae086b432ebc87e, type: 3}
+  m_Name: Character_Sekiro
+  m_EditorClassIdentifier: ChainRiposte.Game::ChainRiposte.Game.Characters.PlayerCharacterSO
+  characterId: sekiro
+  nameKey: character.sekiro
+  descriptionKey: character.sekiro.desc
+  sortOrder: 1
+  portrait: {fileID: 0}
+  combatSprite: {fileID: -5854442186229547440, guid: d347dbf99bf68e442968b889e751c7b0, type: 3}
+  saintSprite: {fileID: 8195546328963567565, guid: 79eded66c4a84d849a7bf068a6b756e6, type: 3}
+  bonusMaxHp: 0
+  bonusDamageReduction: 0
+  bonusAttackDamage: 1.5
+  bonusParryWindowSeconds: 0.015

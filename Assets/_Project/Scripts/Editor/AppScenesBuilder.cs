@@ -111,6 +111,7 @@ namespace ChainRiposte.Editor
             BuildConfirmPanel(canvas, "ConfirmPanel", out GameObject confirmPanel, out TMP_Text confirmText,
                 out Button yesButton, out Button noButton);
             GameObject optionsPanel = BuildOptionsPanel(canvas);
+            CharacterSelectPanel characterSelect = BuildCharacterSelectPanel(canvas);
 
             var controllerGo = new GameObject("TitleController", typeof(TitleController));
             SceneManager.MoveGameObjectToScene(controllerGo, scene);
@@ -124,7 +125,82 @@ namespace ChainRiposte.Editor
             so.FindProperty("confirmText").objectReferenceValue = confirmText;
             so.FindProperty("confirmYesButton").objectReferenceValue = yesButton;
             so.FindProperty("confirmNoButton").objectReferenceValue = noButton;
+            so.FindProperty("characterSelect").objectReferenceValue = characterSelect;
             so.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        /// <summary>
+        /// 새 게임에서 캐릭터를 고르는 화면. 카드 개수는 Resources/Characters 의 에셋 수로 정해지므로
+        /// 여기서는 <b>템플릿 카드 하나</b>만 만들고 런타임에 복제한다 (옵션의 언어 버튼과 같은 방식).
+        /// </summary>
+        private static CharacterSelectPanel BuildCharacterSelectPanel(Transform canvas)
+        {
+            Image backdrop = EditorUiFactory.Stretch(canvas, "CharacterSelectPanel", new Color(0.05f, 0.04f, 0.07f, 0.97f), raycast: true);
+            GameObject panel = backdrop.gameObject;
+            var select = panel.AddComponent<CharacterSelectPanel>();
+
+            // 제목은 패널이 Loc.GetText로 채운다 — LocalizedText를 붙이면 서로 덮어쓴다.
+            TextMeshProUGUI title = EditorUiFactory.Text(
+                panel.transform, "Title", new Vector2(0f, -160f), new Vector2(0.5f, 1f), 72f,
+                TextAlignmentOptions.Center, new Vector2(1000f, 100f), FontStyles.Bold);
+            title.text = "CHOOSE";
+
+            RectTransform cardParent = EditorUiFactory.NewRect("Cards", panel.transform);
+            cardParent.anchorMin = cardParent.anchorMax = cardParent.pivot = new Vector2(0.5f, 0.5f);
+            cardParent.anchoredPosition = new Vector2(0f, 120f);
+            cardParent.sizeDelta = new Vector2(980f, 620f);
+            var layout = cardParent.gameObject.AddComponent<HorizontalLayoutGroup>();
+            layout.childAlignment = TextAnchor.MiddleCenter;
+            layout.spacing = 40f;
+            layout.childForceExpandWidth = false;
+            layout.childForceExpandHeight = false;
+
+            Button card = EditorUiFactory.Button(
+                cardParent, "CardTemplate", Vector2.zero, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
+                new Vector2(400f, 560f), ButtonColor, string.Empty, 44f, out Image _, out TextMeshProUGUI cardLabel);
+
+            // 기본 라벨을 이름표로 삼는다 — 패널이 이름으로 찾으므로 "Name" 이어야 한다.
+            cardLabel.gameObject.name = "Name";
+            var nameRect = (RectTransform)cardLabel.transform;
+            nameRect.anchorMin = new Vector2(0f, 0f);
+            nameRect.anchorMax = new Vector2(1f, 0f);
+            nameRect.pivot = new Vector2(0.5f, 0f);
+            nameRect.offsetMin = new Vector2(0f, 30f);
+            nameRect.offsetMax = new Vector2(0f, 120f);
+
+            RectTransform portraitRect = EditorUiFactory.NewRect("Portrait", card.transform);
+            portraitRect.anchorMin = portraitRect.anchorMax = portraitRect.pivot = new Vector2(0.5f, 0.5f);
+            portraitRect.anchoredPosition = new Vector2(0f, 50f);
+            portraitRect.sizeDelta = new Vector2(300f, 380f);
+            var portrait = portraitRect.gameObject.AddComponent<Image>();
+            portrait.preserveAspect = true;
+            portrait.raycastTarget = false;
+
+            TextMeshProUGUI description = EditorUiFactory.Text(
+                panel.transform, "Description", new Vector2(0f, 340f), new Vector2(0.5f, 0f), 38f,
+                TextAlignmentOptions.Center, new Vector2(900f, 140f));
+
+            Button confirm = EditorUiFactory.Button(
+                panel.transform, "ConfirmButton", new Vector2(0f, 200f), new Vector2(0.5f, 0f),
+                new Vector2(0.5f, 0.5f), new Vector2(460f, 130f), AccentColor,
+                "character.select.confirm", 52f, out Image _, out TextMeshProUGUI confirmLabel);
+            Localize(confirmLabel, "character.select.confirm");
+
+            Button back = EditorUiFactory.Button(
+                panel.transform, "BackButton", new Vector2(0f, 70f), new Vector2(0.5f, 0f),
+                new Vector2(0.5f, 0.5f), new Vector2(360f, 110f), ButtonColor,
+                "common.back", 44f, out Image _, out TextMeshProUGUI backLabel);
+            Localize(backLabel, "common.back");
+
+            var so = new SerializedObject(select);
+            so.FindProperty("titleText").objectReferenceValue = title;
+            so.FindProperty("cardParent").objectReferenceValue = cardParent;
+            so.FindProperty("cardTemplate").objectReferenceValue = card;
+            so.FindProperty("descriptionText").objectReferenceValue = description;
+            so.FindProperty("confirmButton").objectReferenceValue = confirm;
+            so.FindProperty("backButton").objectReferenceValue = back;
+            so.ApplyModifiedPropertiesWithoutUndo();
+            return select;
         }
 
         /// <summary>옵션 패널. 항목은 위에서부터 볼륨 2개 → 화면 방향 → 언어 → 진행도 초기화 순.</summary>

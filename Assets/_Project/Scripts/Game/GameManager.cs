@@ -41,13 +41,30 @@ namespace ChainRiposte.Game
             ProgressService.MarkAttempted(stageData.StageId);
 
             StageConfig = stageData.ToConfig();
-            Session = new GameSession(statsConfig.ToConfig());
+            Session = new GameSession(BuildStatsConfig());
             Session.PhaseChanged += OnPhaseChanged;
         }
 
         private void Start()
         {
             Session.StartPuzzle();
+        }
+
+        /// <summary>
+        /// 공용 밸런스 + 고른 캐릭터의 특화. 캐릭터가 없으면(Main 단독 실행 등) 공용 값 그대로다.
+        /// </summary>
+        private Core.Stats.PlayerStatsConfig BuildStatsConfig()
+        {
+            Core.Stats.PlayerStatsConfig config = statsConfig.ToConfig();
+
+            Characters.PlayerCharacterSO character = Characters.CharacterService.Current;
+            if (character != null && character.HasBonuses)
+            {
+                character.ApplyBonuses(config);
+                Debug.Log($"[GameManager] 캐릭터 '{character.CharacterId}' 특화 적용.");
+            }
+
+            return config;
         }
 
         private void OnDestroy()
