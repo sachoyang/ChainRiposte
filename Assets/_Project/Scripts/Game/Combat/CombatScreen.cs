@@ -25,8 +25,10 @@ namespace ChainRiposte.Game.Combat
         [Header("패링 타이밍 원")]
         [Tooltip("다가오는 노트를 나타내는 원의 색")]
         [SerializeField] private Color noteRingColor = Color.white;
-        [Tooltip("패링 가능 구간을 나타내는 띠의 색 — 연한 회색")]
-        [SerializeField] private Color parryBandColor = new(1f, 1f, 1f, 0.22f);
+        [Tooltip("패링 가능 구간을 나타내는 띠의 색 — 흰 원이 이 위에 겹치면 패링이 된다. 연하게 깔아 둘 것.")]
+        [SerializeField] private Color parryBandColor = new(1f, 1f, 1f, 0.15f);
+        [Tooltip("띠 두께를 판정 폭에 맞춰 자동으로 다시 그린다. 실제 아트를 꽂았다면 끌 것.")]
+        [SerializeField] private bool generateBandSprite = true;
         [Tooltip("원이 다가오는 속도 (초당 스케일). 모든 노트가 같은 속도로 와야 회색 띠가 의미를 갖는다.")]
         [SerializeField, Min(0.05f)] private float approachSpeed = 0.9f;
         [Tooltip("이 스케일보다 멀리 있는 노트는 아직 그리지 않는다")]
@@ -84,6 +86,7 @@ namespace ChainRiposte.Game.Combat
         private Coroutine _executePulseRoutine;
         private Vector2 _popupOrigin;
         private bool _popupPlaying;
+        private float _bandInnerRatio = -1f;
 
         private static readonly Color ParryButtonColor = new(0.18f, 0.28f, 0.42f, 0.95f);
         private static readonly Color AttackButtonColor = new(0.42f, 0.14f, 0.16f, 0.95f);
@@ -188,13 +191,20 @@ namespace ChainRiposte.Game.Combat
             if (playerBody != null)
             {
                 playerBody.localScale = Vector3.one;
-                if (playerSprite != null)
+
+                // 고른 캐릭터가 있으면 그 그림이 우선. 없으면 인스펙터에 꽂아 둔 것(Main 단독 실행용).
+                Characters.PlayerCharacterSO character = Characters.CharacterService.Current;
+                Sprite body = character != null && character.CombatSprite != null
+                    ? character.CombatSprite
+                    : playerSprite;
+
+                if (body != null)
                 {
-                    playerBodyImage.sprite = playerSprite;
+                    playerBodyImage.sprite = body;
                     playerBodyImage.preserveAspect = true;
                 }
 
-                playerBodyImage.color = playerSprite != null ? Color.white : playerColor;
+                playerBodyImage.color = body != null ? Color.white : playerColor;
             }
 
             StartEntrance();
@@ -245,7 +255,14 @@ namespace ChainRiposte.Game.Combat
             SetRingCount(drawn);
         }
 
-        /// <summary>패링 구간 띠 — 두께가 곧 PARRY 스탯이다. 스탯을 올리면 눈에 보이게 굵어진다.</summary>
+        /// <summary>
+        /// 패링 구간 띠 — <b>흰 원이 이 띠에 겹쳐 있는 동안 누르면 패링이 된다.</b> 그게 전부다.
+        ///
+        /// 판정은 타격 시점 T를 기준으로 <c>[T - 윈도우, T + 유예]</c> 에 열린다.
+        /// 원은 "남은 시간 × 속도"로 다가오므로 그 구간은 그대로 반지름 구간이 된다:
+        /// 바깥 = 1 + 윈도우×속도 (가장 이른 성공), 안쪽 = 1 - 유예×속도 (가장 늦은 성공).
+        /// PARRY를 올리면 윈도우가 넓어져 <b>띠가 실제로 굵어진다</b> — 보이는 것과 판정이 같다.
+        /// </summary>
         private void UpdateParryBand()
         {
             if (parryBand == null)
@@ -257,12 +274,25 @@ namespace ChainRiposte.Game.Combat
             if (!visible)
                 return;
 
-            // 띠의 바깥 지름 = 패링 윈도우 동안 원이 지나가는 거리
             float outerScale = 1f + _combat.ParryWindowSeconds * approachSpeed;
+            float innerScale = Mathf.Max(0.05f, 1f - _combat.ParryLateGraceSeconds * approachSpeed);
             parryBand.localScale = Vector3.one * outerScale;
 
-            if (parryBandImage != null)
-                parryBandImage.color = parryBandColor;
+            if (parryBandImage == null)
+                return;
+
+            parryBandImage.color = parryBandColor;
+
+            // 스케일은 바깥 지름만 정한다 — 안쪽 구멍 크기는 스프라이트를 다시 구워야 나온다.
+            if (generateBandSprite)
+            {
+                float innerRatio = innerScale / outerScale;
+                if (!Mathf.Approximately(innerRatio, _bandInnerRatio) || parryBandImage.sprite == null)
+                {
+                    _bandInnerRatio = innerRatio;
+                    parryBandImage.sprite = PlaceholderSprite.Annulus(innerRatio);
+                }
+            }
         }
 
         private RectTransform GetRing(int index)
@@ -370,7 +400,7 @@ namespace ChainRiposte.Game.Combat
 
             bool ready = state == PlayerActionState.Ready;
             SetButtonVisual(parryButton, parryButtonImage,
-                state == PlayerActionState.Parrying ? noteRingColor : (ready ? ParryButtonColor : ButtonDisabledColor),
+                ready ? ParryButtonColor : ButtonDisabledColor,
                 "PARRY\n[<-]", ready);
             SetButtonVisual(attackButton, attackButtonImage,
                 state == PlayerActionState.Attacking ? AttackButtonColor : (ready ? AttackButtonColor : ButtonDisabledColor),

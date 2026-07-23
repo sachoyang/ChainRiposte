@@ -20,7 +20,7 @@ MonoBehaviour:
   baseDamageReduction: 0
   damageReductionPerLevel: 2
   baseParryWindowSeconds: 0.25
-  parryWindowPerLevelSeconds: 0.03
+  parryWindowPerLevelSeconds: 0.015
   parryLateGraceSeconds: 0.12
   parryLevelHardCap: 5
   attackCommitSeconds: 0.4

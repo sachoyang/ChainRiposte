@@ -26,7 +26,8 @@ namespace ChainRiposte.Game.Config
 
         [Header("판정치 (Parry)")]
         [SerializeField, Min(0f)] private float baseParryWindowSeconds = 0.25f;
-        [SerializeField, Min(0f)] private float parryWindowPerLevelSeconds = 0.03f;
+        [Tooltip("1레벨당 넓어지는 판정 폭. 캡(5)까지 찍어도 기본값의 3할 정도만 넓어지게 — 크면 후반에 아무 때나 눌러도 막힌다")]
+        [SerializeField, Min(0f)] private float parryWindowPerLevelSeconds = 0.015f;
         [Tooltip("타격이 지난 뒤에도 이만큼은 패링을 받아 준다 — 사람은 원이 닿는 걸 보고 누르므로 대개 살짝 늦는다")]
         [SerializeField, Min(0f)] private float parryLateGraceSeconds = 0.12f;
         [Tooltip("하드 캡: 이 레벨에 도달하면 더 이상 분배할 수 없다")]

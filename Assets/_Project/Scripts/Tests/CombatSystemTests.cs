@@ -79,15 +79,40 @@ namespace ChainRiposte.Core.Tests
         }
 
         [Test]
-        public void 판정_윈도우가_지난_뒤의_타격은_맞는다()
+        public void 판정_밖에서_미리_누르면_헛침이고_그_타격은_맞는다()
         {
             var health = new PlayerHealth(100);
             var combat = new CombatSystem(Boss(), Stats(), health);
 
-            combat.PressParry(); // t=0에 헛침 — 윈도우는 t=0.2에 종료
-            combat.Tick(2f);     // 타격은 t=2
+            // 타격은 t=2, 윈도우는 0.2초 — t=0에 누르는 것은 한참 이르다
+            combat.PressParry();
 
-            Assert.That(health.Current, Is.EqualTo(80), "윈도우 밖 타격은 피격");
+            Assert.That(combat.PlayerState, Is.EqualTo(PlayerActionState.ParryRecovering),
+                "판정 밖 입력은 그 자리에서 헛침으로 확정된다");
+
+            combat.Tick(2f);
+
+            Assert.That(health.Current, Is.EqualTo(80), "미리 눌러 둔 것은 타격을 막아 주지 않는다");
+        }
+
+        [Test]
+        public void 판정_안에서_누르면_타격을_기다리지_않고_그_자리에서_막힌다()
+        {
+            var health = new PlayerHealth(100);
+            var combat = new CombatSystem(Boss(), Stats(), health);
+            bool parried = false;
+            combat.AttackParried += _ => parried = true;
+
+            combat.Tick(1.9f);   // 타격 t=2 까지 0.1초 — 윈도우(0.2) 안
+            combat.PressParry();
+
+            Assert.That(parried, Is.True, "누른 즉시 결판난다 — 원이 다 줄어들 때까지 기다리지 않는다");
+            Assert.That(combat.ActiveNotes.Count, Is.Zero, "막은 노트는 그 자리에서 화면에서 빠진다");
+            Assert.That(combat.Posture, Is.EqualTo(40f));
+            Assert.That(combat.PlayerState, Is.EqualTo(PlayerActionState.Ready));
+
+            combat.Tick(0.2f);
+            Assert.That(health.Current, Is.EqualTo(100), "이미 막은 노트가 다시 때리지 않는다");
         }
 
         [Test]
@@ -317,14 +342,14 @@ namespace ChainRiposte.Core.Tests
         {
             var combat = new CombatSystem(Boss(), Stats(), new PlayerHealth(100));
 
-            combat.PressParry();  // 윈도우 t=0~0.2, 잠금 t=0.2~0.45
-            combat.Tick(0.3f);
+            combat.PressParry();  // 판정 밖 — 그 자리에서 헛침, 잠금 t=0~0.25
+            combat.Tick(0.1f);
 
             Assert.That(combat.PlayerState, Is.EqualTo(PlayerActionState.ParryRecovering));
-            combat.PressParry(); // 무시
+            combat.PressParry(); // 무시 — 연타로 판정을 도배할 수 없다
             Assert.That(combat.PlayerState, Is.EqualTo(PlayerActionState.ParryRecovering));
 
-            combat.Tick(0.2f); // t=0.5 — 잠금 해제
+            combat.Tick(0.2f); // t=0.3 — 잠금 해제
 
             Assert.That(combat.PlayerState, Is.EqualTo(PlayerActionState.Ready));
         }

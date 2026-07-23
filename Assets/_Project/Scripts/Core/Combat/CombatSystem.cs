@@ -61,8 +61,14 @@ namespace ChainRiposte.Core.Combat
         /// <summary>지금 그려야 할 노트들 — 예비동작이 시작됐고 아직 타격되지 않은 것. 타격이 임박한 순.</summary>
         public IReadOnlyList<ActiveNote> ActiveNotes => _activeNotes;
 
-        /// <summary>패링 판정 폭(초). 뷰가 회색 띠의 두께로 그린다 — PARRY 스탯을 올리면 굵어진다.</summary>
+        /// <summary>
+        /// 타격 <b>이전</b>으로 열려 있는 패링 판정 폭(초). PARRY 스탯을 올리면 넓어진다.
+        /// 뷰는 이것과 <see cref="ParryLateGraceSeconds"/>를 합쳐 회색 띠의 두께로 그린다.
+        /// </summary>
         public float ParryWindowSeconds => _stats.ParryWindowSeconds;
+
+        /// <summary>타격 <b>이후</b>로 열려 있는 유예(초). 띠의 안쪽 절반이 이것이다.</summary>
+        public float ParryLateGraceSeconds => _stats.ParryLateGraceSeconds;
 
         /// <summary>체간 파괴 — 화면에 붉은 인살 마크가 뜨는 상태. 공격 버튼이 인살로 바뀐다.</summary>
         public bool ExecutionReady => BossState == BossActionState.Broken;
@@ -150,8 +156,14 @@ namespace ChainRiposte.Core.Combat
         }
 
         /// <summary>
-        /// 좌측 버튼 — 탭 순간부터 판정치(초) 동안 패링 판정 활성.
-        /// 이미 타격이 지나갔더라도 유예 시간 안이면 그 노트를 소급해서 막아 준다.
+        /// 좌측 버튼 — <b>누른 순간 성공/실패가 결판난다.</b>
+        ///
+        /// 판정 구간 <c>[타격 − 윈도우, 타격 + 유예]</c> 안에 있는 노트를 그 자리에서 막는다.
+        /// 예전에는 눌러 두고 타격이 올 때까지 기다렸다가 결판이 났는데, 그러면
+        /// <b>이미 막았는데도 원이 끝까지 줄어드는 것을 보고 있어야 해서</b> 손맛이 죽는다.
+        /// 이 장르(세키로 등)는 누른 즉시 반응이 나오고 그 공격이 사라진다.
+        ///
+        /// 판정 밖에서 눌렀으면 헛침 — 잠깐 잠겨서 연타로 도배할 수 없다.
         /// </summary>
         public void PressParry()
         {
@@ -169,8 +181,16 @@ namespace ChainRiposte.Core.Combat
             if (PlayerState != PlayerActionState.Ready)
                 return;
 
-            SetPlayerState(PlayerActionState.Parrying);
-            _playerTimer = _stats.ParryWindowSeconds;
+            RuntimeNote incoming = FindInWindow();
+            if (incoming != null)
+            {
+                ParryNote(incoming);
+                return;
+            }
+
+            // 헛침 — 연타 방지 후딜레이
+            SetPlayerState(PlayerActionState.ParryRecovering);
+            _playerTimer = _stats.ParryWhiffLockSeconds;
         }
 
         private RuntimeNote FindInGrace()
@@ -179,6 +199,36 @@ namespace ChainRiposte.Core.Combat
                 if (note.InGrace && !note.Resolved)
                     return note;
             return null;
+        }
+
+        /// <summary>
+        /// 지금 눌러서 막을 수 있는 노트 — 예비동작이 시작됐고(화면에 원이 보이고)
+        /// 타격까지 윈도우 안에 든 것 중 <b>가장 임박한</b> 하나.
+        /// 아직 안 보이는 노트를 미리 막을 수는 없다.
+        /// </summary>
+        private RuntimeNote FindInWindow()
+        {
+            RuntimeNote best = null;
+            float bestRemaining = float.MaxValue;
+            float window = _stats.ParryWindowSeconds;
+
+            foreach (RuntimeNote note in _notes)
+            {
+                if (note.Resolved || !note.Telegraphed)
+                    continue;
+
+                float remaining = note.HitSeconds - _patternTime;
+                if (remaining < 0f || remaining > window + TimeEpsilon)
+                    continue;
+
+                if (remaining < bestRemaining)
+                {
+                    bestRemaining = remaining;
+                    best = note;
+                }
+            }
+
+            return best;
         }
 
         /// <summary>
@@ -420,15 +470,13 @@ namespace ChainRiposte.Core.Combat
             return phase.Patterns[phase.Patterns.Count - 1].Pattern;
         }
 
-        /// <summary>타격 시점 도달 — 이미 누르고 있으면 즉시 패링, 아니면 유예를 연다.</summary>
+        /// <summary>
+        /// 타격 시점 도달. 여기까지 왔다는 것은 <b>아직 안 눌렀다</b>는 뜻이다
+        /// (눌렀으면 그 순간 <see cref="PressParry"/>에서 이미 결판났다).
+        /// 유예를 열어 조금 늦은 입력까지 받아 준다.
+        /// </summary>
         private void ResolveStrike(RuntimeNote runtime)
         {
-            if (PlayerState == PlayerActionState.Parrying)
-            {
-                ParryNote(runtime);
-                return;
-            }
-
             float grace = _stats.ParryLateGraceSeconds;
             if (grace > 0f)
             {
@@ -449,6 +497,9 @@ namespace ChainRiposte.Core.Combat
             // 패링 성공: 피해 0, 즉시 복귀(보상), 체간 대폭 상승.
             // 즉시 Ready로 돌리므로 연속기는 노트 수만큼 눌러야 한다.
             SetPlayerState(PlayerActionState.Ready);
+
+            // 막은 공격은 그 자리에서 목록에서 빠진다 — 뷰의 흰 원이 다음 Tick을 기다리지 않고 사라진다.
+            RebuildActiveNotes();
             AttackParried?.Invoke(runtime.Note);
             AddPosture(_config.ParryPostureGain);
             RefreshBossState();
@@ -479,12 +530,6 @@ namespace ChainRiposte.Core.Combat
             {
                 switch (PlayerState)
                 {
-                    case PlayerActionState.Parrying:
-                        // 헛침 — 연타 방지 후딜레이
-                        SetPlayerState(PlayerActionState.ParryRecovering);
-                        _playerTimer = _stats.ParryWhiffLockSeconds;
-                        break;
-
                     case PlayerActionState.ParryRecovering:
                         SetPlayerState(PlayerActionState.Ready);
                         break;

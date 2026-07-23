@@ -18,7 +18,13 @@ namespace ChainRiposte.Core.Stats
         public float DamageReductionPerLevel = 2f;
 
         public float BaseParryWindowSeconds = 0.25f;
-        public float ParryWindowPerLevelSeconds = 0.03f;
+
+        /// <summary>
+        /// PARRY 1레벨당 넓어지는 판정 폭.
+        /// 하드 캡(5)까지 찍었을 때 기본값의 <b>3할 정도</b>만 넓어지게 잡는다 —
+        /// 이보다 크면 후반에 아무 때나 눌러도 막혀서 리듬 게임이 아니게 된다.
+        /// </summary>
+        public float ParryWindowPerLevelSeconds = 0.015f;
 
         /// <summary>
         /// 타격이 지난 뒤에도 이만큼은 패링을 받아 준다.
