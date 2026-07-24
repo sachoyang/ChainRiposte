@@ -53,7 +53,24 @@ namespace ChainRiposte.Game.Theming
         [Tooltip("보스의 겉모습만 갈아 끼운다 — 성능은 BossDataSO 그대로다.")]
         [SerializeField] private BossEntry[] bosses = Array.Empty<BossEntry>();
 
+        [Tooltip("이 테마에서 노드가 놓이는 자리(월드 좌표). 길 그림마다 길이 다르므로 테마가 위치를 들고 있는다. " +
+                 "개수는 씬의 노드 수와 같아야 적용된다. 씬 인스펙터의 「길 그리기」에서 저장한다.")]
+        [SerializeField] private System.Collections.Generic.List<Vector2> nodeLayout = new();
+
         public string ThemeId => string.IsNullOrWhiteSpace(themeId) ? name : themeId;
+
+        public System.Collections.Generic.IReadOnlyList<Vector2> NodeLayout => nodeLayout;
+
+        /// <summary>이 테마가 노드 위치를 정해 두었는가.</summary>
+        public bool HasNodeLayout => nodeLayout != null && nodeLayout.Count > 0;
+
+#if UNITY_EDITOR
+        /// <summary>에디터 전용 — 「길 그리기」 툴이 현재 씬 배치를 이 테마에 저장한다.</summary>
+        public void SetNodeLayoutEditorOnly(System.Collections.Generic.IEnumerable<Vector2> positions)
+        {
+            nodeLayout = new System.Collections.Generic.List<Vector2>(positions);
+        }
+#endif
 
         /// <summary>없으면 null — 부르는 쪽은 씬에 꽂아둔 그림을 그대로 둔다.</summary>
         public Sprite GetBackground(string key)

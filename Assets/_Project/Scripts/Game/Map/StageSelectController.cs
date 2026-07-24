@@ -6,6 +6,7 @@ using ChainRiposte.Game.Audio;
 using ChainRiposte.Game.Config;
 using ChainRiposte.Game.Localization;
 using ChainRiposte.Game.Progress;
+using ChainRiposte.Game.Theming;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -98,11 +99,42 @@ namespace ChainRiposte.Game.Map
             for (int i = 0; i < nodes.Length; i++)
                 _stageIds[i] = nodes[i] != null && nodes[i].Stage != null ? nodes[i].Stage.StageId : string.Empty;
 
+            ApplyThemeLayout(); // 고른 캐릭터의 테마가 노드 위치를 정한다 (길 모양이 테마마다 다르다)
+
             RefreshNodeStates();
             _currentIndex = _progress.HighestUnlockedIndex(_stageIds);
 
             RefreshPathLine();
             character.position = NodeWorld(_currentIndex) + characterOffset;
+        }
+
+        /// <summary>
+        /// 현재 테마가 정해 둔 자리로 노드를 옮긴다. 배경·보스처럼 <b>길 모양도 테마 데이터</b>라서
+        /// 씬은 하나로 두고 위치만 갈아 끼운다. z는 씬 값을 지키고, 개수가 다르면 건드리지 않는다
+        /// (씬에서 노드를 늘렸는데 테마 저장을 안 한 경우 옛 배치로 덮어쓰지 않게).
+        /// </summary>
+        private void ApplyThemeLayout()
+        {
+            ThemeSO theme = ThemeService.Current;
+            if (theme == null || !theme.HasNodeLayout)
+                return;
+
+            IReadOnlyList<Vector2> layout = theme.NodeLayout;
+            if (layout.Count != nodes.Length)
+            {
+                Debug.LogWarning(
+                    $"{nameof(StageSelectController)}: 테마 '{theme.ThemeId}'의 노드 레이아웃 수({layout.Count})가 " +
+                    $"씬 노드 수({nodes.Length})와 달라 적용하지 않습니다. 「길 그리기」에서 다시 저장하세요.", this);
+                return;
+            }
+
+            for (int i = 0; i < nodes.Length; i++)
+            {
+                if (nodes[i] == null)
+                    continue;
+                Vector3 position = nodes[i].transform.position;
+                nodes[i].transform.position = new Vector3(layout[i].x, layout[i].y, position.z);
+            }
         }
 
         /// <summary>진행도에 맞춰 노드의 잠금/클리어 표시를 갱신한다.</summary>
