@@ -43,17 +43,26 @@
 ### 마지막 갱신: 2026-07-24 (세션 7)
 
 - **커밋 규칙**: 메시지에 `Co-Authored-By: Claude` 트레일러를 넣지 않는다.
-- **git**: 세션 7 작업 커밋 완료(주제별 5개). push는 계속 안 하고 있음 — 필요하면 물어볼 것.
-- **테스트**: EditMode **94/94** (Core를 안 건드렸으므로 그대로).
-- 세션 6 검증: **§8-1(캐릭터 선택) / §8-2(전투 그림) 확인 완료**. 나머지 절은 아직.
+- **git**: 세션 7 작업 전부 커밋(주제별 다수) + 마지막에 **작업 중 씬·에셋 스냅샷** 1개. push는 계속 안 함.
+- **테스트**: EditMode **94/94** (MCP로 확인함. 이번 세션 Core 안 건드림).
+- **MCP 연결됨** — 컴파일/테스트는 `refresh_unity`(force+compile) → `read_console`(error) → `run_tests`(EditMode)로 확인 가능.
 
-#### 다음 세션에서 가장 먼저 할 것
+#### ⚠ 빌더 재실행 금지 (중요 — 지난 세션에 UI 날림)
 
-1. `Docs/VERIFICATION.md` **§9 결과 물어보기** (세션 7 몫). 특히 **9-0 순서**를 밟았는지 —
-   `Create Default Themes` → 두 씬에서 `Setup Background In Open Scene` → Intro는 손으로 드래그.
-2. ⚠ **`Build App Scenes` 는 절대 재실행하지 말 것** — 씬을 새로 만들어서 사용자가 넣은 에셋이 날아간다.
-   빌더에도 같은 배선을 넣어 뒀으니 나중에 어쩔 수 없이 재빌드할 때만 자동으로 붙는다.
-3. 사용자가 **인트로/타이틀 공용 배경**을 따로 만들어 오기로 했다 — 오면 `Canvas/Background` 스프라이트만 교체.
+- **`Build Main Scene UI` / `Build App Scenes` 재실행 금지.** 화면을 자식째 지우고 재생성해서 **손으로 꽂은 UI 스프라이트가 날아간다.** 실제로 이번 세션에 한 번 잃었다(커밋 전이라 복구 불가).
+- 새 UI를 얹을 땐 **비파괴 전용 메뉴**를 만든다(예: `Add Pause Menu To Main`).
+- **사용자에게 반복 강조**: UI 배선하면 **즉시 커밋**.
+
+#### 다음 세션에서 가장 먼저 할 것 (사용자가 손으로 진행 중인 것들)
+
+1. **일시정지 메뉴 배선 확인/마무리** — `Tools ▸ ChainRiposte ▸ Add Pause Menu To Main` 실행 후,
+   `PauseCanvas/TopRight` 버튼 이미지 + `PauseMenu` 인스펙터의 `pauseSprite`/`playSprite`/설정 아이콘을 꽂았는지.
+2. **버튼 pressed 스프라이트** — 사용자가 DEVNIK 버튼(눌림 스프라이트 포함)으로 전 버튼을 **직접** Sprite Swap 배선 중.
+   툴 안 만들기로 함(사용자 요청). 방법은 Button ▸ Transition = Sprite Swap + Pressed Sprite.
+3. **월드맵 배경/길 배치** — 사용자가 `ThemedBackground`(길)·`SkyBackground`·`BottomBackground`(월드 스프라이트로 바꿔야 함, UI로 넣었었음) 배치 + 「길 그리기」로 노드 찍는 중. `Docs/VERIFICATION.md` §9 참조.
+4. `Docs/VERIFICATION.md` **§9 검증 결과** 물어보기 (세션 7 몫 전체 — 배경 왕복/테마/보스 이름/세로 스크롤/길 곡선/그림자/일시정지).
+
+> 참고: 마지막 커밋은 **작업 중 스냅샷**이라 씬·에셋이 미완성 상태일 수 있다(노드 위치, 배경 배치, UI 배선 진행 중). 사용자와 어디까지 됐는지 맞춰 보고 이어갈 것.
 
 #### 세션 7에서 한 것
 

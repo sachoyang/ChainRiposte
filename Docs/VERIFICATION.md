@@ -534,6 +534,41 @@
 - [ ] 우선순위대로 동작하는지: **타일 SO 전용 그림 → BoardView 공용 그림 → 색 사각형 → (알파 0이면) 안 그림**
 - [ ] 받침이 타일을 따라 **낙하·스왑에 같이 움직이는지** (고정된 배경 셀과 다르다)
 
+### 9-9. 준비 화면 보스 그림자 (다가오는 연출)
+
+`Build Main Scene UI` 로 `BossShadow` 가 준비 화면 상단에 생겼다(이미 확인함 — "그림자 잘 나옴").
+
+- [ ] 준비 화면 들어가면 위쪽에서 보스 실루엣이 **내려오며 커지고 짙어지는지**
+- [ ] 도착 후 제자리에서 천천히 숨쉬는지 / 스탯 찍어도 **다시 안 다가오는지**
+- [ ] 기사=이루실 보스, 낭인=아시나 보스 실루엣인지
+
+> 튜닝: `BossShadow` 인스펙터 (`approachSeconds`/`startScale`/`startOffsetY`/`shadowColor`/`idleBobAmplitude`).
+
+### 9-10. 일시정지 / 설정 (전투 씬 우상단)
+
+⚠ **비파괴 메뉴**로 얹는다 — `Build Main Scene UI` 재실행 아님.
+
+- [ ] `Main.unity` 열고 `Tools ▸ ChainRiposte ▸ Add Pause Menu To Main` → `PauseCanvas` 생성
+- [ ] `PauseCanvas/TopRight` 의 PauseButton·SettingsButton 이미지에 아이콘 꽂기
+- [ ] `PauseMenu` 인스펙터에 `pauseSprite`(⏸)·`playSprite`(▶) 꽂기
+- [ ] 퍼즐/전투 중 우상단 ⏸ → **게임이 멈추고**(카운트다운·노트 정지) 아이콘이 ▶로 바뀌는지
+- [ ] 다시 누르면 재개 / 딤이 그동안 **퍼즐 입력을 막는지**
+- [ ] ⚙ → 옵션 열리며 멈추고, 닫으면 재개되는지
+- [ ] 「지도로 나가기」 → 확인 후 월드맵으로 (timeScale 원복되어 다음 씬 안 멈추는지)
+
+### 9-11. 결과 화면 — 클리어/패배 분리
+
+- [ ] **보스 인살(승리)** → 다시 시작 버튼 없이 **잠깐 뒤 지도로 자동 복귀**하는지 (기본 1.6초)
+- [ ] **패배**(전투/퍼즐 턴소진) → **다시 시작 / 지도** 두 버튼이 뜨는지
+- [ ] 일시정지 중 죽거나 나가도 다음 씬이 안 멈추는지 (timeScale 원복)
+
+> 승리 텀 = `ResultScreen ▸ victoryToMapDelay`. 나중에 인살 컷씬이 이 자리를 채운다.
+
+### 9-12. 버튼 눌림 스프라이트 (사용자 직접 배선 중)
+
+- [ ] 빌더가 만든 버튼이 이제 **누를 때 색이 살짝 변하는지**(ColorTint 기본)
+- [ ] 아트 버튼: `Button ▸ Transition = Sprite Swap` + `Pressed Sprite` 꽂으면 눌림 그림으로 바뀌는지
+
 ---
 
 ## 10. 문제 보고 양식
