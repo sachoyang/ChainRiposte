@@ -31,6 +31,8 @@ namespace ChainRiposte.Game.Map
         [SerializeField] private MapNode[] nodes = System.Array.Empty<MapNode>();
         [SerializeField] private Transform character;
         [SerializeField] private CameraFit2D cameraFit;
+        [Tooltip("선택 사항 — 있으면 세로에서 길의 일부만 보이고 따라 스크롤한다. 비우면 예전처럼 전체를 한 화면에 담는다.")]
+        [SerializeField] private MapCameraRig cameraRig;
         [Tooltip("선택 사항 — 있으면 노드들을 잇는 경로선을 자동으로 채운다.")]
         [SerializeField] private LineRenderer pathLine;
 
@@ -111,7 +113,7 @@ namespace ChainRiposte.Game.Map
 
         private void Start()
         {
-            FitCameraToNodes();
+            FrameCamera(instant: true);
             ShowInfo(_currentIndex);
         }
 
@@ -219,6 +221,7 @@ namespace ChainRiposte.Game.Map
             while (_currentIndex != target)
             {
                 int next = _currentIndex + step;
+                FocusCamera(next); // 한 칸 먼저 카메라가 향한다 — 걸어가는 동안 부드럽게 따라붙는다
                 yield return MoveCharacterTo(NodeWorld(next) + characterOffset, moveSpeed);
                 _currentIndex = next;
             }
@@ -348,16 +351,40 @@ namespace ChainRiposte.Game.Map
                 pathLine.SetPosition(i, nodes[i].Position);
         }
 
-        private void FitCameraToNodes()
+        /// <summary>
+        /// 화면 잡기. 리그가 있으면 방향별 규칙(세로=스크롤 / 가로=전체)을 리그가 정하고,
+        /// 없으면 예전처럼 길 전체를 한 화면에 담는다.
+        /// </summary>
+        private void FrameCamera(bool instant)
         {
-            if (cameraFit == null || nodes.Length == 0)
+            if (nodes.Length == 0)
                 return;
 
+            Bounds bounds = NodeBounds();
+            if (cameraRig != null)
+            {
+                cameraRig.Frame(bounds, NodeWorld(_currentIndex), instant);
+                return;
+            }
+
+            if (cameraFit != null)
+                cameraFit.FitTo(bounds);
+        }
+
+        /// <summary>지금 서 있는 곳을 보여 준다 — 리그가 없으면 아무 일도 하지 않는다.</summary>
+        private void FocusCamera(int index)
+        {
+            if (cameraRig != null)
+                cameraRig.Focus(NodeWorld(index));
+        }
+
+        private Bounds NodeBounds()
+        {
             var bounds = new Bounds(nodes[0].Position, Vector3.zero);
             for (int i = 1; i < nodes.Length; i++)
                 bounds.Encapsulate(nodes[i].Position);
             bounds.Expand(cameraPadding * 2f);
-            cameraFit.FitTo(bounds);
+            return bounds;
         }
     }
 }
