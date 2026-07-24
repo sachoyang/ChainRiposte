@@ -128,6 +128,8 @@ namespace ChainRiposte.Editor
             Selection.activeGameObject = controller.gameObject;
 
             Debug.Log("[StageSelectSceneBuilder] 레이아웃 생성 완료. 씬에서 노드/배경/UI를 자유롭게 편집하세요. " +
+                      "세로 구성(상단 배경 띠 + 길 스크롤)은 여기서 만들지 않으므로 이어서 " +
+                      "Tools ▸ ChainRiposte ▸ Theme ▸ Setup Background In Open Scene 을 실행하세요. " +
                       "(TMP가 처음이면 Window ▸ TextMeshPro ▸ Import TMP Essential Resources 필요)", controller);
         }
 

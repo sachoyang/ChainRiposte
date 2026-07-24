@@ -1,4 +1,5 @@
 using System.IO;
+using ChainRiposte.Game;
 using ChainRiposte.Game.Characters;
 using ChainRiposte.Game.Flow;
 using ChainRiposte.Game.Map;
@@ -65,8 +66,41 @@ namespace ChainRiposte.Editor
                 return;
             }
 
+            if (Object.FindFirstObjectByType<IntroController>() != null)
+            {
+                SetupIntro();
+                return;
+            }
+
             EditorUtility.DisplayDialog("배경 배치",
-                "StageSelect / Title 씬을 연 상태에서 실행하세요.", "확인");
+                "Intro / Title / StageSelect 씬을 연 상태에서 실행하세요.", "확인");
+        }
+
+        /// <summary>
+        /// 인트로는 로고 하나만 떠올랐다 지는 화면이다 — 배경에 아무것도 두지 않고
+        /// <b>완전한 검정</b>으로 비워야 로고가 제일 잘 읽힌다.
+        /// </summary>
+        private static void SetupIntro()
+        {
+            var background = GameObject.Find("Canvas/Background");
+            if (background != null && background.TryGetComponent(out Image image))
+            {
+                Undo.RecordObject(image, "Intro Background");
+                image.sprite = null;
+                image.color = Color.black;
+            }
+
+            Camera camera = Camera.main;
+            if (camera != null)
+            {
+                Undo.RecordObject(camera, "Intro Background");
+                camera.clearFlags = CameraClearFlags.SolidColor;
+                camera.backgroundColor = Color.black;
+            }
+
+            var intro = Object.FindFirstObjectByType<IntroController>();
+            EditorSceneManager.MarkSceneDirty(intro.gameObject.scene);
+            Debug.Log("[Theme] 인트로 배경을 검정으로 맞췄습니다. 로고는 IntroController 의 페이드 시간으로 조절하세요.");
         }
 
         // ─────────────────────────────────────────────────────────────
@@ -75,34 +109,66 @@ namespace ChainRiposte.Editor
         /// 월드맵 배경 — 테마가 갈아 끼우는 자리. SpriteRenderer라서 UI가 아니라 <b>카메라 범위</b>를 덮는다.
         /// 자리만 잡아 두면 그림은 <see cref="ThemedSprite"/>가 채운다.
         /// </summary>
+        /// <summary>
+        /// 월드맵은 세로와 가로가 아예 다른 화면이다.
+        /// <b>세로</b> = 위 배경 띠 / 가운데 길(스크롤) / 아래 정보 띠.
+        /// <b>가로</b> = 배경이 화면 전체를 덮고 길 전체가 보이며 정보는 오른쪽 컬럼.
+        /// 그래서 배경을 두 벌 두고 방향에 따라 한쪽만 그린다.
+        /// </summary>
         private static void SetupStageSelect()
         {
             StageSelectController controller = Object.FindFirstObjectByType<StageSelectController>();
             Transform root = controller.transform;
 
-            Transform existing = root.Find("ThemedBackground");
-            GameObject go;
-            if (existing != null)
-            {
-                go = existing.gameObject;
-            }
-            else
-            {
-                go = new GameObject("ThemedBackground");
-                Undo.RegisterCreatedObjectUndo(go, "Themed Background");
-                go.transform.SetParent(root, worldPositionStays: false);
-                go.transform.SetAsFirstSibling();
-            }
-
-            ConfigureMapBackground(go);
+            // ① 가로용 — 카메라 전체를 덮는 월드 배경
+            GameObject world = EnsureChild(root, "ThemedBackground", first: true);
+            ConfigureMapBackground(world);
             DisablePlaceholder(root, "World1Bg");
             DisablePlaceholder(root, "World2Bg");
 
+            // ② 세로용 — 화면 위쪽 배경 띠. 이 띠가 길의 윗부분을 가려서 '창'을 만든다.
+            var canvas = root.GetComponentInChildren<Canvas>(true);
+            if (canvas == null)
+            {
+                EditorUtility.DisplayDialog("배경 배치",
+                    "월드맵 Canvas 를 찾지 못했습니다. Build StageSelect Layout 을 먼저 실행하세요.", "확인");
+                return;
+            }
+
+            RectTransform topBand = EnsureTopBand(canvas);
+            var infoPanel = canvas.transform.Find("InfoPanel") as RectTransform;
+
+            // ③ 카메라 — 세로에서만 스크롤을 맡는다
+            Camera camera = Camera.main;
+            if (camera == null)
+            {
+                EditorUtility.DisplayDialog("배경 배치", "MainCamera 태그가 붙은 카메라를 찾지 못했습니다.", "확인");
+                return;
+            }
+
+            var rig = camera.GetComponent<MapCameraRig>();
+            if (rig == null)
+                rig = Undo.AddComponent<MapCameraRig>(camera.gameObject);
+
+            var rigSo = new SerializedObject(rig);
+            rigSo.FindProperty("cameraFit").objectReferenceValue = camera.GetComponent<CameraFit2D>();
+            rigSo.FindProperty("topBand").objectReferenceValue = topBand;
+            rigSo.FindProperty("bottomBand").objectReferenceValue = infoPanel;
+            rigSo.ApplyModifiedPropertiesWithoutUndo();
+
+            var controllerSo = new SerializedObject(controller);
+            controllerSo.FindProperty("cameraRig").objectReferenceValue = rig;
+            controllerSo.ApplyModifiedPropertiesWithoutUndo();
+
+            OfferVerticalSpread(root);
+
             EditorSceneManager.MarkSceneDirty(controller.gameObject.scene);
-            Debug.Log("[Theme] 월드맵 배경 배치 완료. 색 사각형 World1Bg/World2Bg 는 꺼 뒀습니다(지워도 됩니다). " +
-                      "흔들림이 싫으면 BackgroundPanner 의 amplitude 를 0 으로 두세요.");
+            Debug.Log("[Theme] 월드맵 세로 구성 완료 — 위 배경 띠 / 가운데 길(스크롤) / 아래 정보. " +
+                      "가로에서는 예전처럼 길 전체 + 오른쪽 정보 컬럼입니다. " +
+                      "확대 정도는 MapCameraRig ▸ portraitViewWidth 로 조절하세요.");
         }
 
+        /// <summary>가로에서만 그리는 전체 배경. 세로에서는 상단 띠가 대신하므로 꺼진다.</summary>
         private static void ConfigureMapBackground(GameObject go)
         {
             go.transform.localPosition = new Vector3(0f, 0f, 1f);
@@ -117,8 +183,141 @@ namespace ChainRiposte.Editor
 
             if (go.GetComponent<ThemedSprite>() == null)
                 Undo.AddComponent<ThemedSprite>(go); // 기본 키가 map 이라 그대로 둔다
-            if (go.GetComponent<BackgroundPanner>() == null)
-                Undo.AddComponent<BackgroundPanner>(go);
+
+            EnsureStillPanner(go);
+            SetVisibility(go, portrait: false, landscape: true);
+        }
+
+        /// <summary>
+        /// 화면 위쪽 배경 띠. 그림은 <b>띠 안쪽</b>을 덮어야 하므로 띠(마스크) + 자식 이미지 구조로 만든다 —
+        /// BackgroundPanner 는 '부모를 덮는' 물건이라 이미지에 직접 붙이면 캔버스 전체로 커진다.
+        /// </summary>
+        private static RectTransform EnsureTopBand(Canvas canvas)
+        {
+            Transform found = canvas.transform.Find("TopBackground");
+            GameObject bandGo;
+            if (found != null)
+            {
+                bandGo = found.gameObject;
+            }
+            else
+            {
+                bandGo = new GameObject("TopBackground", typeof(RectTransform), typeof(RectMask2D));
+                Undo.RegisterCreatedObjectUndo(bandGo, "Top Background");
+                bandGo.transform.SetParent(canvas.transform, worldPositionStays: false);
+                bandGo.transform.SetAsFirstSibling(); // 정보 패널보다 뒤에
+
+                var bandRect = (RectTransform)bandGo.transform;
+                bandRect.anchorMin = new Vector2(0f, 1f);
+                bandRect.anchorMax = new Vector2(1f, 1f);
+                bandRect.pivot = new Vector2(0.5f, 1f);
+                bandRect.anchoredPosition = Vector2.zero;
+                bandRect.sizeDelta = new Vector2(0f, 620f); // 세로 1920 기준 약 32%
+            }
+
+            Transform imageFound = bandGo.transform.Find("Image");
+            GameObject imageGo;
+            if (imageFound != null)
+            {
+                imageGo = imageFound.gameObject;
+            }
+            else
+            {
+                imageGo = new GameObject("Image", typeof(RectTransform), typeof(Image));
+                Undo.RegisterCreatedObjectUndo(imageGo, "Top Background");
+                imageGo.transform.SetParent(bandGo.transform, worldPositionStays: false);
+                var imageRect = (RectTransform)imageGo.transform;
+                imageRect.anchorMin = Vector2.zero;
+                imageRect.anchorMax = Vector2.one;
+                imageRect.offsetMin = imageRect.offsetMax = Vector2.zero;
+            }
+
+            var image = imageGo.GetComponent<Image>();
+            image.color = Color.white;
+            image.raycastTarget = false;
+            if (image.sprite == null)
+                image.sprite = LargestSprite($"{BackFolder}/Irithyll.png");
+
+            if (imageGo.GetComponent<ThemedSprite>() == null)
+                Undo.AddComponent<ThemedSprite>(imageGo);
+
+            EnsureStillPanner(imageGo);
+            SetVisibility(imageGo, portrait: true, landscape: false);
+
+            return (RectTransform)bandGo.transform;
+        }
+
+        /// <summary>
+        /// 크기만 맞추고 흔들지는 않는 배경. 월드맵은 눈이 길을 따라가야 하는 화면이라
+        /// 배경이 계속 움직이면 방해가 된다 (타이틀과 반대).
+        /// </summary>
+        private static void EnsureStillPanner(GameObject go)
+        {
+            var panner = go.GetComponent<BackgroundPanner>();
+            if (panner == null)
+                panner = Undo.AddComponent<BackgroundPanner>(go);
+
+            var so = new SerializedObject(panner);
+            so.FindProperty("amplitude").floatValue = 0f;
+            so.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        private static void SetVisibility(GameObject go, bool portrait, bool landscape)
+        {
+            var visibility = go.GetComponent<OrientationVisibility>();
+            if (visibility == null)
+                visibility = Undo.AddComponent<OrientationVisibility>(go);
+
+            var so = new SerializedObject(visibility);
+            so.FindProperty("showInPortrait").boolValue = portrait;
+            so.FindProperty("showInLandscape").boolValue = landscape;
+            so.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        private static GameObject EnsureChild(Transform parent, string name, bool first)
+        {
+            Transform found = parent.Find(name);
+            if (found != null)
+                return found.gameObject;
+
+            var go = new GameObject(name);
+            Undo.RegisterCreatedObjectUndo(go, "Setup Background");
+            go.transform.SetParent(parent, worldPositionStays: false);
+            if (first)
+                go.transform.SetAsFirstSibling();
+            return go;
+        }
+
+        /// <summary>
+        /// 세로에서 스크롤이 느껴지려면 길이 <b>보이는 창보다 길어야</b> 한다.
+        /// 지금 노드 배치는 가로로 퍼져 있어서 세로 화면에는 거의 다 들어와 버리므로 한 번 물어보고 늘린다.
+        /// (노드 위치는 사용자 것이라 말없이 바꾸지 않는다.)
+        /// </summary>
+        private static void OfferVerticalSpread(Transform root)
+        {
+            MapNode[] nodes = root.GetComponentsInChildren<MapNode>(true);
+            if (nodes.Length < 2)
+                return;
+
+            if (!EditorUtility.DisplayDialog("월드맵 세로 배치",
+                    "세로에서 스크롤이 느껴지려면 길이 화면보다 길어야 합니다.\n" +
+                    "노드의 세로 간격을 1.8배로 늘릴까요? (가로 위치는 그대로)\n\n" +
+                    "나중에 씬에서 직접 드래그해도 됩니다 — 경로선은 따라옵니다.",
+                    "늘리기", "그대로 두기"))
+                return;
+
+            float sum = 0f;
+            foreach (MapNode node in nodes)
+                sum += node.transform.position.y;
+            float center = sum / nodes.Length;
+
+            foreach (MapNode node in nodes)
+            {
+                Undo.RecordObject(node.transform, "Spread Map Nodes");
+                Vector3 position = node.transform.position;
+                position.y = center + (position.y - center) * 1.8f;
+                node.transform.position = position;
+            }
         }
 
         private static void DisablePlaceholder(Transform root, string name)
