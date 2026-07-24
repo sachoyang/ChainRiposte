@@ -121,6 +121,20 @@
 - `StageSelectControllerEditor` — 「편집 중인 테마」 드롭다운 + 「이 테마에 저장」/「불러오기」. 불러오면 그 테마의 배경 그림도 씬 뷰에 꽂아 준다(`ThemeAssetsMenu.PreviewThemeInSceneEditorOnly` — `ThemedSprite`가 에디트 모드에 안 돌므로). 편집은 씬 트랜스폼에서 하고 저장 버튼으로 테마에 굳힌다.
 - **주의**: 노드 개수를 바꾸면 각 테마에서 다시 저장해야 한다.
 
+**빌더 재실행 사고 (사용자: "UI 에셋 연결했던 게 사라짐")**
+- 원인: `Build Main Scene UI` 는 각 화면의 **자식을 전부 지우고 재생성**한다. 손으로 꽂은 UI 스프라이트가 그 화면에 있으면 재실행 때 날아간다. 커밋된 적 없어 git 복구 불가였다(교훈: **UI 배선 후 즉시 커밋**).
+- **대응 원칙**: 앞으로 UI를 얹을 땐 파괴적 빌더 대신 **비파괴 전용 메뉴**를 만든다(아래 일시정지처럼).
+
+**클릭 상태 스프라이트 (Part A)** — Unity 내장 **Sprite Swap** 이라 코드 불필요. `EditorUiFactory.Button` 기본 Transition 을 `None → ColorTint` 로만 바꿔(스프라이트 없이도 누름 피드백) 슬롯이 열리게 했다. **SpriteSwap 을 기본으로 하면 안 된다** — 빈 Pressed 슬롯 탓에 누를 때 버튼이 사라진다. 아트 버튼은 인스펙터에서 개별로 SpriteSwap 전환.
+
+**일시정지 / 설정 (전투 씬 우상단, Part B)**
+- `Game/UI/PauseMenu` — `Time.timeScale = 0` 하나로 멈춘다(퍼즐 카운트다운·전투 채보 모두 `Time.deltaTime` 스케일 시간). 일시정지 버튼은 **토글**이고 아이콘이 pause↔play 로 바뀐다(두 스프라이트 다 씀). 설정은 기존 `OptionsPanel` 재사용(열면 멈추고 닫으면 재개 — OptionsPanel 을 안 고치려고 `Update`에서 activeSelf 를 감시). 지도로 나가기는 확인 패널 경유. **`OnDisable`에서 timeScale 원복**(멈춘 채 씬 넘어가면 다음 씬이 얼어붙는다).
+- `Editor/PauseMenuBuilder` — `Tools ▸ ChainRiposte ▸ Add Pause Menu To Main`. **비파괴** — `PauseCanvas`(sortingOrder 18: 퍼즐 0·전투 10·준비 15 위, 결과 20 아래) 하나만 만들고 다른 화면은 안 건드린다. 아이콘 스프라이트는 비워 둔다(사용자가 꽂음).
+
+**결과 화면 — 클리어/패배 분리 (사용자 요청)**
+- **승리**(보스 인살): 다시 시작 버튼 없음. `victoryToMapDelay`(1.6초) 텀 뒤 **지도로 자동 복귀**. 나중에 인살 컷씬이 이 텀 자리를 채운다. 텀은 `WaitForSecondsRealtime`(연출이 timeScale 건드려도 안 늘어지게).
+- **패배**: 다시 시작 / 지도 두 버튼(기존 동작). Restart/GoToMap 이 `Time.timeScale = 1` 원복(일시정지 중 사망 대비).
+
 #### 세션 7 다음 후보
 
 - 컨셉별 **보스 그림** (지금은 이름만 갈린다), 퍼즐·전투 배경(`puzzle`/`combat` 키가 비어 있음).
