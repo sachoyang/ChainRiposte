@@ -253,6 +253,33 @@ namespace ChainRiposte.Editor
         /// 한눈에 알리는 장치이고, 퍼즐판이 비쳐 보일 정도로만 깐다(다음 판을 눈으로 재야 하므로).
         /// 스탯 분배 버튼 3개는 FIGHT 아래에 붙는다 — 퍼즐 화면에는 더 이상 두지 않는다.
         /// </summary>
+        /// <summary>
+        /// 준비 화면 위쪽에서 다가오는 보스 그림자. 띠(Band)의 형제로 두어 <b>띠 위 화면 상단</b>에 자리잡게 한다 —
+        /// 띠 자식으로 두면 어두운 띠에 묻힌다. 그림은 런타임에 채워지므로 여기선 자리·크기만 잡는다.
+        /// </summary>
+        private static BossShadow BuildBossShadow(RectTransform root)
+        {
+            RectTransform rect = EditorUiFactory.NewRect("BossShadow", root);
+            rect.anchorMin = rect.anchorMax = new Vector2(0.5f, 1f); // 화면 상단 중앙
+            rect.pivot = new Vector2(0.5f, 1f);
+            rect.anchoredPosition = new Vector2(0f, -40f);
+            rect.sizeDelta = new Vector2(520f, 520f);
+            rect.SetAsFirstSibling(); // 띠보다 뒤에 그려 실루엣이 UI를 가리지 않게
+
+            var image = rect.gameObject.AddComponent<Image>();
+            image.raycastTarget = false;
+            image.preserveAspect = true;
+            image.color = new Color(0f, 0f, 0f, 0f); // 컨트롤러가 그림자 색으로 올린다
+
+            BossShadow shadow = rect.gameObject.AddComponent<BossShadow>();
+            var so = new SerializedObject(shadow);
+            Set(so, "image", image);
+            so.ApplyModifiedPropertiesWithoutUndo();
+
+            rect.gameObject.SetActive(false); // 보스 그림이 없으면 꺼진 채로
+            return shadow;
+        }
+
         private static void BuildIntermission(IntermissionScreen screen)
         {
             Transform canvas = PrepareCanvas(screen.gameObject, 15);
@@ -271,6 +298,9 @@ namespace ChainRiposte.Editor
             backdrop.sprite = EditorUiFactory.Square;
             // 완전 불투명이 아니다 — 뒤 퍼즐판이 어렴풋이 비쳐야 '같은 판 위의 상점'으로 읽힌다
             backdrop.color = new Color(0.06f, 0.05f, 0.09f, 0.88f);
+
+            // 보스 그림자 — 띠 위쪽 바깥에서 다가온다. 그림은 IntermissionScreen이 이 판 보스로 채운다.
+            BossShadow bossShadow = BuildBossShadow(root);
 
             TMP_Text title = EditorUiFactory.Text(
                 panel, "Title", new Vector2(0f, 370f), new Vector2(0.5f, 0.5f), 72f,
@@ -315,6 +345,7 @@ namespace ChainRiposte.Editor
             var so = new SerializedObject(screen);
             Set(so, "panelRoot", root.gameObject);
             Set(so, "dimOverlay", dim);
+            Set(so, "bossShadow", bossShadow);
             Set(so, "titleText", title);
             Set(so, "warningText", warning);
             Set(so, "pointsText", points);

@@ -29,6 +29,8 @@ namespace ChainRiposte.Game.UI
         [Tooltip("어둠의 세기. 퍼즐판이 비쳐 보일 정도로만 — 완전히 가리면 다음 판이 안 읽힌다.")]
         [SerializeField] private Color dimColor = new(0f, 0f, 0f, 0.45f);
         [SerializeField] private TMP_Text titleText;
+        [Tooltip("화면 위쪽에서 다가오는 보스 그림자 (예고 연출). 비워도 동작한다.")]
+        [SerializeField] private BossShadow bossShadow;
         [Tooltip("보스가 다가온다는 경고 + 업그레이드 재촉")]
         [SerializeField] private TMP_Text warningText;
         [Tooltip("남은 포인트 안내")]
@@ -111,8 +113,34 @@ namespace ChainRiposte.Game.UI
         {
             bool active = next == GamePhase.Intermission;
             panelRoot.SetActive(active);
+
+            // 그림자는 페이즈가 켜지는 순간 한 번만 다가온다 — Refresh(스탯 변경마다 호출)에 두면 매번 다시 다가온다.
+            if (bossShadow != null)
+            {
+                if (active)
+                    bossShadow.Show(ResolveBossShadowSprite());
+                else
+                    bossShadow.Hide();
+            }
+
             if (active)
                 Refresh();
+        }
+
+        /// <summary>
+        /// 이 판 보스의 그림. 전투 화면과 같은 규칙 — 테마가 겉모습을 갈아 끼우고, 없으면 SO 그림.
+        /// (여기선 <see cref="BossShadow"/>가 어둡게 칠하므로 원본 색은 중요하지 않다.)
+        /// </summary>
+        private Sprite ResolveBossShadowSprite()
+        {
+            Config.BossDataSO boss = gameManager.StageData != null ? gameManager.StageData.BossData : null;
+            if (boss == null)
+                return null;
+
+            if (Theming.ThemeService.TryGetBoss(boss.BossId, out Theming.ThemeSO.BossEntry themed) && themed.sprite != null)
+                return themed.sprite;
+
+            return boss.BattleSprite;
         }
 
         private void Refresh()
