@@ -71,7 +71,8 @@ namespace ChainRiposte.Game.Flow
             SetLogoAlpha(from);
             for (float t = 0f; t < seconds && !_leaving; t += Time.unscaledDeltaTime)
             {
-                SetLogoAlpha(Mathf.Lerp(from, to, t / seconds));
+                // 선형으로 올리면 시작과 끝이 툭 끊겨 보인다 — 양 끝을 눕혀야 '떠오르고 잠기는' 느낌이 난다.
+                SetLogoAlpha(Mathf.SmoothStep(from, to, t / seconds));
                 yield return null;
             }
 
