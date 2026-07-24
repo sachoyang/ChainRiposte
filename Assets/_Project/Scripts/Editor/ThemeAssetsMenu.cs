@@ -129,6 +129,11 @@ namespace ChainRiposte.Editor
             // ② 길이 놓인 땅 — 배경과 다른 그림이라 키가 다르다. 크기·위치는 씬에서 잡는다.
             ConfigurePathBackground(EnsureChild(root, "ThemedBackground", first: false));
 
+            // ③ 화면 아래 빈 공간을 채우는 땅. 있으면 배선만 한다(없으면 만들지 않는다 — 선택 요소).
+            Transform bottom = root.Find("BottomBackground");
+            if (bottom != null)
+                ConfigureBottomBackground(bottom.gameObject);
+
             DisablePlaceholder(root, "World1Bg");
             DisablePlaceholder(root, "World2Bg");
 
@@ -167,10 +172,10 @@ namespace ChainRiposte.Editor
             controllerSo.ApplyModifiedPropertiesWithoutUndo();
 
             EditorSceneManager.MarkSceneDirty(controller.gameObject.scene);
-            Debug.Log("[Theme] 월드맵 구성 완료 — 배경(SkyBackground, 키 map) / 길 그림(ThemedBackground, 키 path) / " +
-                      "세로 전용 상단 띠(TopBackground, 키 map). 길 그림은 비어 있으니 " +
-                      "Theme_*.asset ▸ Backgrounds ▸ path 에 넣고, 크기·위치는 씬에서 길에 맞춰 잡으세요. " +
-                      "확대 정도는 MapCameraRig ▸ portraitViewWidth.");
+            Debug.Log("[Theme] 월드맵 구성 완료 — 배경(SkyBackground, map) / 길 그림(ThemedBackground, path) / " +
+                      "상단 띠(TopBackground, map, 세로 전용)" +
+                      (root.Find("BottomBackground") != null ? " / 아래 땅(BottomBackground, map, −150)" : "") +
+                      ". 길 그림은 크기·위치를 씬에서 길에 맞춰 잡으세요. 확대 정도는 MapCameraRig ▸ portraitViewWidth.");
         }
 
         /// <summary>
@@ -245,6 +250,7 @@ namespace ChainRiposte.Editor
 
             SetPreviewSprite(controller.transform.Find("SkyBackground"), theme.GetBackground(ThemeSO.KeyMap));
             SetPreviewSprite(controller.transform.Find("ThemedBackground"), theme.GetBackground(ThemeSO.KeyPath));
+            SetPreviewSprite(controller.transform.Find("BottomBackground"), theme.GetBackground(ThemeSO.KeyMap));
 
             var canvas = controller.GetComponentInChildren<Canvas>(true);
             if (canvas != null)
@@ -271,6 +277,29 @@ namespace ChainRiposte.Editor
 
             Undo.RecordObject(renderer, "Preview Theme");
             renderer.sprite = sprite;
+        }
+
+        /// <summary>
+        /// 화면 아래 빈 공간을 채우는 땅. 길(<c>ThemedBackground</c>) <b>뒤</b>에 두어(sortingOrder −150)
+        /// 겹치는 곳은 길이 덮고 빈 아래에서만 삐져나와 보인다. 월드 스프라이트라서 위로 올라가면
+        /// 저절로 화면 밖으로 밀려 사라진다(따로 가리는 코드가 필요 없다).
+        ///
+        /// <para>그림은 상단 띠·하늘과 같은 <c>map</c> 키를 공유한다(사용자 결정) — 테마를 바꾸면 같이 바뀐다.
+        /// 위치·크기는 씬에서 잡은 그대로 둔다(여기서 옮기지 않는다).</para>
+        /// </summary>
+        private static void ConfigureBottomBackground(GameObject go)
+        {
+            var renderer = go.GetComponent<SpriteRenderer>();
+            if (renderer == null)
+                renderer = Undo.AddComponent<SpriteRenderer>(go);
+            renderer.sortingOrder = -150; // 하늘(−200)보다 앞, 길(−100)보다 뒤
+            renderer.color = Color.white;
+            if (renderer.sprite == null)
+                renderer.sprite = LargestSprite($"{BackFolder}/Irithyll.png");
+
+            SetThemeKey(go, ThemeSO.KeyMap); // 상단 띠와 같은 그림
+            DisablePanner(go);
+            SetVisibility(go, portrait: true, landscape: true);
         }
 
         private static void SetThemeKey(GameObject go, string key)
