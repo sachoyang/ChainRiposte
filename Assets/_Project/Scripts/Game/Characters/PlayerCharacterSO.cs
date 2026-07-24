@@ -21,6 +21,10 @@ namespace ChainRiposte.Game.Characters
         [Tooltip("선택 화면에서의 정렬 순서 (작을수록 왼쪽)")]
         [SerializeField] private int sortOrder;
 
+        [Header("컨셉")]
+        [Tooltip("이 캐릭터를 고르면 적용될 테마 — 배경과 보스 겉모습만 바뀐다(난이도는 공유). 비워도 된다.")]
+        [SerializeField] private Theming.ThemeSO theme;
+
         [Header("그림")]
         [Tooltip("선택 화면 초상화. 비우면 전투 그림을 대신 쓴다.")]
         [SerializeField] private Sprite portrait;
@@ -41,6 +45,9 @@ namespace ChainRiposte.Game.Characters
 
         /// <summary>세이브 키. StageDataSO.StageId와 같은 규칙 — 비우면 에셋 이름 폴백.</summary>
         public string CharacterId => string.IsNullOrWhiteSpace(characterId) ? name : characterId;
+
+        /// <summary>보이는 것(배경·보스 겉모습)을 정하는 컨셉. 안 걸었으면 null이고 씬의 그림이 그대로 남는다.</summary>
+        public Theming.ThemeSO Theme => theme;
 
         public string NameKey => string.IsNullOrWhiteSpace(nameKey) ? $"character.{CharacterId}" : nameKey;
         public string DescriptionKey => descriptionKey;
