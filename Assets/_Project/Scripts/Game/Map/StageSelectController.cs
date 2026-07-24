@@ -54,6 +54,8 @@ namespace ChainRiposte.Game.Map
         [SerializeField, Min(0.1f)] private float clickRadius = 0.8f;
         [Tooltip("카메라가 노드 전체를 담을 때 가장자리 여백")]
         [SerializeField, Min(0f)] private float cameraPadding = 1.5f;
+        [Tooltip("길을 얼마나 부드럽게 이을지 (1이면 예전처럼 꺾은선). 경로선과 걷는 길이 같이 바뀐다.")]
+        [SerializeField, Range(1, 24)] private int pathSmoothing = 8;
 
         [Header("막힘 연출 (잠긴 노드)")]
         [Tooltip("막힌 노드 쪽으로 나아가는 비율. 0.35면 노드 간 거리의 35%까지 갔다가 되돌아온다.")]
@@ -69,6 +71,9 @@ namespace ChainRiposte.Game.Map
         private Camera _camera;
         private int _currentIndex;
         private bool _moving;
+        private readonly List<Vector3> _nodePositions = new();
+        private readonly List<Vector3> _pathBuffer = new();
+        private readonly List<Vector3> _walkBuffer = new();
 
         private void Awake()
         {
@@ -222,8 +227,42 @@ namespace ChainRiposte.Game.Map
             {
                 int next = _currentIndex + step;
                 FocusCamera(next); // 한 칸 먼저 카메라가 향한다 — 걸어가는 동안 부드럽게 따라붙는다
-                yield return MoveCharacterTo(NodeWorld(next) + characterOffset, moveSpeed);
+                yield return WalkSegment(_currentIndex, next);
                 _currentIndex = next;
+            }
+        }
+
+        /// <summary>
+        /// 한 칸을 <b>그려진 곡선 위로</b> 걸어간다. 경로선과 같은 <see cref="MapPath"/>를 쓰므로
+        /// 캐릭터가 길에서 벗어나지 않는다.
+        /// </summary>
+        private IEnumerator WalkSegment(int from, int to)
+        {
+            MapPath.Segment(NodePositions(), from, to, pathSmoothing, _walkBuffer);
+
+            int index = 1;
+            while (index < _walkBuffer.Count)
+            {
+                // 한 프레임에 갈 거리를 다 쓸 때까지 점을 넘어간다 — 점마다 멈추면 걸음이 끊겨 보인다.
+                float budget = moveSpeed * Time.deltaTime;
+                while (budget > 0f && index < _walkBuffer.Count)
+                {
+                    Vector3 destination = _walkBuffer[index] + characterOffset;
+                    float distance = Vector3.Distance(character.position, destination);
+                    if (distance <= budget)
+                    {
+                        character.position = destination;
+                        budget -= distance;
+                        index++;
+                    }
+                    else
+                    {
+                        character.position = Vector3.MoveTowards(character.position, destination, budget);
+                        budget = 0f;
+                    }
+                }
+
+                yield return null;
             }
         }
 
@@ -346,10 +385,26 @@ namespace ChainRiposte.Game.Map
         {
             if (pathLine == null)
                 return;
-            pathLine.positionCount = nodes.Length;
-            for (int i = 0; i < nodes.Length; i++)
-                pathLine.SetPosition(i, nodes[i].Position);
+
+            MapPath.Build(NodePositions(), pathSmoothing, _pathBuffer);
+            pathLine.positionCount = _pathBuffer.Count;
+            for (int i = 0; i < _pathBuffer.Count; i++)
+                pathLine.SetPosition(i, _pathBuffer[i]);
         }
+
+        /// <summary>노드 위치 목록. 길 모양과 걷는 길이 같은 값을 보게 하기 위한 한 곳.</summary>
+        private List<Vector3> NodePositions()
+        {
+            _nodePositions.Clear();
+            foreach (MapNode node in nodes)
+                _nodePositions.Add(node != null ? node.Position : Vector3.zero);
+            return _nodePositions;
+        }
+
+#if UNITY_EDITOR
+        /// <summary>에디터 전용 — 씬에서 노드를 옮겼을 때 경로선을 바로 다시 그린다.</summary>
+        public void RefreshPathLineEditorOnly() => RefreshPathLine();
+#endif
 
         /// <summary>
         /// 화면 잡기. 리그가 있으면 방향별 규칙(세로=스크롤 / 가로=전체)을 리그가 정하고,
