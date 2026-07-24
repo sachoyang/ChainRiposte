@@ -82,7 +82,7 @@ namespace ChainRiposte.Game.Combat
         private CombatSystem _combat;
         private GameSession _session;
         private Sprite _bossSprite;
-        private string _bossName;
+        private string _bossNameKey;
         private Coroutine _executePulseRoutine;
         private Vector2 _popupOrigin;
         private bool _popupPlaying;
@@ -114,10 +114,22 @@ namespace ChainRiposte.Game.Combat
         /// 전투에 설 보스 이미지를 지정한다. 보스 <b>타일</b>은 종류와 무관하게 하나로 통일하고
         /// (플레이어가 "이게 보스 타일이다"를 한눈에 알아야 한다), 실제 생김새는 이 화면에서만 다르다.
         /// </summary>
-        public void SetBossVisual(Sprite sprite, string displayName)
+        public void SetBossVisual(Sprite sprite, string nameKey)
         {
             _bossSprite = sprite;
-            _bossName = displayName;
+            _bossNameKey = nameKey;
+        }
+
+        /// <summary>
+        /// 이름은 <b>현지화 키</b>로 받는다. 키가 CSV에 없으면 받은 문자열을 그대로 쓴다 —
+        /// 현지화 이전에 만든 BossDataSO의 생 이름(예: "The Warden")이 경고 없이 계속 나오게 하기 위해서다.
+        /// </summary>
+        private string ResolveBossName()
+        {
+            if (string.IsNullOrWhiteSpace(_bossNameKey))
+                return Loc.GetText("combat.boss");
+
+            return Loc.HasKey(_bossNameKey) ? Loc.GetText(_bossNameKey) : _bossNameKey;
         }
 
         /// <summary>전투 돌입 시 컨트롤러가 호출한다.</summary>
@@ -166,7 +178,7 @@ namespace ChainRiposte.Game.Combat
 
         private void ResetVisuals()
         {
-            bossNameText.text = string.IsNullOrWhiteSpace(_bossName) ? Loc.GetText("combat.boss") : _bossName;
+            bossNameText.text = ResolveBossName();
             postureFill.fillAmount = _combat.Posture / _combat.MaxPosture;
             bossHpFill.fillAmount = _combat.BossHp / _combat.BossMaxHp;
             OnPlayerHealthChanged(_session.Health.Current, _session.Health.Max);

@@ -594,6 +594,11 @@ namespace ChainRiposte.Editor
 
             // 전투
             Row(builder, "combat.boss", "보스", "BOSS");
+            // 보스 이름은 테마(고른 캐릭터)가 갈아 끼운다 — ThemeSO의 보스 항목에서 이 키를 가리킨다.
+            Row(builder, "boss.irithyll.01", "이루실의 감시자", "WARDEN OF IRITHYLL");
+            Row(builder, "boss.irithyll.02", "이루실의 도살자", "BUTCHER OF IRITHYLL");
+            Row(builder, "boss.ashina.01", "아시나의 파수꾼", "ASHINA SENTINEL");
+            Row(builder, "boss.ashina.02", "아시나의 도살자", "ASHINA BUTCHER");
             Row(builder, "combat.hp", "체력 {0}/{1}", "HP {0}/{1}");
             Row(builder, "combat.posture", "체간", "POSTURE");
             Row(builder, "combat.parry", "패링", "PARRY");

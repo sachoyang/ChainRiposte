@@ -15,6 +15,10 @@ namespace ChainRiposte.Game.Config
     public sealed class BossDataSO : ScriptableObject
     {
         [Header("표시")]
+        [Tooltip("테마가 겉모습을 갈아 끼울 때 쓰는 키. 비우면 에셋 이름. 한 번 정하면 바꾸지 말 것.")]
+        [SerializeField] private string bossId;
+        [Tooltip("이름의 현지화 키(CSV). 비우면 아래 Display Name을 그대로 쓴다.")]
+        [SerializeField] private string nameKey;
         [SerializeField] private string displayName = "Boss";
         [Tooltip("월드맵 정보 패널에 띄울 보스 이미지. 아직 안 가본 스테이지에서는 검은 실루엣으로 나온다.")]
         [SerializeField] private Sprite portrait;
@@ -87,6 +91,12 @@ namespace ChainRiposte.Game.Config
             [Range(0f, 1f)] public float hpRatioAtOrBelow = 1f;
             public PatternWeight[] patterns = Array.Empty<PatternWeight>();
         }
+
+        /// <summary>테마의 보스 항목이 찾아올 키. StageId·CharacterId와 같은 규칙 — 비우면 에셋 이름.</summary>
+        public string BossId => string.IsNullOrWhiteSpace(bossId) ? name : bossId;
+
+        /// <summary>이름 문구. 현지화 키를 걸었으면 그것, 아니면 생 문자열(구 데이터 호환).</summary>
+        public string NameKey => string.IsNullOrWhiteSpace(nameKey) ? displayName : nameKey;
 
         public string DisplayName => displayName;
 

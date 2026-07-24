@@ -1,6 +1,7 @@
 using ChainRiposte.Core.Combat;
 using ChainRiposte.Core.Flow;
 using ChainRiposte.Game.Config;
+using ChainRiposte.Game.Theming;
 using UnityEngine;
 
 namespace ChainRiposte.Game.Combat
@@ -71,14 +72,39 @@ namespace ChainRiposte.Game.Combat
 
             // 보스 생김새는 SO에서 직접 읽는다 — 스프라이트는 순수 C# BossConfig에 담을 수 없다
             BossDataSO bossData = gameManager.StageData != null ? gameManager.StageData.BossData : null;
-            screen.SetBossVisual(
-                bossData != null ? bossData.BattleSprite : null,
-                bossData != null ? bossData.DisplayName : null);
+            screen.SetBossVisual(ResolveBossSprite(bossData), ResolveBossNameKey(bossData));
 
             screen.Bind(_combat, gameManager.Session);
             if (juice != null)
                 juice.BindCombat(_combat);
             input.SetActive(true);
+        }
+
+        /// <summary>
+        /// 겉모습만 테마가 갈아 끼운다 — HP·체간·채보는 <see cref="BossDataSO"/> 그대로라 난이도는 캐릭터와 무관하다.
+        /// 테마에 항목이 없거나 칸이 비어 있으면 SO 값으로 떨어진다.
+        /// </summary>
+        private static Sprite ResolveBossSprite(BossDataSO bossData)
+        {
+            if (bossData == null)
+                return null;
+
+            if (ThemeService.TryGetBoss(bossData.BossId, out ThemeSO.BossEntry themed) && themed.sprite != null)
+                return themed.sprite;
+
+            return bossData.BattleSprite;
+        }
+
+        private static string ResolveBossNameKey(BossDataSO bossData)
+        {
+            if (bossData == null)
+                return null;
+
+            if (ThemeService.TryGetBoss(bossData.BossId, out ThemeSO.BossEntry themed) &&
+                !string.IsNullOrWhiteSpace(themed.nameKey))
+                return themed.nameKey;
+
+            return bossData.NameKey;
         }
 
         private void OnCombatEnded(bool victory)
