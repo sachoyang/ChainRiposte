@@ -2,6 +2,8 @@ using System.Collections.Generic;
 using ChainRiposte.Game;
 using ChainRiposte.Game.Config;
 using ChainRiposte.Game.Map;
+using ChainRiposte.Game.Theming;
+using ChainRiposte.Game.UI;
 using TMPro;
 using UnityEditor;
 using UnityEngine;
@@ -67,9 +69,10 @@ namespace ChainRiposte.Editor
             Sprite square = AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/UISprite.psd");
             StageDataSO[] stages = LoadStages();
 
-            // ── 배경 2장 ──
-            CreateSprite(root, "World1Bg", new Vector3(0f, -2.6f, 1f), new Vector3(10f, 4.4f, 1f), World1Color * 0.5f, 0, square);
-            CreateSprite(root, "World2Bg", new Vector3(0f, 1.4f, 1f), new Vector3(10f, 4.4f, 1f), World2Color * 0.5f, 0, square);
+            // ── 배경 ── 그림은 테마(고른 캐릭터)가 채우고, 크기 맞춤과 좌우 왕복은 BackgroundPanner가 맡는다.
+            SpriteRenderer background = CreateSprite(root, "ThemedBackground", new Vector3(0f, 0f, 1f), Vector3.one, Color.white, -100, null);
+            background.gameObject.AddComponent<ThemedSprite>(); // 기본 키가 map
+            background.gameObject.AddComponent<BackgroundPanner>();
 
             // ── 노드 + 라벨 ──
             var nodes = new MapNode[NodePositions.Length];
