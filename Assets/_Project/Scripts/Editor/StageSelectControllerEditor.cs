@@ -1,6 +1,8 @@
 using System.Collections.Generic;
+using System.Linq;
 using ChainRiposte.Game.Config;
 using ChainRiposte.Game.Map;
+using ChainRiposte.Game.Theming;
 using UnityEditor;
 using UnityEngine;
 
@@ -33,6 +35,9 @@ namespace ChainRiposte.Editor
         private readonly List<Vector3> _preview = new();
         private bool _placing;
 
+        private ThemeSO[] _themes;
+        private int _themeIndex;
+
         public override void OnInspectorGUI()
         {
             DrawDefaultInspector();
@@ -41,6 +46,9 @@ namespace ChainRiposte.Editor
             EditorGUILayout.Space();
             EditorGUILayout.LabelField("길 그리기", EditorStyles.boldLabel);
 
+            DrawThemeLayoutSection(controller);
+
+            EditorGUILayout.Space();
             EditorGUILayout.HelpBox(
                 "노드를 씬 뷰에서 끌면 경로선이 따라옵니다.\n" +
                 "「노드 찍기」를 켜고 씬을 클릭하면 그 자리에 노드가 하나 생깁니다.",
@@ -64,6 +72,103 @@ namespace ChainRiposte.Editor
 
             if (GUILayout.Button("마지막 노드 지우기"))
                 RemoveLastNode(controller);
+        }
+
+        /// <summary>
+        /// 길 모양은 테마 데이터다 — 씬을 나누지 않고 한 씬에서 테마별 배치를 오간다.
+        /// 여기서 테마를 고르고 그 배치를 <b>불러와 편집한 뒤 다시 저장</b>한다.
+        /// </summary>
+        private void DrawThemeLayoutSection(StageSelectController controller)
+        {
+            if (_themes == null)
+                _themes = Resources.LoadAll<ThemeSO>(ThemeAssetsMenu.ThemeResourcesFolder)
+                    .OrderBy(t => t.ThemeId).ToArray();
+
+            if (_themes.Length == 0)
+            {
+                EditorGUILayout.HelpBox(
+                    "테마가 없습니다. Tools ▸ ChainRiposte ▸ Theme ▸ Create Default Themes 를 먼저 실행하세요.\n" +
+                    "(테마가 없으면 노드 위치는 씬에 그대로 저장됩니다 — 단일 배경일 땐 이대로도 됩니다.)",
+                    MessageType.Info);
+                return;
+            }
+
+            _themeIndex = Mathf.Clamp(_themeIndex, 0, _themes.Length - 1);
+            _themeIndex = EditorGUILayout.Popup("편집 중인 테마", _themeIndex, _themes.Select(t => t.ThemeId).ToArray());
+            ThemeSO theme = _themes[_themeIndex];
+
+            EditorGUILayout.HelpBox(
+                theme.HasNodeLayout
+                    ? $"'{theme.ThemeId}' 에 노드 {theme.NodeLayout.Count}개가 저장돼 있습니다."
+                    : $"'{theme.ThemeId}' 에는 아직 저장된 배치가 없습니다. 지금 씬 배치를 저장하세요.",
+                MessageType.None);
+
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                using (new EditorGUI.DisabledScope(!theme.HasNodeLayout))
+                {
+                    if (GUILayout.Button("이 테마 배치 불러오기"))
+                        LoadThemeLayout(controller, theme);
+                }
+
+                if (GUILayout.Button("현재 배치를 이 테마에 저장"))
+                    SaveThemeLayout(controller, theme);
+            }
+        }
+
+        /// <summary>테마의 저장된 위치를 씬 노드에 적용하고, 그 테마의 배경 그림을 씬 뷰에 보여 준다.</summary>
+        private void LoadThemeLayout(StageSelectController controller, ThemeSO theme)
+        {
+            MapNode[] nodes = OrderedNodes();
+            IReadOnlyList<Vector2> layout = theme.NodeLayout;
+            if (layout.Count != nodes.Length)
+            {
+                if (!EditorUtility.DisplayDialog("배치 불러오기",
+                        $"저장된 노드 수({layout.Count})가 씬 노드 수({nodes.Length})와 다릅니다.\n" +
+                        "겹치는 만큼만 적용할까요?", "적용", "취소"))
+                    return;
+            }
+
+            int count = Mathf.Min(layout.Count, nodes.Length);
+            for (int i = 0; i < count; i++)
+            {
+                if (nodes[i] == null)
+                    continue;
+                Undo.RecordObject(nodes[i].transform, "Load Theme Layout");
+                Vector3 position = nodes[i].transform.position;
+                nodes[i].transform.position = new Vector3(layout[i].x, layout[i].y, position.z);
+            }
+
+            ThemeAssetsMenu.PreviewThemeInSceneEditorOnly(theme);
+            controller.RefreshPathLineEditorOnly();
+            EditorUtility.SetDirty(controller);
+            SceneView.RepaintAll();
+        }
+
+        private void SaveThemeLayout(StageSelectController controller, ThemeSO theme)
+        {
+            MapNode[] nodes = OrderedNodes();
+            var positions = nodes
+                .Select(n => n != null ? (Vector2)n.Position : Vector2.zero)
+                .ToList();
+
+            Undo.RecordObject(theme, "Save Theme Layout");
+            theme.SetNodeLayoutEditorOnly(positions);
+            EditorUtility.SetDirty(theme);
+            AssetDatabase.SaveAssetIfDirty(theme);
+            Debug.Log($"[StageSelect] '{theme.ThemeId}' 에 노드 {positions.Count}개 배치를 저장했습니다.", theme);
+        }
+
+        private MapNode[] OrderedNodes()
+        {
+            SerializedProperty nodes = NodesProperty();
+            if (nodes == null)
+                return System.Array.Empty<MapNode>();
+
+            var result = new MapNode[nodes.arraySize];
+            for (int i = 0; i < nodes.arraySize; i++)
+                result[i] = nodes.GetArrayElementAtIndex(i).objectReferenceValue as MapNode;
+            return result;
         }
 
         private void OnSceneGUI()

@@ -24,6 +24,9 @@ namespace ChainRiposte.Editor
         private const string Folder = "Assets/_Project/Data/Resources/Themes";
         private const string BackFolder = "Assets/_Project/DotImgs/back";
 
+        /// <summary>Resources.LoadAll 로 테마를 찾을 때 쓰는 폴더 이름 (인스펙터 툴이 공유).</summary>
+        public const string ThemeResourcesFolder = "Themes";
+
         [MenuItem("Tools/ChainRiposte/Theme/Create Default Themes")]
         private static void CreateDefaults()
         {
@@ -224,6 +227,50 @@ namespace ChainRiposte.Editor
 
             Undo.RecordObject(panner, "Static Background");
             panner.enabled = false;
+        }
+
+        /// <summary>
+        /// 에디트 모드에서는 <see cref="ThemedSprite"/>가 안 돌므로, 씬 뷰에 해당 테마의 배경·길 그림을
+        /// 직접 꽂아 보여 준다. 어느 테마를 편집 중인지 눈으로 확인하며 노드를 찍기 위한 미리보기다.
+        /// (플레이하면 런타임에 다시 테마대로 채워지므로 여기서 꽂은 것은 편집용일 뿐이다.)
+        /// </summary>
+        public static void PreviewThemeInSceneEditorOnly(ThemeSO theme)
+        {
+            if (theme == null)
+                return;
+
+            var controller = Object.FindFirstObjectByType<StageSelectController>();
+            if (controller == null)
+                return;
+
+            SetPreviewSprite(controller.transform.Find("SkyBackground"), theme.GetBackground(ThemeSO.KeyMap));
+            SetPreviewSprite(controller.transform.Find("ThemedBackground"), theme.GetBackground(ThemeSO.KeyPath));
+
+            var canvas = controller.GetComponentInChildren<Canvas>(true);
+            if (canvas != null)
+            {
+                Transform image = canvas.transform.Find("TopBackground/Image");
+                if (image != null && image.TryGetComponent(out Image topImage))
+                {
+                    Sprite sprite = theme.GetBackground(ThemeSO.KeyMap);
+                    if (sprite != null)
+                    {
+                        Undo.RecordObject(topImage, "Preview Theme");
+                        topImage.sprite = sprite;
+                    }
+                }
+            }
+        }
+
+        private static void SetPreviewSprite(Transform transform, Sprite sprite)
+        {
+            if (transform == null || sprite == null)
+                return;
+            if (!transform.TryGetComponent(out SpriteRenderer renderer))
+                return;
+
+            Undo.RecordObject(renderer, "Preview Theme");
+            renderer.sprite = sprite;
         }
 
         private static void SetThemeKey(GameObject go, string key)
