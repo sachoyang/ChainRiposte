@@ -83,6 +83,21 @@
 - `... ▸ Setup Background In Open Scene` — **열려 있는 씬**만 손댄다(씬을 몰래 열고 저장하지 않는다). Title이면 배경=ashina+왕복, StageSelect면 `ThemedBackground` 생성 + 색 사각형 `World1Bg`/`World2Bg` 비활성.
 - `StageSelectSceneBuilder`도 색 사각형 2장 대신 `ThemedBackground`를 깔도록 교체.
 
+**인트로 — 검정 + 부드러운 페이드**
+- 배경을 그림 없이 완전한 검정으로(메뉴가 카메라 클리어 컬러까지 맞춘다). 로고만 보이는 화면이라 배경에 뭘 두면 로고가 죽는다.
+- `IntroController`의 페이드가 선형 → `SmoothStep`. 양 끝이 눕지 않으면 알파가 툭 끊겨 보인다.
+
+**월드맵 세로 재구성 (사용자 요청)** — "배경이 계속 움직여 정신사납다 / 길을 다 보여주지 말고 스크롤"
+- **세로** = 위 배경 띠 / 가운데 길(스크롤) / 아래 정보 띠. **가로** = 예전처럼 길 전체 + 오른쪽 정보 컬럼(이미 그렇게 돼 있었다).
+- 마스크를 따로 안 썼다 — **불투명한 UI 띠가 그대로 마스크다.** Overlay 캔버스는 월드 스프라이트 위에 그려지므로 띠가 길의 위/아래를 가려 창을 만든다. LineRenderer는 SpriteMask가 안 먹으므로 이 방법이 아니면 마스킹이 까다롭다.
+- `Game/Map/MapCameraRig` — 세로에서 카메라를 스크롤. **카메라 중심(화면 0.5)과 창 중심이 어긋나므로 그 차이만큼 밀어 주는 게 핵심 계산.** 가로에서는 `CameraFit2D`에 넘기고 자기는 빠진다(둘이 동시에 카메라를 만지면 서로 되돌린다 → 세로에서 `cameraFit.enabled = false`).
+- 띠 비율을 **씬의 RectTransform에서 매 프레임 잰다**(`topBand`/`bottomBand`). 숫자를 코드와 씬 양쪽에 적어 두면 띠 높이를 고친 순간 창 중심이 어긋난다. 계산을 전부 `LateUpdate`에 모은 것도 같은 이유 — 방향 전환 때 `OrientationLayout`과 실행 순서를 다투면 한 프레임 어긋난 값을 읽는다.
+- `Game/UI/OrientationVisibility` — 방향에 따라 **그리는 컴포넌트만** 끈다. `SetActive(false)`로 자기를 끄면 스크립트도 같이 멈춰 다시 켤 방법이 없어진다.
+- 배경이 **두 벌**이다: 월드 SpriteRenderer(가로 전용, 화면 전체) + Canvas의 `TopBackground`(세로 전용, 상단 띠). 둘 다 `ThemedSprite` 키 `map` 이라 테마가 같이 채운다.
+- 상단 띠는 **띠(RectMask2D) + 자식 Image** 구조다. `BackgroundPanner`는 '부모를 덮는' 물건이라 이미지에 직접 붙이면 캔버스 전체로 커진다.
+- 월드맵 배경은 `amplitude = 0`(고정). 눈이 길을 따라가야 하는 화면이라 배경이 움직이면 방해다 — 타이틀과 정반대.
+- `Setup Background In Open Scene` 이 노드 세로 간격을 1.8배로 벌릴지 **물어본다**(노드 위치는 사용자 것이라 말없이 안 바꾼다). 안 벌리면 세로 화면에 길이 거의 다 들어와서 스크롤이 안 느껴진다.
+
 #### 세션 7 다음 후보
 
 - 컨셉별 **보스 그림** (지금은 이름만 갈린다), 퍼즐·전투 배경(`puzzle`/`combat` 키가 비어 있음).
