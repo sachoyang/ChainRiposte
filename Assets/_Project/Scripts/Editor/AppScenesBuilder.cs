@@ -204,7 +204,8 @@ namespace ChainRiposte.Editor
         }
 
         /// <summary>옵션 패널. 항목은 위에서부터 볼륨 2개 → 화면 방향 → 언어 → 진행도 초기화 순.</summary>
-        private static GameObject BuildOptionsPanel(Transform canvas)
+        /// <summary>설정 패널. 타이틀·전투 씬 모두 같은 것을 쓴다(내부 공용).</summary>
+        internal static GameObject BuildOptionsPanel(Transform canvas)
         {
             Image backdrop = EditorUiFactory.Stretch(canvas, "OptionsPanel", new Color(0.05f, 0.04f, 0.07f, 0.96f), raycast: true);
             GameObject panel = backdrop.gameObject;

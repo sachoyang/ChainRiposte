@@ -594,6 +594,11 @@ namespace ChainRiposte.Editor
 
             // 전투
             Row(builder, "combat.boss", "보스", "BOSS");
+            // 일시정지 (전투 씬 우상단)
+            Row(builder, "pause.title", "일시정지", "PAUSED");
+            Row(builder, "pause.resume", "계속하기", "RESUME");
+            Row(builder, "pause.quit", "지도로 나가기", "QUIT TO MAP");
+            Row(builder, "pause.quit.confirm", "지도로 나갈까요?\\n진행 중인 판은 사라집니다.", "Quit to map?\\nThis run will be lost.");
             // 보스 이름은 테마(고른 캐릭터)가 갈아 끼운다 — ThemeSO의 보스 항목에서 이 키를 가리킨다.
             Row(builder, "boss.irithyll.01", "이루실의 감시자", "WARDEN OF IRITHYLL");
             Row(builder, "boss.irithyll.02", "이루실의 도살자", "BUTCHER OF IRITHYLL");
