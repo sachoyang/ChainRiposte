@@ -430,7 +430,7 @@ namespace ChainRiposte.Editor
             SerializedProperty backgrounds = so.FindProperty("backgrounds");
             Sprite back = LargestSprite($"{BackFolder}/{backTexture}.png");
             EnsureBackgroundKey(backgrounds, ThemeSO.KeyMap, back);
-            EnsureBackgroundKey(backgrounds, ThemeSO.KeyPath, null); // 길 그림은 사용자가 채운다
+            EnsureBackgroundKey(backgrounds, ThemeSO.KeyPath, back); // 우선 배경과 같은 그림을 재활용한다
             EnsureBackgroundKey(backgrounds, ThemeSO.KeyPuzzle, null);
             EnsureBackgroundKey(backgrounds, ThemeSO.KeyCombat, null);
             if (back == null)
