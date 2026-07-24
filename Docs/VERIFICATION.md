@@ -360,7 +360,80 @@
 
 ---
 
-## 9. 문제 보고 양식
+## 9. 세션 7 (2026-07-24) — 배경 좌우 왕복 + 캐릭터별 컨셉(테마)
+
+### 9-0. 먼저 (순서대로)
+
+- [ ] `Tools ▸ ChainRiposte ▸ Theme ▸ Create Default Themes`
+      → `Data/Resources/Themes/Theme_Irithyll` · `Theme_Ashina` 생성 + 기사/낭인에 자동 연결
+- [ ] `Title.unity` 열고 `Tools ▸ ChainRiposte ▸ Theme ▸ Setup Background In Open Scene`
+      → 배경 = `ashina` + 좌우 왕복
+- [ ] `StageSelect.unity` 열고 같은 메뉴 실행
+      → `ThemedBackground` 생성, 색 사각형 `World1Bg`/`World2Bg` 는 꺼짐
+- [ ] `Intro.unity ▸ Canvas/Background` 에는 **`BackgroundPanner` 를 직접 드래그**
+      (인트로는 사용자가 따로 작업 중이라 자동으로 건드리지 않는다)
+
+> ⚠ **`Build App Scenes` 는 재실행하지 말 것** — 씬을 새로 만들기 때문에 넣어둔 에셋이 날아간다.
+> (빌더에도 같은 배선을 넣어 뒀으므로 나중에 어쩔 수 없이 재빌드할 때는 자동으로 붙는다.)
+
+### 9-1. 배경 좌우 왕복 (`BackgroundPanner`)
+
+- [ ] 타이틀 배경이 **찌그러지지 않고** 원본 비율 그대로 화면을 꽉 채우는지 (좌우가 잘려 나가는 게 정상)
+- [ ] 아주 천천히 좌우로 왕복하는지 (한 바퀴 24초 — 양 끝에서 저절로 느려진다)
+- [ ] 창을 **가로로 넓혔을 때** 다시 맞춰지는지, 남는 폭이 없어지면 **가운데에서 멈추는지**
+- [ ] 세로로 되돌리면 다시 흔들리는지
+- [ ] 월드맵 배경이 카메라 화면을 덮는지 / 노드·경로가 배경에 가리지 않는지
+
+> 튜닝: `cycleSeconds`(주기) / `amplitude`(0이면 고정) / `coverScale`(1보다 올리면 비율이 딱 맞는
+> 화면에서도 흔들 여유가 생긴다). 월드맵이 산만하면 `amplitude` 0.
+> 배경 그림 교체 = 그 Image/SpriteRenderer 의 스프라이트만 갈아 끼우면 된다.
+
+### 9-2. 캐릭터별 컨셉 — 배경
+
+- [ ] **기사**로 새 게임 → 월드맵 배경이 **이루실**인지
+- [ ] **낭인**으로 새 게임 → 월드맵 배경이 **아시나**인지
+- [ ] 인트로·타이틀은 **캐릭터와 무관하게 그대로**인지 (공용 화면이라 의도된 것)
+- [ ] 게임을 껐다 켜도 고른 컨셉이 유지되는지
+
+### 9-3. 캐릭터별 컨셉 — 보스
+
+**겉모습과 이름만 바뀌고 난이도는 공유한다**(HP·체간·채보·패턴은 `BossDataSO` 하나).
+
+- [ ] 기사로 1-1 보스전 → 이름이 **「이루실의 감시자」**
+- [ ] 낭인으로 1-1 보스전 → 이름이 **「아시나의 파수꾼」**
+- [ ] 두 경우 **보스 HP·체간·패턴이 같은지** (여기가 달라지면 설계가 깨진 것)
+- [ ] 언어를 영어로 바꾸면 보스 이름도 영어로 나오는지
+- [ ] 보스 **타일**은 컨셉과 무관하게 그대로인지 (일부러 통일 — 보스 타일은 한눈에 알아야 한다)
+
+> 컨셉별 보스 **그림**은 아직 비워 뒀다 — 비어 있으면 `BossDataSO` 의 그림으로 떨어진다.
+> 아트가 생기면 `Theme_*.asset ▸ Bosses ▸ Sprite` 에 꽂으면 된다.
+
+### 9-4. 컨셉을 늘릴 때 (코드 수정 없음)
+
+- [ ] `Create ▸ ChainRiposte ▸ Theme` 로 `Data/Resources/Themes/` 에 에셋 추가
+- [ ] 배경 키(`map` / `puzzle` / `combat`)에 그림을 꽂고, 보스 항목에 `bossId` + 이름 키
+- [ ] `Character_*.asset ▸ Theme` 에서 그 테마를 가리키기 → 끝
+
+> 배경을 스테이지별로 쪼개고 싶으면 키를 `stage.1-1` 처럼 새로 만들고
+> 씬의 배경에 붙은 `ThemedSprite ▸ Background Key` 를 그 키로 바꾸면 된다. 코드는 안 바뀐다.
+
+### 9-5. 타일 배경판을 어디에 꽂는가 (세션 6 배선분 — 위치 안내)
+
+| 하고 싶은 것 | 꽂는 곳 |
+|---|---|
+| 타일마다 **다른** 받침 그림 | `Data/Tile_*.asset ▸ Background Sprite` (6종: Bat/Ghoul/Potion/Rat/Skeleton/Slime) |
+| 타일마다 **다른 색**만 | 같은 에셋 ▸ `Background Color` (**알파를 0보다 올려야 그려진다**) |
+| **전부 같은** 받침 하나 | `Main.unity ▸ BoardView ▸ Tile Background Sprite` |
+| 색만 공용으로 | `BoardView ▸ Tile Background Color` (알파 0이면 안 그림) |
+| 받침 크기 | `BoardView ▸ Tile Background Scale` (기본 1.05) |
+| 벽에도 깔기 | `BoardView ▸ Background On Walls` |
+
+- [ ] 우선순위대로 동작하는지: **타일 SO 전용 그림 → BoardView 공용 그림 → 색 사각형 → (알파 0이면) 안 그림**
+- [ ] 받침이 타일을 따라 **낙하·스왑에 같이 움직이는지** (고정된 배경 셀과 다르다)
+
+---
+
+## 10. 문제 보고 양식
 
 깨진 게 있으면 이 형식으로 적어두면 다음 세션에서 바로 집는다. (어느 절이든 이 양식으로)
 

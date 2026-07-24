@@ -40,17 +40,58 @@
 
 > **다음 세션은 이 섹션을 먼저 읽고 시작한다.** 세션 종료 시 여기를 갱신할 것.
 
-### 마지막 갱신: 2026-07-23 (세션 6)
+### 마지막 갱신: 2026-07-24 (세션 7)
 
 - **커밋 규칙**: 메시지에 `Co-Authored-By: Claude` 트레일러를 넣지 않는다.
-- **git**: 세션 6 작업 커밋 완료(주제별 5개). push는 계속 안 하고 있음 — 필요하면 물어볼 것.
-- **테스트**: EditMode **94/94**.
+- **git**: 세션 7 작업 커밋 완료(주제별 5개). push는 계속 안 하고 있음 — 필요하면 물어볼 것.
+- **테스트**: EditMode **94/94** (Core를 안 건드렸으므로 그대로).
+- 세션 6 검증: **§8-1(캐릭터 선택) / §8-2(전투 그림) 확인 완료**. 나머지 절은 아직.
 
 #### 다음 세션에서 가장 먼저 할 것
 
-1. **빌더 2종 재실행 확인** — `Build App Scenes` / `Build Main Scene UI`. 안 돌리면 캐릭터 선택 화면과 NPC 반응이 안 보인다.
-2. **대장장이 그림 배선 확인** — `IntermissionScreen` 인스펙터의 `blacksmithImage`. 코드가 안 채우는 유일한 NPC 그림이다.
-3. `Docs/VERIFICATION.md` **§8** 결과 물어보기.
+1. `Docs/VERIFICATION.md` **§9 결과 물어보기** (세션 7 몫). 특히 **9-0 순서**를 밟았는지 —
+   `Create Default Themes` → 두 씬에서 `Setup Background In Open Scene` → Intro는 손으로 드래그.
+2. ⚠ **`Build App Scenes` 는 절대 재실행하지 말 것** — 씬을 새로 만들어서 사용자가 넣은 에셋이 날아간다.
+   빌더에도 같은 배선을 넣어 뒀으니 나중에 어쩔 수 없이 재빌드할 때만 자동으로 붙는다.
+3. 사용자가 **인트로/타이틀 공용 배경**을 따로 만들어 오기로 했다 — 오면 `Canvas/Background` 스프라이트만 교체.
+
+#### 세션 7에서 한 것
+
+**배경 좌우 왕복 — `Game/UI/BackgroundPanner`**
+- 배경을 **원본 비율 그대로** 화면을 덮게(cover) 키우고, 잘려 나간 폭 안에서 사인 곡선으로 좌우 왕복(기본 24초/바퀴).
+- **UI(`Image`) / 월드(`SpriteRenderer`) 둘 다** 지원. 덮을 범위가 UI면 부모 rect, 월드면 **카메라가 보는 크기**다. 월드맵 배경이 SpriteRenderer라 한쪽만으로는 모자랐다.
+- **남는 폭이 없으면 안 움직인다** — 가로 화면에서 비율이 딱 맞으면 가운데 고정. 일부러 여유를 만들려면 `coverScale`을 1보다 올린다.
+- `AspectRatioFitter(EnvelopeParent)`를 안 쓴 이유: 그쪽은 레이아웃마다 `anchoredPosition`을 0으로 되돌려 좌우 이동과 싸운다.
+- 방향 전환: `OrientationService.Changed` 구독 + **매 프레임 덮을 범위·스프라이트 비교**로 이중 대비. 스프라이트가 바뀌어도(테마 전환) 알아서 다시 맞추므로 **실행 순서에 기대지 않는다.**
+
+**캐릭터별 컨셉(테마)** — 기사=이루실 / 낭인=아시나
+- **보이는 것만 바뀌고 난이도는 공유한다.** HP·체간·채보·패턴은 `BossDataSO` 하나 그대로 — 이 선을 넘으면 캐릭터 선택이 난이도 선택이 된다.
+- `Game/Theme/ThemeSO` — 컨셉 한 벌 = 에셋 하나. `backgrounds[]`(키→스프라이트) + `bosses[]`(bossId→그림·이름키). 배경 키는 자유 문자열(`map`/`puzzle`/`combat`)이라 **나중에 `stage.1-1` 처럼 잘게 쪼개도 코드가 안 바뀐다.**
+- `Game/Theme/ThemeService` — `CharacterService.Current.Theme`를 묻는 창구. **테마를 따로 저장하지 않는다**(저장 상태가 둘로 갈라지면 반드시 어긋난다). 이벤트도 중계하지 않는다 — 정적 초기화 순서에 기대게 되므로 구독자는 `CharacterService.Changed`를 직접 본다.
+- `Game/Theme/ThemedSprite` — **`LocalizedText`와 같은 물건**. 씬의 그림에 붙이고 키만 준다. `Image`/`SpriteRenderer` 둘 다. **테마에 그 키가 없으면 씬의 그림을 그대로 둔다**(배선을 덜 했다고 화면이 비면 안 된다). 어느 화면을 테마로 바꿀지는 코드가 아니라 **컴포넌트를 어디 붙였는지**가 정한다.
+- `PlayerCharacterSO.theme` 한 줄이 연결의 전부.
+- **인트로·타이틀은 테마를 안 탄다**(사용자 결정) — 캐릭터를 고르기 전에도 보이는 공용 화면이라. 타이틀 배경은 `ashina` 고정 + 좌우 왕복.
+
+**보스 겉모습·이름**
+- `BossDataSO`에 `bossId`(비우면 에셋 이름) + `nameKey` 추가. `CombatController.ResolveBossSprite/NameKey`가 테마 → 없으면 SO로 떨어진다.
+- `CombatScreen.SetBossVisual`이 이제 **이름 키**를 받는다. 키가 CSV에 없으면 받은 문자열을 그대로 쓰므로 구 데이터의 생 이름("The Warden")이 **경고 없이** 계속 나온다.
+- 보스 **타일**은 통일 유지 — 종류와 무관하게 "이게 보스 타일이다"를 한눈에 알아야 한다.
+- CSV/StarterCsv에 `boss.irithyll.01/02`, `boss.ashina.01/02` 추가.
+
+**에디터**
+- `Tools ▸ ChainRiposte ▸ Theme ▸ Create Default Themes` — `Theme_Irithyll`/`Theme_Ashina` 생성 + 캐릭터에 연결. **빈 슬롯만 채운다.** 보스 그림은 일부러 비워 둠(비면 SO 그림으로 떨어짐).
+- `... ▸ Setup Background In Open Scene` — **열려 있는 씬**만 손댄다(씬을 몰래 열고 저장하지 않는다). Title이면 배경=ashina+왕복, StageSelect면 `ThemedBackground` 생성 + 색 사각형 `World1Bg`/`World2Bg` 비활성.
+- `StageSelectSceneBuilder`도 색 사각형 2장 대신 `ThemedBackground`를 깔도록 교체.
+
+#### 세션 7 다음 후보
+
+- 컨셉별 **보스 그림** (지금은 이름만 갈린다), 퍼즐·전투 배경(`puzzle`/`combat` 키가 비어 있음).
+- 인트로/타이틀 공용 배경(사용자 작업분) 반영.
+- 세션 6 후보 그대로: UI 에셋 배선, NPC 스프라이트 시트 → Animator, Boss_02 채보, 채보 미리듣기, 사운드.
+
+---
+
+### 세션 6 갱신: 2026-07-23
 
 #### 세션 6에서 한 것
 
