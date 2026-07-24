@@ -1,7 +1,7 @@
 ﻿<Solution>
+  <Project Path="ChainRiposte.Game.csproj" />
   <Project Path="Assembly-CSharp.csproj" />
   <Project Path="ChainRiposte.Core.Tests.csproj" />
   <Project Path="ChainRiposte.Core.csproj" />
-  <Project Path="ChainRiposte.Game.csproj" />
   <Project Path="ChainRiposte.Editor.csproj" />
 </Solution>

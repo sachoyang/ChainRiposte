@@ -12,16 +12,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 605fa9713fb2bd44c8ee6b7c99f4bd10, type: 3}
   m_Name: Stage_1_1
   m_EditorClassIdentifier: ChainRiposte.Game::ChainRiposte.Game.Config.StageDataSO
+  stageId: 
   boardRows:
-  - XOOOOOX
-  - OOOOOOO
-  - OOOOOOO
-  - OOWOWOO
-  - OOOOOOO
-  - OOOOOOO
-  - OOOOOOO
-  - OOOOOOO
-  - XOOOOOX
+  - XXXOOXXX
+  - XXOOOOXX
+  - XOOOOOOX
+  - OOOOOOOO
+  - OOOOOOOO
+  - XOOOOOOX
+  - XXOOOOXX
+  - XXXOOXXX
   wallHp: 3
   turnLimit: 30
   comboSoulMultiplierStep: 0.5
@@ -92,3 +92,12 @@ MonoBehaviour:
   ambushHpMultiplier: 0.5
   bossData: {fileID: 11400000, guid: c227ecf42446f934788dc32872effdd2, type: 2}
   gimmicks: 
+  gimmickTuning:
+    corruptionSeeds: 2
+    corruptionSpreadEveryTurns: 1
+    maxCorruptionRatio: 0.35
+    bombChance: 0.12
+    bombTurns: 3
+    bombDamage: 12
+    chainInitialCount: 3
+    chainChance: 0.08

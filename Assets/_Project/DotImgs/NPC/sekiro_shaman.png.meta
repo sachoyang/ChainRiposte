@@ -1,10 +1,10 @@
 fileFormatVersion: 2
-guid: 9f1ce03430b3f3e4091991cac094ef90
+guid: 79eded66c4a84d849a7bf068a6b756e6
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: -8473886284158217743
-    second: Gemini_Generated_Image_gdvu7wgdvu7wgdvu-pixel-snapper_0
+      213: 8195546328963567565
+    second: sekiro_shaman_0
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -97,7 +97,7 @@ TextureImporter:
     androidETC2FallbackOverride: 0
     forceMaximumCompressionQuality_BC6H_BC7: 0
   - serializedVersion: 4
-    buildTarget: Android
+    buildTarget: WebGL
     maxTextureSize: 2048
     resizeAlgorithm: 0
     textureFormat: -1
@@ -110,7 +110,7 @@ TextureImporter:
     androidETC2FallbackOverride: 0
     forceMaximumCompressionQuality_BC6H_BC7: 0
   - serializedVersion: 4
-    buildTarget: WebGL
+    buildTarget: Android
     maxTextureSize: 2048
     resizeAlgorithm: 0
     textureFormat: -1
@@ -126,23 +126,23 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: Irithyll
+      name: sekiro_shaman_0
       rect:
         serializedVersion: 2
-        x: 0
-        y: 458
-        width: 480
-        height: 266
-      alignment: 0
-      pivot: {x: 0.5, y: 0.5}
+        x: 1
+        y: 1
+        width: 47
+        height: 71
+      alignment: 7
+      pivot: {x: 0.5, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 1f1d1b53255b66a80800000000000000
-      internalID: -8473886284158217743
+      spriteID: dcf412ed6fd6cb170800000000000000
+      internalID: 8195546328963567565
       vertices: []
       indices: 
       edges: []
@@ -151,7 +151,7 @@ TextureImporter:
     customData: 
     physicsShape: []
     bones: []
-    spriteID: 152de4069eba7f04ebe5ecbaecab3690
+    spriteID: 73463aa572bdc294fa4d180af87cd0f4
     internalID: 0
     vertices: []
     indices: 
@@ -161,7 +161,7 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      Irithyll: -8473886284158217743
+      sekiro_shaman_0: 8195546328963567565
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

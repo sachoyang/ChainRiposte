@@ -1,10 +1,13 @@
 fileFormatVersion: 2
-guid: 9f1ce03430b3f3e4091991cac094ef90
+guid: fd65b623a2c1073448549f6fb9ca2d38
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: -8473886284158217743
-    second: Gemini_Generated_Image_gdvu7wgdvu7wgdvu-pixel-snapper_0
+      213: -3242487531188796878
+    second: darksouls_saint_0
+  - first:
+      213: -1982580905823771535
+    second: darksouls_saint_1
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -97,7 +100,7 @@ TextureImporter:
     androidETC2FallbackOverride: 0
     forceMaximumCompressionQuality_BC6H_BC7: 0
   - serializedVersion: 4
-    buildTarget: Android
+    buildTarget: WebGL
     maxTextureSize: 2048
     resizeAlgorithm: 0
     textureFormat: -1
@@ -110,7 +113,7 @@ TextureImporter:
     androidETC2FallbackOverride: 0
     forceMaximumCompressionQuality_BC6H_BC7: 0
   - serializedVersion: 4
-    buildTarget: WebGL
+    buildTarget: Android
     maxTextureSize: 2048
     resizeAlgorithm: 0
     textureFormat: -1
@@ -126,13 +129,35 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: Irithyll
+      name: darksouls_saint_0
       rect:
         serializedVersion: 2
-        x: 0
-        y: 458
-        width: 480
-        height: 266
+        x: 1
+        y: 1
+        width: 33
+        height: 71
+      alignment: 5
+      pivot: {x: 1, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 232cbd215ce5003d0800000000000000
+      internalID: -3242487531188796878
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: darksouls_saint_1
+      rect:
+        serializedVersion: 2
+        x: 4
+        y: 71
+        width: 29
+        height: 10
       alignment: 0
       pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -141,8 +166,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: 1f1d1b53255b66a80800000000000000
-      internalID: -8473886284158217743
+      spriteID: 174e6e99b257c74e0800000000000000
+      internalID: -1982580905823771535
       vertices: []
       indices: 
       edges: []
@@ -151,7 +176,7 @@ TextureImporter:
     customData: 
     physicsShape: []
     bones: []
-    spriteID: 152de4069eba7f04ebe5ecbaecab3690
+    spriteID: 21b1d8542c6e87841918429f09635c8b
     internalID: 0
     vertices: []
     indices: 
@@ -161,7 +186,8 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      Irithyll: -8473886284158217743
+      darksouls_saint_0: -3242487531188796878
+      darksouls_saint_1: -1982580905823771535
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

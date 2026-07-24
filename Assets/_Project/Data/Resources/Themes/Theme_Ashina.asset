@@ -1,0 +1,38 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0aa48dd51564d294aae345c9b7bb07ce, type: 3}
+  m_Name: Theme_Ashina
+  m_EditorClassIdentifier: ChainRiposte.Game::ChainRiposte.Game.Theming.ThemeSO
+  themeId: ashina
+  backgrounds:
+  - key: map
+    sprite: {fileID: -5934537515865234363, guid: d531a59577ed26d49b4ca8af28f184b1, type: 3}
+  - key: puzzle
+    sprite: {fileID: 0}
+  - key: combat
+    sprite: {fileID: 0}
+  - key: path
+    sprite: {fileID: -5934537515865234363, guid: d531a59577ed26d49b4ca8af28f184b1, type: 3}
+  bosses:
+  - bossId: Boss_01
+    sprite: {fileID: 0}
+    nameKey: boss.ashina.01
+  - bossId: Boss_02
+    sprite: {fileID: 0}
+    nameKey: boss.ashina.02
+  nodeLayout:
+  - {x: -5.347941, y: -3.3392897}
+  - {x: -3.0983002, y: -2.3119478}
+  - {x: 1.6691706, y: 0.0667343}
+  - {x: -3.6058435, y: 1.0419061}
+  - {x: -0.7120756, y: 1.3627105}
+  - {x: 0.010422707, y: 3.0555441}

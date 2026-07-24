@@ -16,6 +16,7 @@ MonoBehaviour:
   nameKey: character.knight
   descriptionKey: character.knight.desc
   sortOrder: 0
+  theme: {fileID: 11400000, guid: 965358b3c9c0a7943b2c37b1c3db2877, type: 2}
   portrait: {fileID: 0}
   combatSprite: {fileID: 5037631765875594351, guid: abaf3914218e9af45ba8585dced8592c, type: 3}
   saintSprite: {fileID: -3242487531188796878, guid: fd65b623a2c1073448549f6fb9ca2d38, type: 3}
