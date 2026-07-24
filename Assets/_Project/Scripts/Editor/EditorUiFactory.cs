@@ -147,7 +147,11 @@ namespace ChainRiposte.Editor
             image.sprite = Square;
             image.color = imageColor;
             var button = rect.gameObject.AddComponent<Button>();
-            button.transition = Selectable.Transition.None;
+            // 기본은 색 틴트 — 스프라이트가 없어도 누름 피드백이 있다.
+            // 아트를 넣을 땐 인스펙터에서 Transition ▸ Sprite Swap 으로 바꾸고 Pressed Sprite 를 꽂는다.
+            // (SpriteSwap을 기본으로 하면 비어 있는 Pressed 슬롯 탓에 누를 때 버튼이 사라진다.)
+            button.transition = Selectable.Transition.ColorTint;
+            button.targetGraphic = image;
 
             RectTransform labelRect = NewRect("Label", rect);
             labelRect.anchorMin = Vector2.zero;
