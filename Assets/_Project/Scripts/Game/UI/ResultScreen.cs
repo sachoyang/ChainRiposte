@@ -1,3 +1,4 @@
+using System.Collections;
 using ChainRiposte.Core.Flow;
 using ChainRiposte.Game.Localization;
 using TMPro;
@@ -8,9 +9,15 @@ using UnityEngine.UI;
 namespace ChainRiposte.Game.UI
 {
     /// <summary>
-    /// 승리/패배 결과 화면 — 퍼즐 패배(턴 소진/기믹)와 전투 결과 모두 여기로 수렴한다.
+    /// 승리/패배 결과 화면.
+    ///
+    /// <list type="bullet">
+    /// <item><b>승리</b>(보스 인살) — 다시 시작은 필요 없다. 짧은 텀을 두고 <b>지도로 자동 복귀</b>한다.
+    /// (나중에 인살 컷씬/애니메이션이 이 텀 자리에 들어간다.)</item>
+    /// <item><b>패배</b> — 다시 시작 / 지도 두 버튼을 띄운다. 퍼즐 패배(턴 소진·기믹)와 전투 패배가 모두 여기로 온다.</item>
+    /// </list>
+    ///
     /// UI는 씬에 실물로 배치(TMP)하고 이 컴포넌트는 참조만 받는다. 재시작은 씬 리로드.
-    /// 초기 레이아웃은 <c>Tools ▸ ChainRiposte ▸ Build Main Scene UI</c>로 생성 후 씬에서 편집.
     /// </summary>
     public sealed class ResultScreen : MonoBehaviour
     {
@@ -20,8 +27,13 @@ namespace ChainRiposte.Game.UI
         [Tooltip("결과 화면 전체 루트 — 평소엔 꺼져 있다가 승/패 시 켜진다.")]
         [SerializeField] private GameObject panelRoot;
         [SerializeField] private TMP_Text titleText;
+        [Tooltip("패배에서만 보인다 — 승리는 지도로 자동 복귀하므로 숨긴다.")]
         [SerializeField] private Button restartButton;
         [SerializeField] private Button mapButton;
+
+        [Header("승리 연출")]
+        [Tooltip("승리 후 지도로 넘어가기까지의 텀(초). 나중에 인살 컷씬이 이 자리를 채운다.")]
+        [SerializeField, Min(0f)] private float victoryToMapDelay = 1.6f;
 
         private void Awake()
         {
@@ -47,19 +59,49 @@ namespace ChainRiposte.Game.UI
 
         private void OnPhaseChanged(GamePhase previous, GamePhase next)
         {
-            if (next != GamePhase.Victory && next != GamePhase.Defeat)
-                return;
+            if (next == GamePhase.Victory)
+                ShowVictory();
+            else if (next == GamePhase.Defeat)
+                ShowDefeat();
+        }
 
-            bool victory = next == GamePhase.Victory;
-            titleText.text = Loc.GetText(victory ? "result.victory" : "result.defeat");
-            titleText.color = victory ? new Color(0.95f, 0.83f, 0.35f) : new Color(0.85f, 0.2f, 0.25f);
+        private void ShowVictory()
+        {
+            titleText.text = Loc.GetText("result.victory");
+            titleText.color = new Color(0.95f, 0.83f, 0.35f);
+            // 승리엔 버튼이 없다 — 잠깐 결과를 보여 준 뒤 지도로 넘어간다.
+            restartButton.gameObject.SetActive(false);
+            mapButton.gameObject.SetActive(false);
+            panelRoot.SetActive(true);
+            StartCoroutine(GoToMapAfterDelay());
+        }
+
+        private void ShowDefeat()
+        {
+            titleText.text = Loc.GetText("result.defeat");
+            titleText.color = new Color(0.85f, 0.2f, 0.25f);
+            restartButton.gameObject.SetActive(true);
+            mapButton.gameObject.SetActive(true);
             panelRoot.SetActive(true);
         }
 
-        private static void Restart() =>
-            SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+        private IEnumerator GoToMapAfterDelay()
+        {
+            // 실시간으로 기다린다 — 혹시 인살 연출이 timeScale을 건드려도 텀이 늘어지지 않게.
+            yield return new WaitForSecondsRealtime(victoryToMapDelay);
+            GoToMap();
+        }
 
-        private static void GoToMap() =>
+        private static void Restart()
+        {
+            Time.timeScale = 1f; // 일시정지 중 죽었을 수 있으니 원복하고 리로드
+            SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+        }
+
+        private static void GoToMap()
+        {
+            Time.timeScale = 1f;
             SceneManager.LoadScene("StageSelect");
+        }
     }
 }
