@@ -402,6 +402,8 @@ namespace ChainRiposte.Editor
             // 배경판 — 아트가 생기면 이 이미지의 스프라이트만 갈아 끼우면 된다.
             Image background = EditorUiFactory.Stretch(canvas, "Background", Background, raycast: false);
             background.transform.SetAsFirstSibling();
+            // 그림이 들어오면 비율을 지켜 화면을 덮고, 잘린 폭 안에서 천천히 좌우로 흔든다.
+            background.gameObject.AddComponent<BackgroundPanner>();
         }
 
         /// <summary>빌드 설정을 흐름 순서로 재구성한다. 목록에 없던 씬은 뒤에 남겨 둔다.</summary>
