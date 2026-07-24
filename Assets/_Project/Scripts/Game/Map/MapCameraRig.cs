@@ -44,7 +44,7 @@ namespace ChainRiposte.Game.Map
         private Vector3 _focus;
         private bool _hasBounds;
         private bool _snap;
-        private float _velocity;
+        private Vector2 _velocity;
         private ScreenLayout _appliedLayout = (ScreenLayout)(-1);
 
         private void Awake() => _camera = GetComponent<Camera>();
@@ -114,22 +114,32 @@ namespace ChainRiposte.Game.Map
             float windowHeight = viewHeight * windowRatio;
             float windowCenter01 = bottom + windowRatio * 0.5f;
 
-            // 보이는 창의 중심이 놓일 월드 Y. 길 밖이 드러나지 않게 가둔다 —
-            // 길이 창보다 짧으면 가둘 게 없으므로 그냥 가운데에 놓는다.
-            float min = _bounds.min.y - verticalPadding + windowHeight * 0.5f;
-            float max = _bounds.max.y + verticalPadding - windowHeight * 0.5f;
-            float windowY = min > max ? _bounds.center.y : Mathf.Clamp(_focus.y, min, max);
+            // 보이는 창의 중심이 놓일 월드 좌표. 길 밖이 드러나지 않게 가둔다 —
+            // 길이 창보다 작으면 가둘 게 없으므로 그냥 가운데에 놓는다.
+            float windowY = ClampToBounds(_focus.y, _bounds.min.y, _bounds.max.y, windowHeight, verticalPadding, _bounds.center.y);
+            float windowX = ClampToBounds(_focus.x, _bounds.min.x, _bounds.max.x, portraitViewWidth, 0f, _bounds.center.x);
 
-            // 카메라 중심은 늘 화면 한가운데(0.5)라, 창 중심과의 차이만큼 밀어 준다.
-            float targetY = windowY + (0.5f - windowCenter01) * viewHeight;
+            // 카메라 중심은 늘 화면 한가운데(0.5)라, 창 중심과의 차이만큼 세로로 밀어 준다.
+            var target = new Vector2(windowX, windowY + (0.5f - windowCenter01) * viewHeight);
 
-            float y = snap || followSmoothTime <= 0f
-                ? targetY
-                : Mathf.SmoothDamp(transform.position.y, targetY, ref _velocity, followSmoothTime);
+            Vector2 position = snap || followSmoothTime <= 0f
+                ? target
+                : Vector2.SmoothDamp(transform.position, target, ref _velocity, followSmoothTime);
             if (snap)
-                _velocity = 0f;
+                _velocity = Vector2.zero;
 
-            transform.position = new Vector3(_bounds.center.x, y, -10f);
+            transform.position = new Vector3(position.x, position.y, -10f);
+        }
+
+        /// <summary>
+        /// 보이는 창의 중심이 길 밖으로 나가지 않게 가둔다.
+        /// 창이 길보다 크면 가둘 수 없으므로 <paramref name="fallback"/>(길 한가운데)에 놓는다.
+        /// </summary>
+        private static float ClampToBounds(float value, float min, float max, float windowSize, float padding, float fallback)
+        {
+            float low = min - padding + windowSize * 0.5f;
+            float high = max + padding - windowSize * 0.5f;
+            return low > high ? fallback : Mathf.Clamp(value, low, high);
         }
 
         /// <summary>띠가 화면에서 차지하는 세로 비율. 참조가 없으면 인스펙터 값으로 떨어진다.</summary>
