@@ -163,8 +163,6 @@ namespace ChainRiposte.Editor
             controllerSo.FindProperty("cameraRig").objectReferenceValue = rig;
             controllerSo.ApplyModifiedPropertiesWithoutUndo();
 
-            OfferVerticalSpread(root);
-
             EditorSceneManager.MarkSceneDirty(controller.gameObject.scene);
             Debug.Log("[Theme] 월드맵 구성 완료 — 배경(SkyBackground, 키 map) / 길 그림(ThemedBackground, 키 path) / " +
                       "세로 전용 상단 띠(TopBackground, 키 map). 길 그림은 비어 있으니 " +
@@ -189,7 +187,10 @@ namespace ChainRiposte.Editor
                 renderer.sprite = LargestSprite($"{BackFolder}/Irithyll.png");
 
             SetThemeKey(go, ThemeSO.KeyMap);
-            EnsureStillPanner(go); // 화면을 덮되 흔들지는 않는다
+
+            // 월드맵 배경은 화면에 맞춰 늘리지 않는다. 노드를 그림 위에 찍어서 배치하는데
+            // 실행할 때 그림이 카메라에 맞춰 움직이면 찍어 둔 자리와 그림이 어긋난다.
+            DisablePanner(go);
             SetVisibility(go, portrait: true, landscape: true);
         }
 
@@ -206,16 +207,23 @@ namespace ChainRiposte.Editor
             renderer.color = Color.white;
 
             SetThemeKey(go, ThemeSO.KeyPath);
-
-            // 예전 배선에서 붙었을 수 있는 '화면 덮기'를 끈다. 지우지는 않는다 — 되돌리기 쉽게.
-            var panner = go.GetComponent<BackgroundPanner>();
-            if (panner != null && panner.enabled)
-            {
-                Undo.RecordObject(panner, "Path Background");
-                panner.enabled = false;
-            }
-
+            DisablePanner(go);
             SetVisibility(go, portrait: true, landscape: true);
+        }
+
+        /// <summary>
+        /// 화면 덮기를 끈다(지우지는 않는다 — 되돌리기 쉽게).
+        /// 월드맵의 그림은 <b>씬에서 잡은 자리에 가만히 있어야</b> 한다. 카메라를 따라 움직이면
+        /// 그림 위에 찍어 둔 노드와 그림이 실행할 때 어긋난다.
+        /// </summary>
+        private static void DisablePanner(GameObject go)
+        {
+            var panner = go.GetComponent<BackgroundPanner>();
+            if (panner == null || !panner.enabled)
+                return;
+
+            Undo.RecordObject(panner, "Static Background");
+            panner.enabled = false;
         }
 
         private static void SetThemeKey(GameObject go, string key)
@@ -331,21 +339,30 @@ namespace ChainRiposte.Editor
         }
 
         /// <summary>
-        /// 세로에서 스크롤이 느껴지려면 길이 <b>보이는 창보다 길어야</b> 한다.
-        /// 지금 노드 배치는 가로로 퍼져 있어서 세로 화면에는 거의 다 들어와 버리므로 한 번 물어보고 늘린다.
-        /// (노드 위치는 사용자 것이라 말없이 바꾸지 않는다.)
+        /// 노드의 세로 간격을 벌린다. 세로 화면에서 스크롤이 느껴지려면 길이 보이는 창보다 길어야 하는데,
+        /// 기본 배치는 가로로 퍼져 있어 세로에는 거의 다 들어와 버린다.
+        ///
+        /// <para><b>배경 배치와 분리된 메뉴인 이유</b>: 노드 위치는 사용자가 찍어 둔 것이라
+        /// 다른 작업에 딸려 움직이면 안 된다. 한 번 찍은 뒤에는 이걸 다시 부르지 말 것.</para>
         /// </summary>
-        private static void OfferVerticalSpread(Transform root)
+        [MenuItem("Tools/ChainRiposte/Theme/Spread Map Nodes Vertically")]
+        private static void SpreadMapNodes()
         {
-            MapNode[] nodes = root.GetComponentsInChildren<MapNode>(true);
+            var controller = Object.FindFirstObjectByType<StageSelectController>();
+            if (controller == null)
+            {
+                EditorUtility.DisplayDialog("노드 벌리기", "StageSelect 씬을 연 상태에서 실행하세요.", "확인");
+                return;
+            }
+
+            MapNode[] nodes = controller.GetComponentsInChildren<MapNode>(true);
             if (nodes.Length < 2)
                 return;
 
-            if (!EditorUtility.DisplayDialog("월드맵 세로 배치",
-                    "세로에서 스크롤이 느껴지려면 길이 화면보다 길어야 합니다.\n" +
-                    "노드의 세로 간격을 1.8배로 늘릴까요? (가로 위치는 그대로)\n\n" +
-                    "나중에 씬에서 직접 드래그해도 됩니다 — 경로선은 따라옵니다.",
-                    "늘리기", "그대로 두기"))
+            if (!EditorUtility.DisplayDialog("노드 벌리기",
+                    $"노드 {nodes.Length}개의 <세로> 간격을 1.8배로 늘립니다. (가로 위치는 그대로)\n\n" +
+                    "이미 손으로 찍어 배치했다면 그 배치가 흐트러집니다.",
+                    "늘리기", "취소"))
                 return;
 
             float sum = 0f;
@@ -360,6 +377,9 @@ namespace ChainRiposte.Editor
                 position.y = center + (position.y - center) * 1.8f;
                 node.transform.position = position;
             }
+
+            controller.RefreshPathLineEditorOnly();
+            EditorSceneManager.MarkSceneDirty(controller.gameObject.scene);
         }
 
         private static void DisablePlaceholder(Transform root, string name)
