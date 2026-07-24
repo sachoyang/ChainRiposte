@@ -69,10 +69,14 @@ namespace ChainRiposte.Editor
             Sprite square = AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/UISprite.psd");
             StageDataSO[] stages = LoadStages();
 
-            // ── 배경 ── 그림은 테마(고른 캐릭터)가 채우고, 크기 맞춤과 좌우 왕복은 BackgroundPanner가 맡는다.
-            SpriteRenderer background = CreateSprite(root, "ThemedBackground", new Vector3(0f, 0f, 1f), Vector3.one, Color.white, -100, null);
-            background.gameObject.AddComponent<ThemedSprite>(); // 기본 키가 map
-            background.gameObject.AddComponent<BackgroundPanner>();
+            // ── 배경 2층 ── 그림은 테마(고른 캐릭터)가 채운다.
+            // 하늘·원경은 화면을 덮고(BackgroundPanner), 길이 놓인 땅은 길에 맞춰 씬에서 배치한다.
+            SpriteRenderer sky = CreateSprite(root, "SkyBackground", new Vector3(0f, 0f, 2f), Vector3.one, Color.white, -200, null);
+            sky.gameObject.AddComponent<ThemedSprite>(); // 기본 키가 map
+            sky.gameObject.AddComponent<BackgroundPanner>();
+
+            SpriteRenderer ground = CreateSprite(root, "ThemedBackground", new Vector3(0f, 0f, 1f), Vector3.one, Color.white, -100, null);
+            ground.gameObject.AddComponent<ThemedSprite>(); // 키는 Setup 메뉴가 path 로 바꾼다
 
             // ── 노드 + 라벨 ──
             var nodes = new MapNode[NodePositions.Length];

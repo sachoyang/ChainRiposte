@@ -16,8 +16,10 @@ namespace ChainRiposte.Game.Theming
     [CreateAssetMenu(menuName = "ChainRiposte/Theme", fileName = "Theme_")]
     public sealed class ThemeSO : ScriptableObject
     {
-        /// <summary>월드맵(스테이지 선택) 배경.</summary>
+        /// <summary>월드맵의 <b>배경</b> — 하늘·원경. 길 뒤에 깔리고 상단 띠에도 같은 그림이 쓰인다.</summary>
         public const string KeyMap = "map";
+        /// <summary>월드맵에서 <b>길이 놓인 땅</b> — 배경과 다른 그림이다. 배치는 씬에서 잡는다.</summary>
+        public const string KeyPath = "path";
         /// <summary>퍼즐 화면 배경.</summary>
         public const string KeyPuzzle = "puzzle";
         /// <summary>전투 화면 배경.</summary>

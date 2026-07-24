@@ -120,9 +120,12 @@ namespace ChainRiposte.Editor
             StageSelectController controller = Object.FindFirstObjectByType<StageSelectController>();
             Transform root = controller.transform;
 
-            // ① 가로용 — 카메라 전체를 덮는 월드 배경
-            GameObject world = EnsureChild(root, "ThemedBackground", first: true);
-            ConfigureMapBackground(world);
+            // ① 배경(하늘·원경) — 화면을 덮고 길 뒤에 깔린다. 세로·가로 모두.
+            ConfigureSkyBackground(EnsureChild(root, "SkyBackground", first: true));
+
+            // ② 길이 놓인 땅 — 배경과 다른 그림이라 키가 다르다. 크기·위치는 씬에서 잡는다.
+            ConfigurePathBackground(EnsureChild(root, "ThemedBackground", first: false));
+
             DisablePlaceholder(root, "World1Bg");
             DisablePlaceholder(root, "World2Bg");
 
@@ -163,34 +166,75 @@ namespace ChainRiposte.Editor
             OfferVerticalSpread(root);
 
             EditorSceneManager.MarkSceneDirty(controller.gameObject.scene);
-            Debug.Log("[Theme] 월드맵 세로 구성 완료 — 위 배경 띠 / 가운데 길(스크롤) / 아래 정보. " +
-                      "가로에서는 예전처럼 길 전체 + 오른쪽 정보 컬럼입니다. " +
-                      "확대 정도는 MapCameraRig ▸ portraitViewWidth 로 조절하세요.");
+            Debug.Log("[Theme] 월드맵 구성 완료 — 배경(SkyBackground, 키 map) / 길 그림(ThemedBackground, 키 path) / " +
+                      "세로 전용 상단 띠(TopBackground, 키 map). 길 그림은 비어 있으니 " +
+                      "Theme_*.asset ▸ Backgrounds ▸ path 에 넣고, 크기·위치는 씬에서 길에 맞춰 잡으세요. " +
+                      "확대 정도는 MapCameraRig ▸ portraitViewWidth.");
         }
 
-        /// <summary>가로에서만 그리는 전체 배경. 세로에서는 상단 띠가 대신하므로 꺼진다.</summary>
-        private static void ConfigureMapBackground(GameObject go)
+        /// <summary>
+        /// 배경(하늘·원경). 화면을 덮고 길 뒤에 깔린다 — <b>세로·가로 모두</b>.
+        /// 상단 띠와 같은 <c>map</c> 그림을 쓰므로 세로에서 띠와 배경이 이어져 보인다.
+        /// </summary>
+        private static void ConfigureSkyBackground(GameObject go)
         {
-            go.transform.localPosition = new Vector3(0f, 0f, 1f);
+            go.transform.localPosition = new Vector3(0f, 0f, 2f);
 
             var renderer = go.GetComponent<SpriteRenderer>();
             if (renderer == null)
                 renderer = Undo.AddComponent<SpriteRenderer>(go);
-            renderer.sortingOrder = -100; // 노드·경로보다 확실히 뒤
+            renderer.sortingOrder = -200; // 길 그림보다도 뒤
             renderer.color = Color.white;
             if (renderer.sprite == null)
-                renderer.sprite = LargestSprite($"{BackFolder}/Irithyll.png"); // 테마가 없을 때 보이는 기본값
+                renderer.sprite = LargestSprite($"{BackFolder}/Irithyll.png");
 
-            if (go.GetComponent<ThemedSprite>() == null)
-                Undo.AddComponent<ThemedSprite>(go); // 기본 키가 map 이라 그대로 둔다
-
-            EnsureStillPanner(go);
-            SetVisibility(go, portrait: false, landscape: true);
+            SetThemeKey(go, ThemeSO.KeyMap);
+            EnsureStillPanner(go); // 화면을 덮되 흔들지는 않는다
+            SetVisibility(go, portrait: true, landscape: true);
         }
 
         /// <summary>
-        /// 화면 위쪽 배경 띠. 그림은 <b>띠 안쪽</b>을 덮어야 하므로 띠(마스크) + 자식 이미지 구조로 만든다 —
-        /// BackgroundPanner 는 '부모를 덮는' 물건이라 이미지에 직접 붙이면 캔버스 전체로 커진다.
+        /// 길이 놓인 땅. 배경과 다른 그림이므로 키가 다르고, <b>화면을 덮지 않는다</b> —
+        /// 덮어 버리면 뒤의 배경이 아무 의미가 없어진다. 크기·위치는 씬에서 길에 맞춰 잡는다.
+        /// </summary>
+        private static void ConfigurePathBackground(GameObject go)
+        {
+            var renderer = go.GetComponent<SpriteRenderer>();
+            if (renderer == null)
+                renderer = Undo.AddComponent<SpriteRenderer>(go);
+            renderer.sortingOrder = -100; // 배경보다 앞, 노드·경로보다 뒤
+            renderer.color = Color.white;
+
+            SetThemeKey(go, ThemeSO.KeyPath);
+
+            // 예전 배선에서 붙었을 수 있는 '화면 덮기'를 끈다. 지우지는 않는다 — 되돌리기 쉽게.
+            var panner = go.GetComponent<BackgroundPanner>();
+            if (panner != null && panner.enabled)
+            {
+                Undo.RecordObject(panner, "Path Background");
+                panner.enabled = false;
+            }
+
+            SetVisibility(go, portrait: true, landscape: true);
+        }
+
+        private static void SetThemeKey(GameObject go, string key)
+        {
+            var themed = go.GetComponent<ThemedSprite>();
+            if (themed == null)
+                themed = Undo.AddComponent<ThemedSprite>(go);
+
+            var so = new SerializedObject(themed);
+            so.FindProperty("backgroundKey").stringValue = key;
+            so.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        /// <summary>
+        /// 화면 위쪽 배경 띠 — <b>세로 전용</b>이고, 하는 일은 길의 윗부분을 가려 '창'을 만드는 것이다.
+        /// 가로에서는 길 전체가 보여야 하므로 가릴 이유가 없어 꺼진다(그림 자체는 배경이 계속 쓴다).
+        ///
+        /// <para>그림은 <b>띠 안쪽</b>을 덮어야 하므로 띠(마스크) + 자식 이미지 구조로 만든다 —
+        /// BackgroundPanner 는 '부모를 덮는' 물건이라 이미지에 직접 붙이면 캔버스 전체로 커진다.</para>
         /// </summary>
         private static RectTransform EnsureTopBand(Canvas canvas)
         {
@@ -238,9 +282,7 @@ namespace ChainRiposte.Editor
             if (image.sprite == null)
                 image.sprite = LargestSprite($"{BackFolder}/Irithyll.png");
 
-            if (imageGo.GetComponent<ThemedSprite>() == null)
-                Undo.AddComponent<ThemedSprite>(imageGo);
-
+            SetThemeKey(imageGo, ThemeSO.KeyMap); // 배경(하늘)과 같은 그림 — 띠와 뒤가 이어져 보인다
             EnsureStillPanner(imageGo);
             SetVisibility(imageGo, portrait: true, landscape: false);
 
@@ -384,17 +426,15 @@ namespace ChainRiposte.Editor
             if (string.IsNullOrWhiteSpace(id.stringValue))
                 id.stringValue = themeId;
 
-            // 목록은 '아직 비어 있을 때'만 깔아 준다 — 손으로 채운 슬롯을 되돌리지 않는다.
+            // 없는 키만 뒤에 붙인다 — 이미 채워 둔 슬롯은 건드리지 않고, 키가 늘어도 다시 돌리면 따라온다.
             SerializedProperty backgrounds = so.FindProperty("backgrounds");
-            if (backgrounds.arraySize == 0)
-            {
-                Sprite back = LargestSprite($"{BackFolder}/{backTexture}.png");
-                AddBackground(backgrounds, 0, ThemeSO.KeyMap, back);
-                AddBackground(backgrounds, 1, ThemeSO.KeyPuzzle, null);
-                AddBackground(backgrounds, 2, ThemeSO.KeyCombat, null);
-                if (back == null)
-                    Debug.LogWarning($"[Theme] '{backTexture}.png' 에서 스프라이트를 찾지 못했습니다. 텍스처 타입이 Sprite 인지 확인하세요.");
-            }
+            Sprite back = LargestSprite($"{BackFolder}/{backTexture}.png");
+            EnsureBackgroundKey(backgrounds, ThemeSO.KeyMap, back);
+            EnsureBackgroundKey(backgrounds, ThemeSO.KeyPath, null); // 길 그림은 사용자가 채운다
+            EnsureBackgroundKey(backgrounds, ThemeSO.KeyPuzzle, null);
+            EnsureBackgroundKey(backgrounds, ThemeSO.KeyCombat, null);
+            if (back == null)
+                Debug.LogWarning($"[Theme] '{backTexture}.png' 에서 스프라이트를 찾지 못했습니다. 텍스처 타입이 Sprite 인지 확인하세요.");
 
             SerializedProperty bosses = so.FindProperty("bosses");
             if (bosses.arraySize == 0)
@@ -410,8 +450,15 @@ namespace ChainRiposte.Editor
             return theme;
         }
 
-        private static void AddBackground(SerializedProperty list, int index, string key, Sprite sprite)
+        private static void EnsureBackgroundKey(SerializedProperty list, string key, Sprite sprite)
         {
+            for (int i = 0; i < list.arraySize; i++)
+            {
+                if (list.GetArrayElementAtIndex(i).FindPropertyRelative("key").stringValue == key)
+                    return;
+            }
+
+            int index = list.arraySize;
             list.InsertArrayElementAtIndex(index);
             SerializedProperty element = list.GetArrayElementAtIndex(index);
             element.FindPropertyRelative("key").stringValue = key;
