@@ -118,6 +118,7 @@ namespace ChainRiposte.Editor
             var so = new SerializedObject(controller);
             SetArray(so, "nodes", nodes);
             so.FindProperty("character").objectReferenceValue = character.transform;
+            so.FindProperty("characterRenderer").objectReferenceValue = character;
             so.FindProperty("cameraFit").objectReferenceValue = cameraFit;
             so.FindProperty("pathLine").objectReferenceValue = pathLine;
             so.FindProperty("infoPanel").objectReferenceValue = infoPanel;

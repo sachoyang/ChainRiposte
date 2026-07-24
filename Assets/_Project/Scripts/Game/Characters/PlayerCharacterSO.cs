@@ -32,6 +32,8 @@ namespace ChainRiposte.Game.Characters
         [SerializeField] private Sprite combatSprite;
         [Tooltip("이 캐릭터를 따라다니는 성녀 — 준비 화면에서 공/방 강화에 반응한다")]
         [SerializeField] private Sprite saintSprite;
+        [Tooltip("월드맵에서 걸어다니는 그림. 비우면 전투 그림을 대신 쓴다.")]
+        [SerializeField] private Sprite mapSprite;
 
         [Header("특화 — 공용 밸런스에 더해지는 '아주 조금'")]
         [Tooltip("최대 체력 가산")]
@@ -57,6 +59,9 @@ namespace ChainRiposte.Game.Characters
         public Sprite Portrait => portrait != null ? portrait : combatSprite;
         public Sprite CombatSprite => combatSprite;
         public Sprite SaintSprite => saintSprite;
+
+        /// <summary>월드맵 아바타. 전용 그림이 없으면 전투 그림으로 대신한다.</summary>
+        public Sprite MapSprite => mapSprite != null ? mapSprite : combatSprite;
 
         /// <summary>특화가 하나라도 걸려 있는가 (로그·표시용).</summary>
         public bool HasBonuses =>

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using ChainRiposte.Core.Progress;
 using ChainRiposte.Core.Stage;
 using ChainRiposte.Game.Audio;
+using ChainRiposte.Game.Characters;
 using ChainRiposte.Game.Config;
 using ChainRiposte.Game.Localization;
 using ChainRiposte.Game.Progress;
@@ -31,6 +32,8 @@ namespace ChainRiposte.Game.Map
         [Tooltip("경로 순서대로 (1-1 → 2-3). 각 노드의 위치를 그대로 경로로 사용한다.")]
         [SerializeField] private MapNode[] nodes = System.Array.Empty<MapNode>();
         [SerializeField] private Transform character;
+        [Tooltip("월드맵 아바타 그림. 비우면 character 에서 찾는다. 고른 캐릭터의 그림으로 갈아 끼운다.")]
+        [SerializeField] private SpriteRenderer characterRenderer;
         [SerializeField] private CameraFit2D cameraFit;
         [Tooltip("선택 사항 — 있으면 세로에서 길의 일부만 보이고 따라 스크롤한다. 비우면 예전처럼 전체를 한 화면에 담는다.")]
         [SerializeField] private MapCameraRig cameraRig;
@@ -99,6 +102,7 @@ namespace ChainRiposte.Game.Map
             for (int i = 0; i < nodes.Length; i++)
                 _stageIds[i] = nodes[i] != null && nodes[i].Stage != null ? nodes[i].Stage.StageId : string.Empty;
 
+            ApplyCharacterVisual(); // 고른 캐릭터의 그림으로 아바타를 갈아 끼운다
             ApplyThemeLayout(); // 고른 캐릭터의 테마가 노드 위치를 정한다 (길 모양이 테마마다 다르다)
 
             RefreshNodeStates();
@@ -106,6 +110,25 @@ namespace ChainRiposte.Game.Map
 
             RefreshPathLine();
             character.position = NodeWorld(_currentIndex) + characterOffset;
+        }
+
+        /// <summary>
+        /// 월드맵 아바타를 고른 캐릭터의 그림으로 갈아 끼운다. 전투 화면이 캐릭터 그림을 쓰는 것과 같은 규칙.
+        /// 캐릭터가 없거나(Main 단독 실행) 그림이 없으면 씬에 꽂아둔 그림을 그대로 둔다.
+        /// </summary>
+        private void ApplyCharacterVisual()
+        {
+            if (characterRenderer == null && character != null)
+                characterRenderer = character.GetComponentInChildren<SpriteRenderer>();
+            if (characterRenderer == null)
+                return;
+
+            Sprite sprite = CharacterService.Current != null ? CharacterService.Current.MapSprite : null;
+            if (sprite == null)
+                return;
+
+            characterRenderer.sprite = sprite;
+            characterRenderer.color = Color.white; // 플레이스홀더 틴트를 벗기고 원색으로
         }
 
         /// <summary>
