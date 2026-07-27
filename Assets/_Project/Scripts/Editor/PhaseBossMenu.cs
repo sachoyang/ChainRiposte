@@ -30,39 +30,36 @@ namespace ChainRiposte.Editor
         [MenuItem("Tools/ChainRiposte/Create Two-Phase Boss (2-3)")]
         private static void Create()
         {
-            if (AssetDatabase.LoadAssetAtPath<BossDataSO>(TargetPath) != null)
-            {
-                Debug.Log($"[PhaseBoss] {TargetPath} 가 이미 있어 그대로 둡니다. " +
-                          "수치·그림은 인스펙터에서 조절하세요.");
-                AssignToStage();
-                return;
-            }
-
-            var source = AssetDatabase.LoadAssetAtPath<BossDataSO>(SourcePath);
-            if (source == null)
-            {
-                EditorUtility.DisplayDialog("2페이즈 보스 만들기",
-                    $"{SourcePath} 를 찾지 못했습니다.", "확인");
-                return;
-            }
-
-            if (!AssetDatabase.CopyAsset(SourcePath, TargetPath))
-            {
-                EditorUtility.DisplayDialog("2페이즈 보스 만들기", "에셋 복사에 실패했습니다.", "확인");
-                return;
-            }
-
             var boss = AssetDatabase.LoadAssetAtPath<BossDataSO>(TargetPath);
+            bool created = boss == null;
+
+            if (created)
+            {
+                if (AssetDatabase.LoadAssetAtPath<BossDataSO>(SourcePath) == null)
+                {
+                    EditorUtility.DisplayDialog("2페이즈 보스 만들기", $"{SourcePath} 를 찾지 못했습니다.", "확인");
+                    return;
+                }
+
+                if (!AssetDatabase.CopyAsset(SourcePath, TargetPath))
+                {
+                    EditorUtility.DisplayDialog("2페이즈 보스 만들기", "에셋 복사에 실패했습니다.", "확인");
+                    return;
+                }
+
+                boss = AssetDatabase.LoadAssetAtPath<BossDataSO>(TargetPath);
+            }
+
             var so = new SerializedObject(boss);
 
-            so.FindProperty("bossId").stringValue = "Boss_03";
-            so.FindProperty("displayName").stringValue = "Two-Phase Boss";
+            if (created)
+            {
+                so.FindProperty("bossId").stringValue = "Boss_03";
+                so.FindProperty("displayName").stringValue = "Two-Phase Boss";
+            }
 
-            float maxHp = so.FindProperty("maxHp").floatValue;
-            float maxPosture = so.FindProperty("maxPosture").floatValue;
-
-            BuildBattlePhases(so, maxHp, maxPosture);
-            AddPhaseVisualSlots(so);
+            int added = EnsureTwoPhases(so);
+            EnsurePhaseVisualSlots(so);
 
             so.ApplyModifiedPropertiesWithoutUndo();
             EditorUtility.SetDirty(boss);
@@ -71,49 +68,90 @@ namespace ChainRiposte.Editor
             AssignToStage();
 
             Selection.activeObject = boss;
-            Debug.Log($"[PhaseBoss] {TargetPath} 생성 — 인살 2회. " +
+            Debug.Log($"[PhaseBoss] {TargetPath} — {(created ? "생성" : "이미 있어 모자란 것만 채움")}, " +
+                      $"인살 페이즈 {added}줄 추가. " +
                       "그림(phase1/trans/phase2)은 캐릭터별 겉모습의 「인살 페이즈별 그림」에 꽂고, " +
                       "2페이즈 채보는 「인살 페이즈 ▸ Hp Phases」에 따로 짜세요(비우면 1페이즈와 같은 채보를 씁니다).");
         }
 
         /// <summary>
-        /// 인살 페이즈 두 줄. 1페이즈는 공용 수치를 그대로 쓰고(칸을 비운다),
-        /// 2페이즈만 더 무겁게 적어 둔다 — 같은 숫자를 두 번 적으면 한쪽만 고치는 사고가 난다.
+        /// 인살 페이즈를 두 줄로 맞춘다. <b>이미 적힌 값은 절대 안 건드리고 모자란 줄과 빈 칸만 채운다</b> —
+        /// 손으로 만든 에셋(줄이 하나뿐이거나 텅 빈 것)도 이 메뉴 한 번으로 고쳐지게 하기 위한 것이다.
+        /// 예전엔 "이미 있으면 통째로 지나감"이라 그런 에셋이 조용히 1페이즈 보스로 동작했다.
+        ///
+        /// <para>1페이즈는 HP·체간 칸을 비워 둔다(= 공용값). 같은 숫자를 두 번 적으면 한쪽만 고치는 사고가 난다.
+        /// 2페이즈만 더 무겁게 적어 출발점을 준다.</para>
         /// </summary>
-        private static void BuildBattlePhases(SerializedObject so, float maxHp, float maxPosture)
+        /// <returns>새로 늘린 줄 수.</returns>
+        private static int EnsureTwoPhases(SerializedObject so)
         {
             SerializedProperty phases = so.FindProperty("battlePhases");
-            phases.arraySize = 2;
+            int previous = phases.arraySize;
 
-            SerializedProperty first = phases.GetArrayElementAtIndex(0);
-            first.FindPropertyRelative("label").stringValue = "Phase 1";
-            first.FindPropertyRelative("maxHp").floatValue = 0f;      // 0 = 공용값
-            first.FindPropertyRelative("maxPosture").floatValue = 0f;
-            first.FindPropertyRelative("transitionTextKey").stringValue = string.Empty; // 첫 페이즈는 넘어올 일이 없다
-            first.FindPropertyRelative("hpPhases").arraySize = 0;
-            first.FindPropertyRelative("sprite").objectReferenceValue = null;
-            first.FindPropertyRelative("transitionSprite").objectReferenceValue = null;
+            if (previous < 2)
+            {
+                phases.arraySize = 2;
+                // 배열을 늘리면 Unity가 <b>직전 원소를 복사</b>한다 — 안 비우면 2페이즈가 1페이즈 그림을 물려받는다
+                for (int i = Mathf.Max(previous, 0); i < 2; i++)
+                    ClearPhase(phases.GetArrayElementAtIndex(i));
+            }
 
-            SerializedProperty second = phases.GetArrayElementAtIndex(1);
-            second.FindPropertyRelative("label").stringValue = "Phase 2";
-            second.FindPropertyRelative("maxHp").floatValue = Mathf.Round(maxHp * Phase2HpFactor);
-            second.FindPropertyRelative("maxPosture").floatValue = Mathf.Round(maxPosture * Phase2PostureFactor);
-            second.FindPropertyRelative("transitionTextKey").stringValue = TransitionKey;
-            second.FindPropertyRelative("hpPhases").arraySize = 0;
-            second.FindPropertyRelative("sprite").objectReferenceValue = null;
-            second.FindPropertyRelative("transitionSprite").objectReferenceValue = null;
+            float maxHp = so.FindProperty("maxHp").floatValue;
+            float maxPosture = so.FindProperty("maxPosture").floatValue;
+
+            FillIfBlank(phases.GetArrayElementAtIndex(0), "Phase 1", 0f, 0f, null);
+            FillIfBlank(phases.GetArrayElementAtIndex(1), "Phase 2",
+                Mathf.Round(maxHp * Phase2HpFactor), Mathf.Round(maxPosture * Phase2PostureFactor), TransitionKey);
+
+            return Mathf.Max(0, phases.arraySize - previous);
         }
 
-        /// <summary>캐릭터별 겉모습마다 페이즈 그림 슬롯 2칸을 열어 둔다 — 비어 있으면 공용 그림으로 떨어진다.</summary>
-        private static void AddPhaseVisualSlots(SerializedObject so)
+        private static void ClearPhase(SerializedProperty entry)
+        {
+            entry.FindPropertyRelative("label").stringValue = string.Empty;
+            entry.FindPropertyRelative("sprite").objectReferenceValue = null;
+            entry.FindPropertyRelative("transitionSprite").objectReferenceValue = null;
+            entry.FindPropertyRelative("transitionTextKey").stringValue = string.Empty;
+            entry.FindPropertyRelative("maxHp").floatValue = 0f;
+            entry.FindPropertyRelative("maxPosture").floatValue = 0f;
+            entry.FindPropertyRelative("hpPhases").arraySize = 0;
+        }
+
+        /// <summary>빈 칸만 채운다. 0이나 빈 문자열이 아니면 손으로 맞춘 값으로 보고 그대로 둔다.</summary>
+        private static void FillIfBlank(SerializedProperty entry, string label, float maxHp, float maxPosture, string textKey)
+        {
+            SerializedProperty labelProp = entry.FindPropertyRelative("label");
+            if (string.IsNullOrWhiteSpace(labelProp.stringValue))
+                labelProp.stringValue = label;
+
+            SerializedProperty hp = entry.FindPropertyRelative("maxHp");
+            if (maxHp > 0f && hp.floatValue <= 0f)
+                hp.floatValue = maxHp;
+
+            SerializedProperty posture = entry.FindPropertyRelative("maxPosture");
+            if (maxPosture > 0f && posture.floatValue <= 0f)
+                posture.floatValue = maxPosture;
+
+            SerializedProperty key = entry.FindPropertyRelative("transitionTextKey");
+            if (!string.IsNullOrEmpty(textKey) && string.IsNullOrWhiteSpace(key.stringValue))
+                key.stringValue = textKey;
+        }
+
+        /// <summary>캐릭터별 겉모습마다 페이즈 그림 슬롯 2칸을 열어 둔다. <b>이미 꽂은 그림은 안 건드린다.</b></summary>
+        private static void EnsurePhaseVisualSlots(SerializedObject so)
         {
             SerializedProperty visuals = so.FindProperty("characterVisuals");
             for (int i = 0; i < visuals.arraySize; i++)
             {
                 SerializedProperty phaseVisuals = visuals.GetArrayElementAtIndex(i).FindPropertyRelative("phaseVisuals");
+                int previous = phaseVisuals.arraySize;
+                if (previous >= 2)
+                    continue;
+
                 phaseVisuals.arraySize = 2;
-                for (int p = 0; p < 2; p++)
+                for (int p = previous; p < 2; p++)
                 {
+                    // 여기도 직전 원소가 복사되므로 비운다 — 안 그러면 2페이즈에 1페이즈 그림이 박힌다
                     SerializedProperty entry = phaseVisuals.GetArrayElementAtIndex(p);
                     entry.FindPropertyRelative("sprite").objectReferenceValue = null;
                     entry.FindPropertyRelative("transitionSprite").objectReferenceValue = null;

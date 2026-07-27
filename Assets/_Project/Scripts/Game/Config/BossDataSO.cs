@@ -374,6 +374,14 @@ namespace ChainRiposte.Game.Config
                     hpPhases.Count > 0 ? hpPhases : sharedHpPhases));
             }
 
+            // 한 줄짜리는 안 적은 것과 결과가 같다 — 2페이즈로 만들려다 한 줄만 넣고 끝낸 경우를 잡는다.
+            // 조용히 넘어가면 "인살했는데 그냥 죽는다"로만 보여서 원인을 못 찾는다.
+            if (result.Count == 1)
+                Debug.LogWarning(
+                    $"{name}: 인살 페이즈가 한 줄뿐이라 보통 보스(인살 1회)와 같습니다. " +
+                    "2페이즈 보스로 만들려면 줄을 하나 더 늘리세요 — " +
+                    "Tools ▸ ChainRiposte ▸ Create Two-Phase Boss (2-3) 가 모자란 줄을 채워 줍니다.", this);
+
             return result;
         }
     }
