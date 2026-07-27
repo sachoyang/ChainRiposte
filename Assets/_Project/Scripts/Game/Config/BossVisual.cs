@@ -16,14 +16,30 @@ namespace ChainRiposte.Game.Config
     /// </summary>
     public static class BossVisual
     {
-        public static Sprite ResolveSprite(BossDataSO boss)
+        /// <summary>
+        /// 전투에 설 그림. <paramref name="phaseIndex"/>는 <b>인살 페이즈</b> 번호다 —
+        /// 맵의 실루엣과 준비 화면의 그림자는 항상 0(첫 모습)을 쓴다. 나중 모습을 미리 보여 주면
+        /// 페이즈 전환이 놀랍지 않다.
+        /// </summary>
+        public static Sprite ResolveSprite(BossDataSO boss, int phaseIndex = 0)
         {
             if (boss == null)
                 return null;
 
-            Sprite perCharacter = boss.GetBattleSprite(CharacterService.Current);
+            Sprite perCharacter = boss.GetBattleSprite(CharacterService.Current, phaseIndex);
             return perCharacter != null ? perCharacter : boss.BattleSprite;
         }
+
+        /// <summary>
+        /// 이 페이즈로 <b>넘어올 때</b>의 전환 그림(아세프리트의 <c>trans</c> 레이어).
+        /// 없으면 null — 컷씬은 그림 없이 문구만으로도 돈다.
+        /// </summary>
+        public static Sprite ResolveTransitionSprite(BossDataSO boss, int phaseIndex) =>
+            boss != null ? boss.GetTransitionSprite(CharacterService.Current, phaseIndex) : null;
+
+        /// <summary>전환 컷씬 한 줄의 현지화 키. 없으면 null — 문구 없이 그림만 뜬다.</summary>
+        public static string ResolveTransitionTextKey(BossDataSO boss, int phaseIndex) =>
+            boss != null ? boss.GetTransitionTextKey(phaseIndex) : null;
 
         /// <summary>
         /// 이름은 <b>현지화 키</b>다. 키가 CSV에 없으면 받은 문자열이 그대로 화면에 나오므로

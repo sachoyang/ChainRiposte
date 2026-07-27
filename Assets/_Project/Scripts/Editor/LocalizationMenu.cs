@@ -604,6 +604,8 @@ namespace ChainRiposte.Editor
             Row(builder, "boss.irithyll.02", "이루실의 도살자", "BUTCHER OF IRITHYLL");
             Row(builder, "boss.ashina.01", "아시나의 파수꾼", "ASHINA SENTINEL");
             Row(builder, "boss.ashina.02", "아시나의 도살자", "ASHINA BUTCHER");
+            // 2페이즈 보스의 전환 컷씬 한 줄. 보스마다 다르게 하려면 키를 늘려 인살 페이즈에 적는다.
+            Row(builder, "boss.phase.transition", "그러나 아직 쓰러지지 않았다", "BUT IT IS NOT OVER");
             Row(builder, "combat.hp", "체력 {0}/{1}", "HP {0}/{1}");
             Row(builder, "combat.posture", "체간", "POSTURE");
             Row(builder, "combat.parry", "패링", "PARRY");

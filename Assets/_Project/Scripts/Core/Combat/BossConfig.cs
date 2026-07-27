@@ -36,31 +36,28 @@ namespace ChainRiposte.Core.Combat
 
         /// <summary>
         /// HP 구간별 패턴 풀 (GDD §5.2). 보스는 이 패턴들을 조합해 승부한다.
-        /// 비어 있으면 안 된다 — CombatSystem이 생성 시 거부한다.
+        /// <b>인살이 한 번뿐인 보스</b>는 이것만 채우면 된다 — <see cref="BattlePhases"/>가 비면
+        /// 위의 HP·체간과 이 풀로 1페이즈짜리 보스를 자동으로 만든다.
         /// </summary>
         public IReadOnlyList<BossPhaseConfig> Phases = Array.Empty<BossPhaseConfig>();
 
-        /// <summary>현재 HP 비율에 해당하는 페이즈. 조건을 만족하는 것 중 <b>가장 진행된</b> 페이즈를 쓴다.</summary>
-        public BossPhaseConfig ResolvePhase(float hpRatio)
+        /// <summary>
+        /// 인살 페이즈 목록 — <b>인살 몇 번으로 끝나는 보스인가</b>. 비우면 위 값으로 1페이즈.
+        /// 페이즈마다 HP·체간·채보 풀이 통째로 갈리고, 넘어갈 때 컷씬이 낀다.
+        /// </summary>
+        public IReadOnlyList<BossBattlePhase> BattlePhases = Array.Empty<BossBattlePhase>();
+
+        /// <summary>
+        /// 실제로 싸울 페이즈 목록. 인살 페이즈를 안 짠 보스(대부분)를 위해 1페이즈짜리로 감싸 준다 —
+        /// <see cref="CombatSystem"/>이 "페이즈가 있는 보스"와 "없는 보스"를 나눠 처리하지 않게 하기 위한 것이다.
+        /// 나누기 시작하면 두 갈래가 서로 다르게 굳는다.
+        /// </summary>
+        public IReadOnlyList<BossBattlePhase> ResolveBattlePhases()
         {
-            BossPhaseConfig best = null;
-            foreach (BossPhaseConfig phase in Phases)
-            {
-                if (hpRatio > phase.HpRatioAtOrBelow)
-                    continue;
-                if (best == null || phase.HpRatioAtOrBelow < best.HpRatioAtOrBelow)
-                    best = phase;
-            }
+            if (BattlePhases != null && BattlePhases.Count > 0)
+                return BattlePhases;
 
-            // 전부 조건에 안 맞으면(임계치를 낮게만 잡은 설정) 가장 너그러운 페이즈로 떨어진다
-            if (best != null)
-                return best;
-
-            foreach (BossPhaseConfig phase in Phases)
-                if (best == null || phase.HpRatioAtOrBelow > best.HpRatioAtOrBelow)
-                    best = phase;
-
-            return best;
+            return new[] { new BossBattlePhase(MaxHp, MaxPosture, Phases) };
         }
     }
 }

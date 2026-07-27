@@ -56,6 +56,12 @@ namespace ChainRiposte.Game.Config
         [Tooltip("HP 구간별 패턴 풀. 비우면 모든 패턴을 균등하게 쓰는 단일 페이즈로 동작한다.")]
         [SerializeField] private PhaseEntry[] phases = Array.Empty<PhaseEntry>();
 
+        [Header("인살 페이즈 — 비우면 인살 한 번으로 끝나는 보통 보스")]
+        [Tooltip("인살 몇 번으로 눕는 보스인가. 두 줄이면 인살 마크가 ◆◆ 로 뜨고, " +
+                 "1페이즈를 인살하면 컷씬을 거쳐 HP·체간이 만땅으로 새로 시작한다. " +
+                 "겉모습·채보·수치가 페이즈마다 통째로 갈린다.")]
+        [SerializeField] private BattlePhaseEntry[] battlePhases = Array.Empty<BattlePhaseEntry>();
+
         /// <summary>
         /// 한 캐릭터로 이 보스를 만났을 때의 <b>겉모습</b>. 그림과 이름이 한 줄에 같이 있어야
         /// "이 캐릭터에겐 이렇게 생긴 누구"가 한눈에 읽히고, 원천이 둘로 갈리지 않는다.
@@ -69,6 +75,46 @@ namespace ChainRiposte.Game.Config
             public Sprite battleSprite;
             [Tooltip("이름의 현지화 키(CSV). 비우면 공용 이름.")]
             public string nameKey;
+            [Tooltip("인살 페이즈별 그림. 인살 페이즈를 쓰는 보스만 채운다 — 순서는 위 인살 페이즈와 같다. " +
+                     "비거나 모자라면 바로 위 battleSprite 로 떨어진다(페이즈마다 그림을 안 나눈 보스).")]
+            public PhaseVisual[] phaseVisuals = Array.Empty<PhaseVisual>();
+        }
+
+        /// <summary>
+        /// 한 캐릭터로 만난 보스의 <b>한 페이즈</b> 겉모습. 아세프리트의 <c>phase1 / trans / phase2</c> 레이어가
+        /// 그대로 여기로 온다 — 겹쳐 그리는 레이어가 아니라 <b>통째로 갈아 끼우는 그림</b>이다.
+        /// </summary>
+        [Serializable]
+        public sealed class PhaseVisual
+        {
+            [Tooltip("이 페이즈에서 서 있는 그림")]
+            public Sprite sprite;
+            [Tooltip("이 페이즈로 넘어올 때 컷씬에 뜨는 그림(trans). 0번 페이즈는 넘어올 일이 없으므로 안 쓴다.")]
+            public Sprite transitionSprite;
+        }
+
+        /// <summary>
+        /// 인살 한 번 분량의 보스. <b>비운 칸은 공용 값으로 떨어진다</b> —
+        /// 페이즈를 나눴다는 이유만으로 같은 숫자를 두 번 적게 하지 않기 위해서다.
+        /// </summary>
+        [Serializable]
+        private sealed class BattlePhaseEntry
+        {
+            [Tooltip("인스펙터에서 알아보기 위한 이름. 게임에는 안 나온다.")]
+            public string label = "Phase";
+            [Tooltip("이 페이즈에서 서 있는 공용 그림. 비우면 위의 공용 Battle Sprite.")]
+            public Sprite sprite;
+            [Tooltip("이 페이즈로 넘어올 때 컷씬에 뜨는 공용 그림(trans).")]
+            public Sprite transitionSprite;
+            [Tooltip("전환 컷씬에 띄울 한 줄의 현지화 키(CSV). 비우면 문구 없이 그림만.")]
+            public string transitionTextKey;
+            [Tooltip("이 페이즈의 HP. 0이면 위의 공용 Max Hp.")]
+            [Min(0f)] public float maxHp;
+            [Tooltip("이 페이즈의 체간 한계치. 0이면 위의 공용 Max Posture.")]
+            [Min(0f)] public float maxPosture;
+            [Tooltip("이 페이즈 안에서 도는 HP 구간별 패턴 풀. 비우면 위의 공용 Phases. " +
+                     "2페이즈를 더 험한 채보로 만들려면 여기에 따로 짠다.")]
+            public PhaseEntry[] hpPhases = Array.Empty<PhaseEntry>();
         }
 
         [Serializable]
@@ -115,12 +161,58 @@ namespace ChainRiposte.Game.Config
         /// <summary>보스를 가리키는 키. StageId·CharacterId와 같은 규칙 — 비우면 에셋 이름.</summary>
         public string BossId => string.IsNullOrWhiteSpace(bossId) ? name : bossId;
 
-        /// <summary>이 캐릭터로 만났을 때의 그림. 지정이 없으면 null — 부르는 쪽이 공용 그림으로 떨어진다.</summary>
-        public Sprite GetBattleSprite(Characters.PlayerCharacterSO character)
+        /// <summary>인살 몇 번으로 눕는 보스인가. 인살 페이즈를 안 짰으면 1.</summary>
+        public int BattlePhaseCount => battlePhases != null && battlePhases.Length > 0 ? battlePhases.Length : 1;
+
+        /// <summary>
+        /// 이 캐릭터로 만났을 때 <paramref name="phaseIndex"/> 페이즈의 그림. 지정이 없으면 null —
+        /// 부르는 쪽(<see cref="BossVisual"/>)이 공용 그림으로 떨어진다.
+        ///
+        /// <para>순서: 캐릭터별 페이즈 그림 → 캐릭터별 공용 그림 → 페이즈의 공용 그림.
+        /// <b>캐릭터 지정이 페이즈 지정을 이긴다</b> — 페이즈를 안 나눈 캐릭터가 남의 페이즈 그림을 쓰면 안 된다.</para>
+        /// </summary>
+        public Sprite GetBattleSprite(Characters.PlayerCharacterSO character, int phaseIndex = 0)
         {
             CharacterVisual visual = Find(character);
-            return visual != null ? visual.battleSprite : null;
+            if (visual != null)
+            {
+                PhaseVisual phase = PhaseVisualAt(visual, phaseIndex);
+                if (phase != null && phase.sprite != null)
+                    return phase.sprite;
+                if (visual.battleSprite != null)
+                    return visual.battleSprite;
+            }
+
+            BattlePhaseEntry entry = PhaseEntryAt(phaseIndex);
+            return entry != null ? entry.sprite : null;
         }
+
+        /// <summary>이 페이즈로 <b>넘어올 때</b> 컷씬에 뜨는 그림(trans). 없으면 null — 컷씬이 그림 없이 돈다.</summary>
+        public Sprite GetTransitionSprite(Characters.PlayerCharacterSO character, int phaseIndex)
+        {
+            CharacterVisual visual = Find(character);
+            PhaseVisual phase = visual != null ? PhaseVisualAt(visual, phaseIndex) : null;
+            if (phase != null && phase.transitionSprite != null)
+                return phase.transitionSprite;
+
+            BattlePhaseEntry entry = PhaseEntryAt(phaseIndex);
+            return entry != null ? entry.transitionSprite : null;
+        }
+
+        /// <summary>전환 컷씬 한 줄의 현지화 키. 캐릭터와 무관하다 — 문구는 보스의 것이다.</summary>
+        public string GetTransitionTextKey(int phaseIndex)
+        {
+            BattlePhaseEntry entry = PhaseEntryAt(phaseIndex);
+            return entry != null && !string.IsNullOrWhiteSpace(entry.transitionTextKey) ? entry.transitionTextKey : null;
+        }
+
+        private BattlePhaseEntry PhaseEntryAt(int phaseIndex) =>
+            battlePhases != null && phaseIndex >= 0 && phaseIndex < battlePhases.Length ? battlePhases[phaseIndex] : null;
+
+        private static PhaseVisual PhaseVisualAt(CharacterVisual visual, int phaseIndex) =>
+            visual.phaseVisuals != null && phaseIndex >= 0 && phaseIndex < visual.phaseVisuals.Length
+                ? visual.phaseVisuals[phaseIndex]
+                : null;
 
         /// <summary>이 캐릭터로 만났을 때의 이름 키. 지정이 없으면 null.</summary>
         public string GetNameKey(Characters.PlayerCharacterSO character)
@@ -157,9 +249,11 @@ namespace ChainRiposte.Game.Config
         public BossConfig ToConfig()
         {
             List<BossPatternConfig> built = BuildPatterns();
+            List<BossPhaseConfig> sharedHpPhases = BuildSharedHpPhases(built);
 
             return new BossConfig
             {
+                BattlePhases = BuildBattlePhases(built, sharedHpPhases),
                 Name = displayName,
                 MaxHp = maxHp,
                 MaxPosture = maxPosture,
@@ -169,7 +263,7 @@ namespace ChainRiposte.Game.Config
                 ScaleDecayWithHp = scaleDecayWithHp,
                 FirstAttackDelaySeconds = firstAttackDelaySeconds,
                 PatternGapSeconds = patternGapSeconds,
-                Phases = BuildPhases(built),
+                Phases = sharedHpPhases,
             };
         }
 
@@ -217,11 +311,27 @@ namespace ChainRiposte.Game.Config
             return new BossPatternConfig("Placeholder", 120f, 8f, notes);
         }
 
-        private List<BossPhaseConfig> BuildPhases(List<BossPatternConfig> built)
+        /// <summary>공용 HP 구간 풀. 안 짰으면 모든 패턴을 균등하게 쓰는 단일 풀로 둔다.</summary>
+        private List<BossPhaseConfig> BuildSharedHpPhases(List<BossPatternConfig> built)
+        {
+            List<BossPhaseConfig> result = BuildHpPhases(built, phases);
+            if (result.Count > 0)
+                return result;
+
+            var all = new List<WeightedPattern>();
+            foreach (BossPatternConfig pattern in built)
+                all.Add(new WeightedPattern(pattern));
+
+            result.Add(new BossPhaseConfig(1f, all));
+            return result;
+        }
+
+        /// <summary>HP 구간 풀 만들기. 안 짰으면 <b>빈 목록</b>을 돌려준다 — 부르는 쪽이 공용 풀로 떨어진다.</summary>
+        private static List<BossPhaseConfig> BuildHpPhases(List<BossPatternConfig> built, PhaseEntry[] source)
         {
             var result = new List<BossPhaseConfig>();
 
-            foreach (PhaseEntry phase in phases)
+            foreach (PhaseEntry phase in source ?? Array.Empty<PhaseEntry>())
             {
                 if (phase == null)
                     continue;
@@ -238,15 +348,32 @@ namespace ChainRiposte.Game.Config
                     result.Add(new BossPhaseConfig(phase.hpRatioAtOrBelow, weighted));
             }
 
-            if (result.Count > 0)
+            return result;
+        }
+
+        /// <summary>
+        /// 인살 페이즈 목록. 안 짰으면 <b>빈 목록</b> — <see cref="BossConfig.ResolveBattlePhases"/>가
+        /// 공용 값으로 1페이즈를 만든다. 여기서 미리 만들어 두면 "1페이즈 보스"의 규칙이 두 곳에 생긴다.
+        /// </summary>
+        private List<BossBattlePhase> BuildBattlePhases(
+            List<BossPatternConfig> built, List<BossPhaseConfig> sharedHpPhases)
+        {
+            var result = new List<BossBattlePhase>();
+            if (battlePhases == null || battlePhases.Length == 0)
                 return result;
 
-            // 페이즈를 안 짰으면 모든 패턴을 균등하게 쓰는 단일 페이즈로 둔다
-            var all = new List<WeightedPattern>();
-            foreach (BossPatternConfig pattern in built)
-                all.Add(new WeightedPattern(pattern));
+            foreach (BattlePhaseEntry entry in battlePhases)
+            {
+                if (entry == null)
+                    continue;
 
-            result.Add(new BossPhaseConfig(1f, all));
+                List<BossPhaseConfig> hpPhases = BuildHpPhases(built, entry.hpPhases);
+                result.Add(new BossBattlePhase(
+                    entry.maxHp > 0f ? entry.maxHp : maxHp,
+                    entry.maxPosture > 0f ? entry.maxPosture : maxPosture,
+                    hpPhases.Count > 0 ? hpPhases : sharedHpPhases));
+            }
+
             return result;
         }
     }

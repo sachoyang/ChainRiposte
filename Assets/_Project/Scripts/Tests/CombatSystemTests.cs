@@ -368,10 +368,130 @@ namespace ChainRiposte.Core.Tests
                 new BossPhaseConfig(0.5f, new[] { new WeightedPattern(hard) }),
             };
 
-            Assert.That(config.ResolvePhase(1f).Patterns[0].Pattern.Name, Is.EqualTo("Easy"));
-            Assert.That(config.ResolvePhase(0.8f).Patterns[0].Pattern.Name, Is.EqualTo("Easy"));
-            Assert.That(config.ResolvePhase(0.5f).Patterns[0].Pattern.Name, Is.EqualTo("Hard"), "체력이 깎이면 험한 풀로");
-            Assert.That(config.ResolvePhase(0.1f).Patterns[0].Pattern.Name, Is.EqualTo("Hard"));
+            // 인살 페이즈를 안 짠 보스라 1페이즈짜리로 감싸진다 — HP 구간 풀은 그 안에서 돈다
+            BossBattlePhase battle = config.ResolveBattlePhases()[0];
+
+            Assert.That(battle.ResolveHpPhase(1f).Patterns[0].Pattern.Name, Is.EqualTo("Easy"));
+            Assert.That(battle.ResolveHpPhase(0.8f).Patterns[0].Pattern.Name, Is.EqualTo("Easy"));
+            Assert.That(battle.ResolveHpPhase(0.5f).Patterns[0].Pattern.Name, Is.EqualTo("Hard"), "체력이 깎이면 험한 풀로");
+            Assert.That(battle.ResolveHpPhase(0.1f).Patterns[0].Pattern.Name, Is.EqualTo("Hard"));
+        }
+
+        // ── 인살 페이즈 (2페이즈 보스) ──
+
+        /// <summary>인살 페이즈 2개짜리 보스. 페이즈마다 HP·체간을 따로 준다.</summary>
+        private static BossConfig TwoPhaseBoss()
+        {
+            var pattern = new BossPatternConfig("Test", Bpm, lengthBeats: 8f, new[] { Note(1f) });
+            var pool = new[] { new BossPhaseConfig(1f, new[] { new WeightedPattern(pattern) }) };
+
+            BossConfig config = Boss();
+            config.BattlePhases = new[]
+            {
+                new BossBattlePhase(maxHp: 100f, maxPosture: 100f, pool),
+                new BossBattlePhase(maxHp: 200f, maxPosture: 140f, pool),
+            };
+            return config;
+        }
+
+        /// <summary>체간을 채워 인살 가능 상태로 만든다 (패링 없이 직접 때려서).</summary>
+        private static void BreakPosture(CombatSystem combat)
+        {
+            for (int i = 0; i < 200 && !combat.ExecutionReady; i++)
+            {
+                combat.PressAttack();
+                combat.Tick(0.5f);
+            }
+        }
+
+        [Test]
+        public void 인살_페이즈가_남아_있으면_승리가_아니라_전환이다()
+        {
+            var combat = new CombatSystem(TwoPhaseBoss(), Stats(atk: 200f), new PlayerHealth(1000));
+            bool ended = false;
+            int clearedPhase = -1;
+            combat.Ended += _ => ended = true;
+            combat.PhaseCleared += phase => clearedPhase = phase;
+
+            BreakPosture(combat);
+            combat.PressAttack(); // 인살
+
+            Assert.That(ended, Is.False, "아직 페이즈가 남았으므로 전투가 끝나면 안 된다");
+            Assert.That(clearedPhase, Is.EqualTo(0));
+            Assert.That(combat.AwaitingPhaseTransition, Is.True);
+            Assert.That(combat.RemainingDeathblows, Is.EqualTo(1), "인살 마크 하나가 남는다");
+        }
+
+        [Test]
+        public void 전환_대기_중에는_시간도_입력도_멈춘다()
+        {
+            var health = new PlayerHealth(1000);
+            var combat = new CombatSystem(TwoPhaseBoss(), Stats(atk: 200f), health);
+
+            BreakPosture(combat);
+            combat.PressAttack();
+
+            float hpBefore = combat.BossHp;
+            combat.Tick(10f);       // 컷씬이 도는 동안 — 흘러가면 안 된다
+            combat.PressParry();    // 이 입력도 없던 일이어야 한다
+
+            Assert.That(health.Current, Is.EqualTo(1000), "멈춰 있는 동안 맞으면 안 된다");
+            Assert.That(combat.BossHp, Is.EqualTo(hpBefore));
+            Assert.That(combat.PlayerState, Is.EqualTo(PlayerActionState.Ready), "헛침 잠금도 걸리면 안 된다");
+        }
+
+        [Test]
+        public void 다음_페이즈는_HP와_체간이_만땅으로_새로_시작한다()
+        {
+            var combat = new CombatSystem(TwoPhaseBoss(), Stats(atk: 200f), new PlayerHealth(1000));
+            int startedPhase = -1;
+            combat.PhaseStarted += phase => startedPhase = phase;
+
+            BreakPosture(combat);
+            combat.PressAttack();
+            combat.BeginNextPhase(); // 컷씬 종료를 Game 레이어가 알린다
+
+            Assert.That(startedPhase, Is.EqualTo(1));
+            Assert.That(combat.BattlePhaseIndex, Is.EqualTo(1));
+            Assert.That(combat.BossMaxHp, Is.EqualTo(200f), "2페이즈는 자기 HP를 쓴다");
+            Assert.That(combat.BossHp, Is.EqualTo(200f), "만땅으로 새로");
+            Assert.That(combat.MaxPosture, Is.EqualTo(140f));
+            Assert.That(combat.Posture, Is.EqualTo(0f), "체간도 비운 채 시작");
+            Assert.That(combat.ExecutionReady, Is.False);
+            Assert.That(combat.AwaitingPhaseTransition, Is.False);
+        }
+
+        [Test]
+        public void 마지막_페이즈를_인살하면_승리한다()
+        {
+            var combat = new CombatSystem(TwoPhaseBoss(), Stats(atk: 200f), new PlayerHealth(1000));
+            bool? victory = null;
+            combat.Ended += result => victory = result;
+
+            BreakPosture(combat);
+            combat.PressAttack();
+            combat.BeginNextPhase();
+
+            BreakPosture(combat);
+            combat.PressAttack();
+
+            Assert.That(victory, Is.True);
+            Assert.That(combat.Finished, Is.True);
+        }
+
+        [Test]
+        public void 인살_페이즈를_안_짠_보스는_한_번으로_끝난다()
+        {
+            var combat = new CombatSystem(Boss(), Stats(atk: 200f), new PlayerHealth(1000));
+            bool? victory = null;
+            combat.Ended += result => victory = result;
+
+            Assert.That(combat.BattlePhaseCount, Is.EqualTo(1), "안 짜면 1페이즈로 감싸진다");
+
+            BreakPosture(combat);
+            combat.PressAttack();
+
+            Assert.That(victory, Is.True);
         }
 
         [Test]

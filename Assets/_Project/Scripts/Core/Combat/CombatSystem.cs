@@ -40,6 +40,11 @@ namespace ChainRiposte.Core.Combat
         private readonly List<RuntimeNote> _notes = new();
         private readonly List<ActiveNote> _activeNotes = new();
 
+        private readonly IReadOnlyList<BossBattlePhase> _battlePhases;
+        private BossBattlePhase _battle;
+        private int _battleIndex;
+        private int _deathblowsDone;
+
         private BossPatternConfig _pattern;
         private float _patternTime;   // 현재 패턴의 경과 시간(초). 리드인 동안은 음수.
         private float _gapTimer;      // 패턴 사이 대기. 0보다 크면 패턴이 아직 안 돌고 있다.
@@ -49,11 +54,32 @@ namespace ChainRiposte.Core.Combat
         public PlayerActionState PlayerState { get; private set; } = PlayerActionState.Ready;
 
         public float BossHp { get; private set; }
-        public float BossMaxHp => _config.MaxHp;
+        public float BossMaxHp => _battle.MaxHp;
 
         /// <summary>체간 게이지 — MaxPosture 도달 시 인살 가능.</summary>
         public float Posture { get; private set; }
-        public float MaxPosture => _config.MaxPosture;
+        public float MaxPosture => _battle.MaxPosture;
+
+        /// <summary>지금 몇 번째 인살 페이즈인가 (0부터). 겉모습·채보가 여기에 딸려 간다.</summary>
+        public int BattlePhaseIndex => _battleIndex;
+
+        /// <summary>인살 페이즈 수 = 이 보스를 눕히는 데 필요한 <b>인살 횟수</b>. 화면의 ◆ 개수다.</summary>
+        public int BattlePhaseCount => _battlePhases.Count;
+
+        /// <summary>
+        /// 앞으로 <b>몇 번 더 인살해야</b> 이 보스가 눕는가. 화면의 ◆ 개수가 이것이다.
+        /// 페이즈 번호로 계산하지 않는 이유: 인살 직후~다음 페이즈 시작 사이(컷씬)에는 번호가 아직 안 올라가서
+        /// 방금 인살한 몫이 계속 남아 있는 것처럼 보인다.
+        /// </summary>
+        public int RemainingDeathblows => _battlePhases.Count - _deathblowsDone;
+
+        /// <summary>
+        /// 인살은 끝났고 <b>다음 페이즈가 시작되기를 기다리는</b> 중 — 전환 컷씬이 도는 구간이다.
+        /// 이 동안은 시간이 흐르지 않고 입력도 받지 않는다.
+        /// 컷씬이 끝나면 Game 레이어가 <see cref="BeginNextPhase"/>를 불러 재개시킨다.
+        /// (Core는 컷씬이 몇 초인지 알 필요가 없다 — 알게 하면 연출을 바꿀 때마다 규칙을 고쳐야 한다.)
+        /// </summary>
+        public bool AwaitingPhaseTransition { get; private set; }
 
         /// <summary>재생 중인 패턴 (패턴 사이 대기 중에는 직전 패턴이 남아 있다).</summary>
         public BossPatternConfig CurrentPattern => _pattern;
@@ -99,8 +125,17 @@ namespace ChainRiposte.Core.Combat
         /// <summary>체간 파괴 — 인살 마크 표시 훅.</summary>
         public event Action BossBroken;
 
-        /// <summary>인살 입력 성공 — 피니시 연출 훅. 직후 Ended(true)가 발행된다.</summary>
+        /// <summary>인살 입력 성공 — 피니시 연출 훅. 마지막 페이즈였다면 직후 Ended(true)가 발행된다.</summary>
         public event Action ExecutionPerformed;
+
+        /// <summary>
+        /// (방금 끝낸 페이즈 번호) — 인살했지만 <b>다음 페이즈가 남아 있다</b>. 전환 컷씬을 재생할 훅.
+        /// 이 뒤로 시간이 멈추므로, 연출이 끝나면 반드시 <see cref="BeginNextPhase"/>를 불러야 전투가 재개된다.
+        /// </summary>
+        public event Action<int> PhaseCleared;
+
+        /// <summary>(시작한 페이즈 번호) — 새 페이즈의 전투가 시작됐다. 겉모습 교체 훅.</summary>
+        public event Action<int> PhaseStarted;
 
         /// <summary>버튼 활성/모션 표시용.</summary>
         public event Action<PlayerActionState> PlayerStateChanged;
@@ -115,13 +150,46 @@ namespace ChainRiposte.Core.Combat
             _health = health ?? throw new ArgumentNullException(nameof(health));
             _rng = rng ?? new Random();
 
-            if (config.Phases == null || config.Phases.Count == 0)
-                throw new ArgumentException("보스 페이즈가 비어 있습니다.", nameof(config));
             if (config.MaxHp <= 0f || config.MaxPosture <= 0f)
                 throw new ArgumentException("보스 HP/체간 한계치는 0보다 커야 합니다.", nameof(config));
 
-            BossHp = config.MaxHp;
+            _battlePhases = config.ResolveBattlePhases();
+            if (_battlePhases == null || _battlePhases.Count == 0)
+                throw new ArgumentException("보스 페이즈가 비어 있습니다.", nameof(config));
+
+            _battle = _battlePhases[0];
+            BossHp = _battle.MaxHp;
             _gapTimer = Math.Max(0f, config.FirstAttackDelaySeconds);
+        }
+
+        /// <summary>
+        /// 전환 컷씬이 끝났다 — 다음 페이즈를 만땅으로 시작한다.
+        /// HP·체간을 이어받지 않는 것이 이 보스의 규칙이다(사실상 2연전). 페이즈마다 수치를 따로 두므로
+        /// 1페이즈를 짧게 끊고 2페이즈를 무겁게 부는 완급이 데이터로 잡힌다.
+        /// </summary>
+        public void BeginNextPhase()
+        {
+            if (Finished || !AwaitingPhaseTransition)
+                return;
+
+            AwaitingPhaseTransition = false;
+            _battle = _battlePhases[++_battleIndex];
+
+            // 앞 페이즈의 잔재를 남기지 않는다 — 남은 노트 하나가 새 페이즈 첫 박에 튀어나온다
+            _pattern = null;
+            _notes.Clear();
+            _activeNotes.Clear();
+            _gapTimer = Math.Max(0f, _config.FirstAttackDelaySeconds);
+
+            BossHp = _battle.MaxHp;
+            Posture = 0f;
+            BossState = BossActionState.Recovering;
+            SetPlayerState(PlayerActionState.Ready);
+            _playerTimer = 0f;
+
+            BossHpChanged?.Invoke(BossHp, _battle.MaxHp);
+            PostureChanged?.Invoke(Posture, _battle.MaxPosture);
+            PhaseStarted?.Invoke(_battleIndex);
         }
 
         /// <summary>
@@ -130,7 +198,7 @@ namespace ChainRiposte.Core.Combat
         /// </summary>
         public void Tick(float deltaSeconds)
         {
-            if (deltaSeconds <= 0f || Finished)
+            if (deltaSeconds <= 0f || Finished || AwaitingPhaseTransition)
                 return;
 
             float remaining = deltaSeconds;
@@ -167,7 +235,7 @@ namespace ChainRiposte.Core.Combat
         /// </summary>
         public void PressParry()
         {
-            if (Finished)
+            if (Finished || AwaitingPhaseTransition)
                 return;
 
             // 늦은 패링 — 원이 닿는 걸 보고 누르면 대개 살짝 늦는다. 잠금 중이어도 이건 받아 준다.
@@ -237,12 +305,23 @@ namespace ChainRiposte.Core.Combat
         /// </summary>
         public void PressAttack()
         {
-            if (Finished)
+            if (Finished || AwaitingPhaseTransition)
                 return;
 
             if (ExecutionReady)
             {
+                _deathblowsDone++;
                 ExecutionPerformed?.Invoke();
+
+                // 아직 페이즈가 남았으면 승리가 아니라 '전환' — 시간을 멈추고 컷씬에 넘긴다
+                if (_battleIndex + 1 < _battlePhases.Count)
+                {
+                    AwaitingPhaseTransition = true;
+                    _activeNotes.Clear();
+                    PhaseCleared?.Invoke(_battleIndex);
+                    return;
+                }
+
                 Finish(victory: true);
                 return;
             }
@@ -310,10 +389,10 @@ namespace ChainRiposte.Core.Combat
 
             float decay = _config.PostureDecayPerSecond;
             if (_config.ScaleDecayWithHp)
-                decay *= BossHp / _config.MaxHp; // HP가 낮을수록 체간 회복 둔화
+                decay *= BossHp / _battle.MaxHp; // HP가 낮을수록 체간 회복 둔화
 
             Posture = Math.Max(0f, Posture - decay * step);
-            PostureChanged?.Invoke(Posture, _config.MaxPosture);
+            PostureChanged?.Invoke(Posture, _battle.MaxPosture);
         }
 
         /// <summary>만료된 보스 사건을 순서대로 처리한다. 0초 간격이 연쇄될 수 있어 변화가 없을 때까지 반복한다.</summary>
@@ -453,7 +532,7 @@ namespace ChainRiposte.Core.Combat
         /// <summary>현재 HP 페이즈의 풀에서 가중 무작위로 뽑는다.</summary>
         private BossPatternConfig PickPattern()
         {
-            BossPhaseConfig phase = _config.ResolvePhase(BossHp / _config.MaxHp);
+            BossPhaseConfig phase = _battle.ResolveHpPhase(BossHp / _battle.MaxHp);
             float total = phase.TotalWeight;
 
             if (total <= 0f)
@@ -568,7 +647,7 @@ namespace ChainRiposte.Core.Combat
             float damage = _stats.AttackDamage;
             BossHp = Math.Max(0f, BossHp - damage);
             PlayerAttackLanded?.Invoke(damage);
-            BossHpChanged?.Invoke(BossHp, _config.MaxHp);
+            BossHpChanged?.Invoke(BossHp, _battle.MaxHp);
 
             if (BossHp <= 0f)
                 Break(); // HP 소진 = 체간 즉시 파괴 → 인살로만 마무리
@@ -581,21 +660,21 @@ namespace ChainRiposte.Core.Combat
             if (BossState == BossActionState.Broken || amount <= 0f)
                 return;
 
-            Posture = Math.Min(_config.MaxPosture, Posture + amount);
-            PostureChanged?.Invoke(Posture, _config.MaxPosture);
+            Posture = Math.Min(_battle.MaxPosture, Posture + amount);
+            PostureChanged?.Invoke(Posture, _battle.MaxPosture);
 
-            if (Posture >= _config.MaxPosture)
+            if (Posture >= _battle.MaxPosture)
                 Break();
         }
 
         private void Break()
         {
-            Posture = _config.MaxPosture;
+            Posture = _battle.MaxPosture;
             BossState = BossActionState.Broken;
             _pattern = null;
             _notes.Clear();
             _activeNotes.Clear();
-            PostureChanged?.Invoke(Posture, _config.MaxPosture);
+            PostureChanged?.Invoke(Posture, _battle.MaxPosture);
             BossBroken?.Invoke();
         }
 

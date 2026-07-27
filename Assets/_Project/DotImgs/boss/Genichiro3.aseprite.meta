@@ -127,48 +127,6 @@ ScriptedImporter:
     tessellationDetail: 0
     uvTransform: {x: 0, y: 0}
   animatedSpriteImportData:
-  - name: phase2
-    originalName: 
-    pivot: {x: 0.4961538, y: -0.13207547}
-    alignment: 9
-    border: {x: 0, y: 0, z: 0, w: 0}
-    customData: 
-    rect:
-      serializedVersion: 2
-      x: 4
-      y: 130
-      width: 130
-      height: 106
-    spriteID: f4773ecc41d400247bf2b2eafdc9e4de
-    spriteBone: []
-    spriteOutline: []
-    vertices: []
-    spritePhysicsOutline: []
-    indices: 
-    edges: []
-    tessellationDetail: 0
-    uvTransform: {x: 4, y: 130}
-  - name: trans
-    originalName: 
-    pivot: {x: 0.5971429, y: -0.118644066}
-    alignment: 9
-    border: {x: 0, y: 0, z: 0, w: 0}
-    customData: 
-    rect:
-      serializedVersion: 2
-      x: 4
-      y: 4
-      width: 175
-      height: 118
-    spriteID: dd8351963fb8dac4f96736d67679af29
-    spriteBone: []
-    spriteOutline: []
-    vertices: []
-    spritePhysicsOutline: []
-    indices: 
-    edges: []
-    tessellationDetail: 0
-    uvTransform: {x: 4, y: 4}
   - name: phase1
     originalName: 
     pivot: {x: 0.82098764, y: -0.13207547}
@@ -177,8 +135,8 @@ ScriptedImporter:
     customData: 
     rect:
       serializedVersion: 2
-      x: 142
-      y: 130
+      x: 4
+      y: 4
       width: 81
       height: 106
     spriteID: 8955863df0609d44c80953cfad5a2db4
@@ -189,60 +147,10 @@ ScriptedImporter:
     indices: 
     edges: []
     tessellationDetail: 0
-    uvTransform: {x: 142, y: 130}
+    uvTransform: {x: 4, y: 4}
   spriteSheetImportData: []
   tileSetImportData: []
   asepriteLayers:
-  - layerIndex: 0
-    uuid:
-      value0: 1326534157
-      value1: 0
-      value2: 0
-      value3: 0
-    guid: 0
-    name: phase2
-    layerFlags: 3
-    layerType: 0
-    blendMode: 0
-    cells:
-    - name: phase2
-      frameIndex: 0
-      additiveSortOrder: 0
-      cellRect:
-        x: 51
-        y: 14
-        width: 130
-        height: 106
-      spriteId: f4773ecc41d400247bf2b2eafdc9e4de
-    linkedCells: []
-    tileCells: []
-    tileSetIndex: 0
-    parentIndex: -1
-  - layerIndex: 1
-    uuid:
-      value0: 1588509312
-      value1: 0
-      value2: 0
-      value3: 0
-    guid: 0
-    name: trans
-    layerFlags: 3
-    layerType: 0
-    blendMode: 0
-    cells:
-    - name: trans
-      frameIndex: 0
-      additiveSortOrder: 0
-      cellRect:
-        x: 11
-        y: 14
-        width: 175
-        height: 118
-      spriteId: dd8351963fb8dac4f96736d67679af29
-    linkedCells: []
-    tileCells: []
-    tileSetIndex: 0
-    parentIndex: -1
   - layerIndex: 2
     uuid:
       value0: 1729818684
@@ -322,4 +230,4 @@ ScriptedImporter:
   secondarySpriteTextures: []
   spritePackingTag: 
   canvasSize: {x: 231, y: 136}
-  previousTextureSize: {x: 256, y: 256}
+  previousTextureSize: {x: 128, y: 128}

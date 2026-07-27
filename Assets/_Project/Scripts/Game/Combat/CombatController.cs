@@ -1,3 +1,4 @@
+using System.Collections;
 using ChainRiposte.Core.Combat;
 using ChainRiposte.Core.Flow;
 using ChainRiposte.Game.Config;
@@ -65,13 +66,15 @@ namespace ChainRiposte.Game.Combat
 
             _combat = new CombatSystem(boss, gameManager.Session.Stats, gameManager.Session.Health);
             _combat.Ended += OnCombatEnded;
+            _combat.PhaseCleared += OnPhaseCleared;
+            _combat.PhaseStarted += OnPhaseStarted;
 
             if (puzzleBoardRoot != null)
                 puzzleBoardRoot.SetActive(false);
 
             // 보스 생김새는 SO에서 직접 읽는다 — 스프라이트는 순수 C# BossConfig에 담을 수 없다.
             // 규칙은 BossVisual 한 곳뿐이다 — 준비 화면의 그림자도 같은 것을 부르므로 둘이 어긋날 수 없다.
-            BossDataSO bossData = gameManager.StageData != null ? gameManager.StageData.BossData : null;
+            BossDataSO bossData = BossData;
             screen.SetBossVisual(BossVisual.ResolveSprite(bossData), BossVisual.ResolveNameKey(bossData));
 
             screen.Bind(_combat, gameManager.Session);
@@ -85,5 +88,32 @@ namespace ChainRiposte.Game.Combat
             input.SetActive(false);
             gameManager.Session.EndStage(victory);
         }
+
+        private BossDataSO BossData => gameManager.StageData != null ? gameManager.StageData.BossData : null;
+
+        /// <summary>
+        /// 인살했지만 페이즈가 남았다 — 컷씬을 돌리고, <b>끝난 뒤에</b> 전투를 재개시킨다.
+        /// Core는 이 동안 시간을 세지 않으므로 연출 길이를 여기서 마음대로 정할 수 있다.
+        /// </summary>
+        private void OnPhaseCleared(int clearedPhase)
+        {
+            input.SetActive(false);
+            StartCoroutine(PhaseTransitionRoutine(clearedPhase + 1));
+        }
+
+        private IEnumerator PhaseTransitionRoutine(int nextPhase)
+        {
+            BossDataSO bossData = BossData;
+
+            yield return screen.PlayPhaseTransition(
+                BossVisual.ResolveTransitionSprite(bossData, nextPhase),
+                BossVisual.ResolveSprite(bossData, nextPhase),
+                BossVisual.ResolveTransitionTextKey(bossData, nextPhase));
+
+            _combat.BeginNextPhase();
+            input.SetActive(true);
+        }
+
+        private void OnPhaseStarted(int phase) => screen.OnPhaseStarted();
     }
 }

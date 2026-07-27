@@ -83,6 +83,28 @@ namespace ChainRiposte.Game.Combat
         [SerializeField] private Image parryButtonImage;
         [SerializeField] private Image attackButtonImage;
 
+        [Header("인살 마크 — 인살 페이즈가 여럿인 보스만")]
+        [Tooltip("남은 인살 횟수. 1페이즈 보스에서는 스스로 꺼진다. 비워도 동작한다.")]
+        [SerializeField] private TMP_Text deathblowText;
+        [Tooltip("아직 남은 인살 한 번을 나타내는 글자. 폰트에 글리프가 없으면 여기서 다른 글자로 바꾼다.")]
+        [SerializeField] private string deathblowMarkRemaining = "◆";
+        [Tooltip("이미 끝낸 인살 한 번을 나타내는 글자")]
+        [SerializeField] private string deathblowMarkSpent = "◇";
+
+        [Header("페이즈 전환 컷씬 (Add Phase Cutscene To Main 이 배선)")]
+        [Tooltip("컷씬 전체 루트. 비어 있으면 컷씬 없이 그림만 갈아 끼우고 바로 재개한다 — " +
+            "배선을 덜 했다고 전투가 멈추면 안 된다.")]
+        [SerializeField] private RectTransform cutsceneRoot;
+        [Tooltip("컷씬 전체를 한꺼번에 페이드하기 위한 것. 비우면 루트에서 찾는다.")]
+        [SerializeField] private CanvasGroup cutsceneGroup;
+        [Tooltip("trans 그림이 뜨는 자리. 그림이 없으면 스스로 꺼진다.")]
+        [SerializeField] private Image cutsceneImage;
+        [SerializeField] private TMP_Text cutsceneText;
+        [Tooltip("아무 데나 눌러 넘기기 위한 전체 화면 버튼")]
+        [SerializeField] private Button cutsceneSkipButton;
+        [Tooltip("문구를 읽을 시간. 누르면 즉시 넘어간다.")]
+        [SerializeField, Min(0.1f)] private float cutsceneHoldSeconds = 2.5f;
+
         private readonly List<RectTransform> _rings = new();
         private readonly List<Image> _ringImages = new();
         private Coroutine _entranceRoutine;
@@ -101,6 +123,7 @@ namespace ChainRiposte.Game.Combat
         /// 연출이 <c>Vector3.one</c>으로 되돌리면 뒤집힌 게 한 프레임마다 풀렸다 다시 걸린다.
         /// </summary>
         private Vector3 _bossBaseScale = Vector3.one;
+        private bool _cutsceneSkipped;
 
         private static readonly Color ParryButtonColor = new(0.18f, 0.28f, 0.42f, 0.95f);
         private static readonly Color AttackButtonColor = new(0.42f, 0.14f, 0.16f, 0.95f);
@@ -119,6 +142,16 @@ namespace ChainRiposte.Game.Combat
 
             parryButton.onClick.AddListener(() => input.PressParry());
             attackButton.onClick.AddListener(() => input.PressAttack());
+
+            if (cutsceneSkipButton != null)
+                cutsceneSkipButton.onClick.AddListener(() => _cutsceneSkipped = true);
+            if (cutsceneRoot != null)
+            {
+                if (cutsceneGroup == null)
+                    cutsceneGroup = cutsceneRoot.GetComponent<CanvasGroup>();
+                cutsceneRoot.gameObject.SetActive(false);
+            }
+
             root.gameObject.SetActive(false);
         }
 
@@ -205,15 +238,8 @@ namespace ChainRiposte.Game.Combat
             _bossBaseScale = new Vector3(flipBossHorizontally ? -1f : 1f, 1f, 1f);
             bossBody.localScale = _bossBaseScale;
 
-            // 스프라이트가 지정되면 원색 그대로(흰 틴트), 없으면 기존 색 사각형 플레이스홀더
-            bool hasSprite = _bossSprite != null;
-            if (hasSprite)
-            {
-                bossBodyImage.sprite = _bossSprite;
-                bossBodyImage.preserveAspect = true;
-            }
-
-            bossBodyImage.color = hasSprite ? Color.white : bossColor;
+            ApplyBossSprite(_bossSprite);
+            RefreshDeathblowMarks();
 
             if (playerBody != null)
             {
@@ -236,6 +262,50 @@ namespace ChainRiposte.Game.Combat
 
             StartEntrance();
             OnPlayerStateChanged(PlayerActionState.Ready);
+        }
+
+        /// <summary>스프라이트가 있으면 원색 그대로(흰 틴트), 없으면 색 사각형 플레이스홀더.</summary>
+        private void ApplyBossSprite(Sprite sprite)
+        {
+            bool hasSprite = sprite != null;
+            if (hasSprite)
+            {
+                bossBodyImage.sprite = sprite;
+                bossBodyImage.preserveAspect = true;
+            }
+
+            bossBodyImage.color = hasSprite ? Color.white : bossColor;
+        }
+
+        /// <summary>
+        /// 남은 인살 횟수를 ◆ 로 보여 준다. <b>인살이 한 번뿐인 보스에서는 스스로 꺼진다</b> —
+        /// ◆ 하나만 떠 있으면 "아직 뭔가 남았나?"로 읽혀 오히려 방해다.
+        /// </summary>
+        private void RefreshDeathblowMarks()
+        {
+            if (deathblowText == null)
+                return;
+
+            bool show = _combat != null && _combat.BattlePhaseCount > 1;
+            if (deathblowText.gameObject.activeSelf != show)
+                deathblowText.gameObject.SetActive(show);
+            if (!show)
+                return;
+
+            int spent = _combat.BattlePhaseCount - _combat.RemainingDeathblows;
+            deathblowText.text =
+                string.Concat(Repeat(deathblowMarkSpent, spent), Repeat(deathblowMarkRemaining, _combat.RemainingDeathblows));
+        }
+
+        private static string Repeat(string mark, int count)
+        {
+            if (string.IsNullOrEmpty(mark) || count <= 0)
+                return string.Empty;
+
+            var builder = new System.Text.StringBuilder(mark.Length * count);
+            for (int i = 0; i < count; i++)
+                builder.Append(mark);
+            return builder.ToString();
         }
 
         // ── CombatSystem 이벤트 연출 ──
@@ -396,8 +466,7 @@ namespace ChainRiposte.Game.Combat
 
         private void OnExecutionPerformed()
         {
-            if (_executePulseRoutine != null)
-                StopCoroutine(_executePulseRoutine);
+            StopExecutePulse();
             executeText.gameObject.SetActive(false);
             StartCoroutine(Flash(new Color(1f, 1f, 1f, 0.9f)));
         }
@@ -496,6 +565,109 @@ namespace ChainRiposte.Game.Combat
                 yield return null;
             }
             flashOverlay.color = Color.clear;
+        }
+
+        // ── 페이즈 전환 컷씬 ──
+
+        /// <summary>
+        /// 1페이즈를 인살한 뒤 2페이즈가 시작되기 전까지의 연출.
+        /// <b>이 코루틴이 끝나야</b> 컨트롤러가 <c>BeginNextPhase()</c>를 불러 전투를 재개한다 —
+        /// 그동안 Core는 시간을 세지 않으므로 연출 길이를 자유롭게 바꿀 수 있다.
+        ///
+        /// <para>보스 그림은 <b>화면이 덮인 동안</b> 갈아 끼운다. 밝을 때 바꾸면 그림이 툭 바뀌는 게 보인다.</para>
+        ///
+        /// <para>컷씬 자리를 아직 안 배선했으면 그림만 바꾸고 짧게 넘어간다 —
+        /// 배선이 덜 됐다고 전투가 멈춰 있으면 안 된다.</para>
+        /// </summary>
+        public IEnumerator PlayPhaseTransition(Sprite transitionSprite, Sprite nextSprite, string textKey)
+        {
+            HideTelegraph();
+            StopExecutePulse();
+            executeText.gameObject.SetActive(false);
+
+            if (cutsceneRoot == null)
+            {
+                ApplyBossSprite(nextSprite);
+                yield return new WaitForSeconds(0.4f);
+                yield break;
+            }
+
+            _cutsceneSkipped = false;
+
+            if (cutsceneImage != null)
+            {
+                Sprite shown = transitionSprite != null ? transitionSprite : nextSprite;
+                cutsceneImage.enabled = shown != null;
+                if (shown != null)
+                {
+                    cutsceneImage.sprite = shown;
+                    cutsceneImage.preserveAspect = true;
+                }
+            }
+
+            if (cutsceneText != null)
+                cutsceneText.text = string.IsNullOrWhiteSpace(textKey) ? string.Empty : Loc.GetText(textKey);
+
+            cutsceneRoot.gameObject.SetActive(true);
+            yield return FadeCutscene(0f, 1f, 0.5f);
+
+            ApplyBossSprite(nextSprite);
+            yield return HoldOrSkip(cutsceneHoldSeconds);
+
+            yield return FadeCutscene(1f, 0f, 0.45f);
+            cutsceneRoot.gameObject.SetActive(false);
+
+            yield return BossEntrance();
+        }
+
+        private IEnumerator FadeCutscene(float from, float to, float seconds)
+        {
+            if (cutsceneGroup == null)
+                yield break;
+
+            for (float t = 0f; t < seconds; t += Time.deltaTime)
+            {
+                // 양 끝이 눕지 않으면 알파가 툭 끊겨 보인다 (인트로 페이드와 같은 이유)
+                cutsceneGroup.alpha = Mathf.Lerp(from, to, Mathf.SmoothStep(0f, 1f, t / seconds));
+                yield return null;
+            }
+
+            cutsceneGroup.alpha = to;
+        }
+
+        /// <summary>문구를 읽을 시간. 누르면 즉시 넘어간다 — 두 번째부터는 이미 본 연출이다.</summary>
+        private IEnumerator HoldOrSkip(float seconds)
+        {
+            for (float t = 0f; t < seconds && !_cutsceneSkipped; t += Time.deltaTime)
+                yield return null;
+        }
+
+        /// <summary>바뀐 모습으로 다시 자기 자리에 미끄러져 들어온다.</summary>
+        private IEnumerator BossEntrance()
+        {
+            Vector2 home = bossBody.anchoredPosition;
+            Vector2 start = home + Vector2.right * entranceOffsetX;
+
+            for (float t = 0f; t < entranceSeconds; t += Time.deltaTime)
+            {
+                float eased = 1f - Mathf.Pow(1f - t / entranceSeconds, 3f);
+                bossBody.anchoredPosition = Vector2.LerpUnclamped(start, home, eased);
+                yield return null;
+            }
+
+            bossBody.anchoredPosition = home;
+        }
+
+        /// <summary>새 페이즈가 시작됐다 — 인살 마크를 다시 그린다 (게이지는 Core 이벤트가 갱신한다).</summary>
+        public void OnPhaseStarted() => RefreshDeathblowMarks();
+
+        private void StopExecutePulse()
+        {
+            if (_executePulseRoutine == null)
+                return;
+
+            StopCoroutine(_executePulseRoutine);
+            _executePulseRoutine = null;
         }
 
         // ── 등장 연출 ──

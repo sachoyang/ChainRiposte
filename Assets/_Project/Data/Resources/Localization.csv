@@ -80,3 +80,4 @@ pause.title,일시정지,PAUSED
 pause.resume,계속하기,RESUME
 pause.quit,지도로 나가기,QUIT TO MAP
 pause.quit.confirm,지도로 나갈까요?\n진행 중인 판은 사라집니다.,Quit to map?\nThis run will be lost.
+boss.phase.transition,그러나 아직 쓰러지지 않았다,BUT IT IS NOT OVER
