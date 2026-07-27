@@ -34,8 +34,8 @@ MonoBehaviour:
       transitionSprite: {fileID: 0}
     - sprite: {fileID: -4547091980528819496, guid: 3ae1fa3d4672ed14a968fcc19ca245ea, type: 3}
       transitionSprite: {fileID: -3605114421481357373, guid: 3ae1fa3d4672ed14a968fcc19ca245ea, type: 3}
-  maxHp: 240
-  maxPosture: 200
+  maxHp: 160
+  maxPosture: 120
   parryPostureGain: 25
   attackPostureFactor: 0.5
   postureDecayPerSecond: 6
@@ -45,10 +45,17 @@ MonoBehaviour:
   patterns: []
   phases: []
   battlePhases:
-  - label: 
+  - label: Phase 1
     sprite: {fileID: 0}
     transitionSprite: {fileID: 0}
     transitionTextKey: 
     maxHp: 0
     maxPosture: 0
+    hpPhases: []
+  - label: Phase 2
+    sprite: {fileID: 0}
+    transitionSprite: {fileID: 0}
+    transitionTextKey: boss.phase.transition
+    maxHp: 200
+    maxPosture: 250
     hpPhases: []

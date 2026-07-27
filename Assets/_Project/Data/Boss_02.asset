@@ -12,16 +12,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 404a7ca429d088f4984370d133fa87e2, type: 3}
   m_Name: Boss_02
   m_EditorClassIdentifier: ChainRiposte.Game::ChainRiposte.Game.Config.BossDataSO
+  bossId: 
+  nameKey: 
   displayName: The Butcher
   portrait: {fileID: 0}
   battleSprite: {fileID: 0}
   characterVisuals:
   - character: {fileID: 11400000, guid: dddc9d8434eef9747a421ffefbafc0df, type: 2}
-    battleSprite: {fileID: 0}
+    battleSprite: {fileID: -1114432692226576877, guid: b82ce1263be26a64e965698fc92ad3b6, type: 3}
     nameKey: boss.irithyll.02
+    phaseVisuals: []
   - character: {fileID: 11400000, guid: b80d3be4312e8354fb1decd3396ecc64, type: 2}
-    battleSprite: {fileID: 0}
+    battleSprite: {fileID: 6486014346560288319, guid: 3ae1fa3d4672ed14a968fcc19ca245ea, type: 3}
     nameKey: boss.ashina.02
+    phaseVisuals: []
   maxHp: 160
   maxPosture: 120
   parryPostureGain: 25
@@ -32,3 +36,4 @@ MonoBehaviour:
   patternGapSeconds: 0.6
   patterns: []
   phases: []
+  battlePhases: []
