@@ -115,6 +115,8 @@ namespace ChainRiposte.Game.Flow
         private static void StartNewGame()
         {
             ProgressService.ResetAll();
+            // 고른 캐릭터의 사슬을 처음부터 — 이전 회차 빌드/소울을 물려받지 않게 (Docs/PROGRESSION.md)
+            RunStateService.StartNewRun();
             SceneRouter.GoStageSelect();
         }
 

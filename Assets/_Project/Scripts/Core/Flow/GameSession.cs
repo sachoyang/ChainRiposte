@@ -33,9 +33,15 @@ namespace ChainRiposte.Core.Flow
         /// <summary>(이전 페이즈, 새 페이즈). 각 페이즈 컨트롤러의 활성/비활성 스위치.</summary>
         public event Action<GamePhase, GamePhase> PhaseChanged;
 
-        public GameSession(PlayerStatsConfig statsConfig)
+        public GameSession(PlayerStatsConfig statsConfig) : this(statsConfig, null) { }
+
+        /// <summary>
+        /// 저장된 성장(<paramref name="statsSeed"/>)을 이어받아 시작한다 — 성장 캐리(<c>Docs/PROGRESSION.md</c>).
+        /// seed가 null이면 새 캐릭터(레벨 1)로 시작한다. HP는 캐리하지 않는다(매 전투 만피 = 준비 화면 휴식).
+        /// </summary>
+        public GameSession(PlayerStatsConfig statsConfig, PlayerStatsSnapshot statsSeed)
         {
-            Stats = new PlayerStats(statsConfig);
+            Stats = new PlayerStats(statsConfig, statsSeed);
             Health = new PlayerHealth(statsConfig.MaxHp);
         }
 

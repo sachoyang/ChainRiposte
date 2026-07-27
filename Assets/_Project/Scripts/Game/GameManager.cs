@@ -1,4 +1,5 @@
 using ChainRiposte.Core.Flow;
+using ChainRiposte.Core.Progress;
 using ChainRiposte.Core.Stage;
 using ChainRiposte.Game.Config;
 using ChainRiposte.Game.Progress;
@@ -41,7 +42,8 @@ namespace ChainRiposte.Game
             ProgressService.MarkAttempted(stageData.StageId);
 
             StageConfig = stageData.ToConfig();
-            Session = new GameSession(BuildStatsConfig());
+            // 저장된 런의 성장을 씨앗으로 이어받는다 — 성장 캐리 (Docs/PROGRESSION.md)
+            Session = new GameSession(BuildStatsConfig(), RunStateService.Current.Stats);
             Session.PhaseChanged += OnPhaseChanged;
         }
 
@@ -79,7 +81,36 @@ namespace ChainRiposte.Game
 
             // 클리어하면 다음 스테이지가 열린다 (GDD §9.2)
             if (next == GamePhase.Victory)
+            {
                 ProgressService.MarkCleared(stageData.StageId);
+                SaveRunProgress(cleared: true);
+            }
+            // 죽으면 빌드는 남기고 사슬 배수만 끊는다 (Docs/PROGRESSION.md §5)
+            else if (next == GamePhase.Defeat)
+            {
+                SaveRunProgress(cleared: false);
+            }
+        }
+
+        /// <summary>
+        /// 런 상태를 세이브에 반영한다. 클리어면 이번 판의 성장을 이어받고 사슬을 한 칸 잇는다.
+        /// 패배면 <b>성장은 다시 저장하지 않고</b>(직전 클리어 지점 유지) 사슬만 끊는다 —
+        /// 죽은 판에서 파밍한 소울을 은행에 넣지 않기 위해서다(§5 보스 재도전과 이어진다).
+        /// </summary>
+        private void SaveRunProgress(bool cleared)
+        {
+            RunState run = RunStateService.Current;
+            if (cleared)
+            {
+                run.UpdateStats(Session.Stats.Capture());
+                run.AdvanceChain();
+            }
+            else
+            {
+                run.BreakChain();
+            }
+
+            RunStateService.Save();
         }
     }
 }

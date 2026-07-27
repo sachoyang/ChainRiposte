@@ -54,9 +54,39 @@ namespace ChainRiposte.Core.Stats
         /// <summary>(분배된 스탯, 해당 스탯의 새 레벨).</summary>
         public event Action<StatType, int> StatAllocated;
 
-        public PlayerStats(PlayerStatsConfig config)
+        public PlayerStats(PlayerStatsConfig config) : this(config, null) { }
+
+        /// <summary>
+        /// 저장된 진행(<paramref name="snapshot"/>)을 씨앗으로 복원한다 — 성장 캐리(<c>Docs/PROGRESSION.md</c>).
+        /// snapshot이 null이면 새 캐릭터(레벨 1, 소울 0)로 시작한다.
+        /// <b>복원은 이벤트를 발행하지 않는다</b> — 아직 아무도 구독하지 않은 생성 시점이라 UI를 흔들 필요가 없다.
+        /// </summary>
+        public PlayerStats(PlayerStatsConfig config, PlayerStatsSnapshot snapshot)
         {
             _config = config ?? throw new ArgumentNullException(nameof(config));
+            if (snapshot == null)
+                return;
+
+            Level = Math.Max(1, snapshot.Level);
+            Souls = Math.Max(0, snapshot.Souls);
+            PendingPoints = Math.Max(0, snapshot.PendingPoints);
+            // TotalSoulsEarned는 복원하지 않는다 — 판 단위 보스 난입 게이지라 매 판 0에서 시작한다.
+            for (int i = 0; i < _statLevels.Length && i < snapshot.StatLevels.Length; i++)
+                _statLevels[i] = Math.Max(0, snapshot.StatLevels[i]);
+        }
+
+        /// <summary>현재 가변 상태를 스냅샷으로 떠낸다 — 스테이지 클리어 시 런 상태에 저장하기 위한 것.</summary>
+        public PlayerStatsSnapshot Capture()
+        {
+            PlayerStatsSnapshot snapshot = new()
+            {
+                Level = Level,
+                Souls = Souls,
+                PendingPoints = PendingPoints,
+            };
+            for (int i = 0; i < _statLevels.Length; i++)
+                snapshot.StatLevels[i] = _statLevels[i];
+            return snapshot;
         }
 
         public int GetStatLevel(StatType stat) => _statLevels[(int)stat];
