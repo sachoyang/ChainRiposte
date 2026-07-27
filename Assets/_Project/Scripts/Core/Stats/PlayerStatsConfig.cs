@@ -17,14 +17,20 @@ namespace ChainRiposte.Core.Stats
         public float BaseDamageReduction = 0f;
         public float DamageReductionPerLevel = 2f;
 
-        public float BaseParryWindowSeconds = 0.25f;
+        /// <summary>
+        /// 아무것도 안 찍은 상태의 판정 폭. <b>여기가 좁은 것이 정상이다</b> —
+        /// PARRY에 투자하지 않았으면 실제로 어려워야 스탯이 의미를 갖는다.
+        /// </summary>
+        public float BaseParryWindowSeconds = 0.13f;
 
         /// <summary>
         /// PARRY 1레벨당 넓어지는 판정 폭.
-        /// 하드 캡(5)까지 찍었을 때 기본값의 <b>3할 정도</b>만 넓어지게 잡는다 —
-        /// 이보다 크면 후반에 아무 때나 눌러도 막혀서 리듬 게임이 아니게 된다.
+        /// 하드 캡(5)까지 찍으면 기본값의 <b>두 배 가까이</b> 넓어진다 — 화면의 회색 띠가
+        /// 눈에 띄게 굵어져야 "찍었더니 실제로 쉬워졌다"가 읽히기 때문이다.
+        /// 대신 캡의 폭(유예 포함 0.37초)이 <b>상한</b>이다. 이보다 더 넓히면 아무 때나 눌러도 막혀서
+        /// 리듬 게임이 아니게 되므로, 조일 때는 기본값이 아니라 캡을 먼저 본다.
         /// </summary>
-        public float ParryWindowPerLevelSeconds = 0.015f;
+        public float ParryWindowPerLevelSeconds = 0.024f;
 
         /// <summary>
         /// 타격이 지난 뒤에도 이만큼은 패링을 받아 준다.

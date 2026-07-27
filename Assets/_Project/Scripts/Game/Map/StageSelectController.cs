@@ -56,6 +56,9 @@ namespace ChainRiposte.Game.Map
         [SerializeField] private Vector3 characterOffset = new(0f, 0.7f, 0f);
         [Tooltip("클릭을 노드로 인정하는 반경 (월드 유닛)")]
         [SerializeField, Min(0.1f)] private float clickRadius = 0.8f;
+        [Tooltip("클릭을 '길'로 인정하는 반경 (월드 유닛). 노드를 못 맞혔을 때 길을 눌러도 한 칸 움직이게 하는 판정 유도다. " +
+            "0이면 끈다 — 노드를 정확히 눌러야만 움직인다.")]
+        [SerializeField, Min(0f)] private float pathClickRadius = 1.2f;
         [Tooltip("카메라가 노드 전체를 담을 때 가장자리 여백")]
         [SerializeField, Min(0f)] private float cameraPadding = 1.5f;
         [Tooltip("길을 얼마나 부드럽게 이을지 (1이면 예전처럼 꺾은선). 경로선과 걷는 길이 같이 바뀐다.")]
@@ -203,6 +206,9 @@ namespace ChainRiposte.Game.Map
                 }
             }
 
+            // 노드를 못 맞혔으면 '길'을 맞혔는지 본다 — 다음 노드가 화면 밖일 때의 유일한 이동 수단이다.
+            if (nearest < 0)
+                nearest = ResolvePathClick(world);
             if (nearest < 0)
                 return;
 
@@ -215,6 +221,47 @@ namespace ChainRiposte.Game.Map
             }
 
             StartCoroutine(nodes[nearest].IsLocked ? BlockedRoutine(nearest) : MoveRoutine(nearest));
+        }
+
+        /// <summary>
+        /// 길 위를 눌렀을 때 갈 곳 — <b>누른 쪽으로 한 칸</b>. 못 맞히면 -1.
+        ///
+        /// <para>세로 스크롤에서는 다음 노드가 화면 밖에 있어서 직접 누를 방법이 없다.
+        /// 그래서 길 자체를 판정 유도 영역으로 쓴다.</para>
+        ///
+        /// <para>방향은 고정이 아니다 — 누른 지점이 <b>지금 서 있는 노드보다 앞이냐 뒤냐</b>로 그때그때 정한다.
+        /// 뒤쪽 노드에 서서 앞쪽 길을 누르면 앞으로, 앞쪽 노드에 서서 뒤쪽 길을 누르면 뒤로 간다.</para>
+        /// </summary>
+        private int ResolvePathClick(Vector3 world)
+        {
+            if (pathClickRadius <= 0f || _pathBuffer.Count < 2)
+                return -1;
+
+            int hit = -1;
+            float best = pathClickRadius;
+            for (int i = 0; i < _pathBuffer.Count; i++)
+            {
+                float distance = Vector2.Distance(world, _pathBuffer[i]);
+                if (distance < best)
+                {
+                    best = distance;
+                    hit = i;
+                }
+            }
+
+            if (hit < 0)
+                return -1;
+
+            // 길 위의 점 번호 → 노드 번호. MapPath.Build 가 한 구간마다 pathSmoothing 개씩 찍으므로
+            // 나누면 그대로 "몇 번째 노드쯤"이 된다 (노드 i 는 정확히 i × pathSmoothing 번째 점).
+            float atNode = hit / (float)Mathf.Max(1, pathSmoothing);
+
+            // 서 있는 자리 근처를 눌렀으면 방향이 없다 — 노드를 다시 누른 것으로 친다
+            if (Mathf.Abs(atNode - _currentIndex) < 0.25f)
+                return _currentIndex;
+
+            int step = atNode > _currentIndex ? 1 : -1;
+            return Mathf.Clamp(_currentIndex + step, 0, nodes.Length - 1);
         }
 
         /// <summary>노드를 하나씩 거쳐 이동 — 경로를 따라 걷는 NSMB 느낌.</summary>
@@ -386,13 +433,20 @@ namespace ChainRiposte.Game.Map
                 infoPanel.SetActive(true);
         }
 
-        /// <summary>공개 전에는 초상을 검은 실루엣으로 칠한다 — 실루엣만으로 다음 보스를 예고한다.</summary>
+        /// <summary>
+        /// 공개 전에는 초상을 검은 실루엣으로 칠한다 — 실루엣만으로 다음 보스를 예고한다.
+        ///
+        /// <para>그림은 <b>전투 화면과 같은 규칙</b>(<see cref="BossVisual"/>)으로 고른다.
+        /// 여기서만 <c>BossData.Portrait</c>를 직접 읽으면 캐릭터별 겉모습을 못 타서
+        /// <b>맵에서 예고한 실루엣과 실제로 나오는 보스가 달라진다.</b>
+        /// (전용 초상을 쓰고 싶으면 보스 에셋의 <c>battleSprite</c>를 비워 두면 초상으로 떨어진다.)</para>
+        /// </summary>
         private void ApplyPortrait(StageDataSO stage, bool revealed)
         {
             if (bossPortrait == null)
                 return;
 
-            Sprite portrait = stage != null && stage.BossData != null ? stage.BossData.Portrait : null;
+            Sprite portrait = BossVisual.ResolveSprite(stage != null ? stage.BossData : null);
             bossPortrait.enabled = portrait != null;
             if (portrait == null)
                 return;
@@ -435,13 +489,17 @@ namespace ChainRiposte.Game.Map
 
         private Vector3 NodeWorld(int index) => nodes[index].Position;
 
-        /// <summary>경로선(있을 때)을 노드 위치로 갱신 — 노드를 옮기면 선도 따라온다.</summary>
+        /// <summary>
+        /// 길의 모양을 다시 계산하고, 경로선이 있으면 거기에도 반영한다 — 노드를 옮기면 선도 따라온다.
+        /// <b>선이 없어도 계산은 한다</b> — 길 클릭 판정(<see cref="ResolvePathClick"/>)이 같은 점들을 쓴다.
+        /// </summary>
         private void RefreshPathLine()
         {
+            MapPath.Build(NodePositions(), pathSmoothing, _pathBuffer);
+
             if (pathLine == null)
                 return;
 
-            MapPath.Build(NodePositions(), pathSmoothing, _pathBuffer);
             pathLine.positionCount = _pathBuffer.Count;
             for (int i = 0; i < _pathBuffer.Count; i++)
                 pathLine.SetPosition(i, _pathBuffer[i]);

@@ -31,6 +31,10 @@ namespace ChainRiposte.Game.Combat
         [SerializeField] private bool generateBandSprite = true;
         [Tooltip("원이 다가오는 속도 (초당 스케일). 모든 노트가 같은 속도로 와야 회색 띠가 의미를 갖는다.")]
         [SerializeField, Min(0.05f)] private float approachSpeed = 0.9f;
+        [Tooltip("노트 원 그림의 안쪽 구멍 비율(안쪽 반지름 ÷ 바깥 반지름). " +
+            "이 원의 <b>안쪽 테두리</b>가 타이밍을 가리키므로, 실제 아트로 갈아 끼우면 그 그림의 비율을 여기에 적어야 " +
+            "보이는 것과 판정이 계속 맞는다. 기본 원(PlaceholderSprite.Ring)은 0.88.")]
+        [SerializeField, Range(0.05f, 0.99f)] private float noteRingInnerRatio = 0.88f;
         [Tooltip("이 스케일보다 멀리 있는 노트는 아직 그리지 않는다")]
         [SerializeField, Min(1.1f)] private float maxVisibleScale = 3.2f;
         [Tooltip("가장 멀리 있는 원의 투명도 — 임박할수록 진해진다")]
@@ -46,6 +50,10 @@ namespace ChainRiposte.Game.Combat
         [SerializeField] private TMP_Text playerHpText;
         [SerializeField] private RectTransform bossBody;
         [SerializeField] private Image bossBodyImage;
+        [Tooltip("보스를 좌우로 뒤집어 왼쪽(플레이어 쪽)을 보게 한다. " +
+            "이 프로젝트의 그림은 전부 오른쪽을 보고 그려져 있어서, 오른쪽에 서는 보스만 뒤집어야 서로 마주 본다. " +
+            "왼쪽을 보고 그린 보스 그림을 쓴다면 끌 것.")]
+        [SerializeField] private bool flipBossHorizontally = true;
         [Tooltip("플레이어 본체 (왼쪽 아래). 패링 원이 여기로 모인다.")]
         [SerializeField] private RectTransform playerBody;
         [SerializeField] private Image playerBodyImage;
@@ -87,6 +95,12 @@ namespace ChainRiposte.Game.Combat
         private Vector2 _popupOrigin;
         private bool _popupPlaying;
         private float _bandInnerRatio = -1f;
+
+        /// <summary>
+        /// 보스의 '평상시' 스케일. 좌우 반전을 여기 한 곳에만 담아 두고 연출(펀치 등)은 이 값에 곱하기만 한다 —
+        /// 연출이 <c>Vector3.one</c>으로 되돌리면 뒤집힌 게 한 프레임마다 풀렸다 다시 걸린다.
+        /// </summary>
+        private Vector3 _bossBaseScale = Vector3.one;
 
         private static readonly Color ParryButtonColor = new(0.18f, 0.28f, 0.42f, 0.95f);
         private static readonly Color AttackButtonColor = new(0.42f, 0.14f, 0.16f, 0.95f);
@@ -188,7 +202,8 @@ namespace ChainRiposte.Game.Combat
             executeText.gameObject.SetActive(false);
             flashOverlay.color = Color.clear;
             introText.color = new Color(0.85f, 0.2f, 0.25f, 1f);
-            bossBody.localScale = Vector3.one;
+            _bossBaseScale = new Vector3(flipBossHorizontally ? -1f : 1f, 1f, 1f);
+            bossBody.localScale = _bossBaseScale;
 
             // 스프라이트가 지정되면 원색 그대로(흰 틴트), 없으면 기존 색 사각형 플레이스홀더
             bool hasSprite = _bossSprite != null;
@@ -232,6 +247,12 @@ namespace ChainRiposte.Game.Combat
         /// 그래야 "보스에서 이만큼 떨어진 거리 = 이만큼의 시간"이 항상 같고,
         /// 패링 구간을 두께가 고정된 회색 띠 하나로 표현할 수 있다.
         /// 예비동작이 긴 노트는 그만큼 더 멀리서부터 보인다.
+        ///
+        /// <para><b>원의 안쪽 테두리가 곧 노트의 위치다.</b> 원 그림에는 두께가 있어서
+        /// 어느 테두리를 기준으로 삼을지 정해 두지 않으면 "띠에 걸친 것처럼 보이는데 판정은 아직 안 열린"
+        /// 구간이 생긴다(두께만큼 통째로 어긋난다). 안쪽 테두리를 기준으로 잡으면
+        /// <b>안쪽 테두리가 띠에 들어오는 순간 = 판정 시작 / 띠의 안쪽 끝을 지나는 순간 = 유예 종료</b>가
+        /// 정확히 맞아떨어져, 보이는 겹침이 그대로 판정이 된다.</para>
         /// </summary>
         private void Update()
         {
@@ -248,15 +269,17 @@ namespace ChainRiposte.Game.Combat
 
             for (int i = 0; i < notes.Count; i++)
             {
-                float scale = 1f + notes[i].SecondsUntilHit * approachSpeed;
-                if (scale > maxVisibleScale)
+                // 노트가 있는 반지름 — 띠와 같은 자로 잰 값이다
+                float radius = 1f + notes[i].SecondsUntilHit * approachSpeed;
+                if (radius > maxVisibleScale)
                     continue; // 아직 멀다 — 화면 밖
 
                 RectTransform ring = GetRing(drawn);
-                ring.localScale = Vector3.one * scale;
+                // 안쪽 테두리가 그 반지름에 오도록 키운다
+                ring.localScale = Vector3.one * (radius / noteRingInnerRatio);
 
                 // 임박할수록 진하게 — 어느 것을 먼저 쳐야 하는지가 한눈에 읽힌다
-                float nearness = Mathf.InverseLerp(maxVisibleScale, 1f, scale);
+                float nearness = Mathf.InverseLerp(maxVisibleScale, 1f, radius);
                 Color color = noteRingColor;
                 color.a *= Mathf.Lerp(farthestRingAlpha, 1f, nearness);
                 _ringImages[drawn].color = color;
@@ -269,6 +292,7 @@ namespace ChainRiposte.Game.Combat
 
         /// <summary>
         /// 패링 구간 띠 — <b>흰 원이 이 띠에 겹쳐 있는 동안 누르면 패링이 된다.</b> 그게 전부다.
+        /// (겹침의 기준은 원의 안쪽 테두리다 — <see cref="Update"/> 참조.)
         ///
         /// 판정은 타격 시점 T를 기준으로 <c>[T - 윈도우, T + 유예]</c> 에 열린다.
         /// 원은 "남은 시간 × 속도"로 다가오므로 그 구간은 그대로 반지름 구간이 된다:
@@ -538,12 +562,15 @@ namespace ChainRiposte.Game.Combat
 
         private IEnumerator Punch(RectTransform target, float scale)
         {
+            // 뒤집힌 보스도 뒤집힌 채로 튄다 — 평상시 스케일에 곱하기만 한다
+            Vector3 baseScale = target == bossBody ? _bossBaseScale : Vector3.one;
+
             for (float t = 0f; t < 0.18f; t += Time.deltaTime)
             {
-                target.localScale = Vector3.one * Mathf.Lerp(scale, 1f, t / 0.18f);
+                target.localScale = baseScale * Mathf.Lerp(scale, 1f, t / 0.18f);
                 yield return null;
             }
-            target.localScale = Vector3.one;
+            target.localScale = baseScale;
         }
 
         private IEnumerator PulseExecuteMark()
