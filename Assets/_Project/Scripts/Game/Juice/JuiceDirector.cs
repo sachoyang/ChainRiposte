@@ -4,6 +4,7 @@ using ChainRiposte.Core.Combat;
 using ChainRiposte.Core.Flow;
 using ChainRiposte.Core.Intrusion;
 using ChainRiposte.Core.Match;
+using ChainRiposte.Game.Audio;
 using UnityEngine;
 
 namespace ChainRiposte.Game.Juice
@@ -47,9 +48,9 @@ namespace ChainRiposte.Game.Juice
         [SerializeField, Range(0f, 0.2f)] private float parryHitStop = 0.06f;
         [SerializeField, Range(0f, 0.6f)] private float executionHitStop = 0.35f;
 
-        private AudioSource _musicSource;
+        // 음악·효과음은 AudioService 버스로 흘려 옵션 볼륨을 탄다. 자체 소스는 난입 크레센도 하나뿐 —
+        // 스폰 확률에 따라 매 프레임 볼륨을 조절해야 해서 전용 루프 소스가 필요하다.
         private AudioSource _tensionSource;
-        private AudioSource _sfxSource;
 
         private Func<float> _bossChanceGetter; // 난입 크레센도 입력
         private CombatSystem _combat;
@@ -57,9 +58,7 @@ namespace ChainRiposte.Game.Juice
 
         private void Awake()
         {
-            _musicSource = CreateSource(loop: true);
             _tensionSource = CreateSource(loop: true);
-            _sfxSource = CreateSource(loop: false);
         }
 
         private void Start()
@@ -83,7 +82,7 @@ namespace ChainRiposte.Game.Juice
         {
             // 디스토션 크레센도: 스폰 확률이 오를수록 노이즈가 커진다 (GDD §4.1 '심연')
             if (_tensionSource.clip != null && _bossChanceGetter != null)
-                _tensionSource.volume = Mathf.Clamp01(_bossChanceGetter() / tensionMaxChance);
+                _tensionSource.volume = Mathf.Clamp01(_bossChanceGetter() / tensionMaxChance) * AudioService.BgmVolume;
         }
 
         // ── 바인딩 (컨트롤러가 엔진 생성 직후 호출) ──
@@ -138,13 +137,13 @@ namespace ChainRiposte.Game.Juice
             switch (next)
             {
                 case GamePhase.Puzzle:
-                    PlayMusic(puzzleMusic);
+                    AudioService.PlayBgm(puzzleMusic);
                     break;
                 case GamePhase.Combat:
-                    PlayMusic(combatMusic);
+                    AudioService.PlayBgm(combatMusic);
                     break;
                 default: // Victory/Defeat — 결과 화면에 음악이 깔리지 않게 정지
-                    _musicSource.Stop();
+                    AudioService.PlayBgm(null);
                     _tensionSource.Stop();
                     break;
             }
@@ -199,22 +198,9 @@ namespace ChainRiposte.Game.Juice
             return source;
         }
 
-        private void PlayMusic(AudioClip clip)
-        {
-            _musicSource.Stop();
-            if (clip == null)
-                return;
-            _musicSource.clip = clip;
-            _musicSource.Play();
-        }
-
-        private void PlaySfx(AudioClip clip, float pitch = 1f)
-        {
-            if (clip == null)
-                return;
-            _sfxSource.pitch = pitch;
-            _sfxSource.PlayOneShot(clip);
-        }
+        // 효과음은 AudioService 의 SFX 소스로 나간다 — 버스 볼륨이 이미 소스에 적용돼 있어 옵션이 먹는다.
+        private void PlaySfx(AudioClip clip, float pitch = 1f) =>
+            AudioService.PlaySfx(clip, 1f, pitch);
 
         /// <summary>순간 정지 손맛 — 전투 Tick이 Time.deltaTime을 쓰므로 판정도 함께 멈춘다.</summary>
         private void HitStop(float duration)

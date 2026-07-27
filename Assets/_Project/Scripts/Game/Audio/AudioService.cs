@@ -14,6 +14,14 @@ namespace ChainRiposte.Game.Audio
         private static AudioSource _bgm;
         private static AudioSource _sfx;
 
+        // 옵션의 BGM/SFX 슬라이더 값(0..1). 자기 AudioSource 를 따로 쓰는 쪽(JuiceDirector 의 난입 크레센도)이
+        // 이 값을 곱해 버스 볼륨을 함께 따르도록 노출한다.
+        private static float _bgmVolume = 1f;
+        private static float _sfxVolume = 1f;
+
+        public static float BgmVolume => _bgmVolume;
+        public static float SfxVolume => _sfxVolume;
+
         public static AudioSource BgmSource => EnsureCreated() ? _bgm : null;
         public static AudioSource SfxSource => EnsureCreated() ? _sfx : null;
 
@@ -32,24 +40,27 @@ namespace ChainRiposte.Game.Audio
         }
 
         /// <summary>단발 효과음. 클립이 비어 있으면 조용히 무시한다(클립 슬롯이 아직 비어 있어도 안전).</summary>
-        public static void PlaySfx(AudioClip clip, float volumeScale = 1f)
+        public static void PlaySfx(AudioClip clip, float volumeScale = 1f, float pitch = 1f)
         {
             if (clip == null || !EnsureCreated())
                 return;
 
+            _sfx.pitch = pitch;
             _sfx.PlayOneShot(clip, Mathf.Clamp01(volumeScale));
         }
 
         internal static void ApplyBgmVolume(float volume)
         {
+            _bgmVolume = Mathf.Clamp01(volume);
             if (EnsureCreated())
-                _bgm.volume = Mathf.Clamp01(volume);
+                _bgm.volume = _bgmVolume;
         }
 
         internal static void ApplySfxVolume(float volume)
         {
+            _sfxVolume = Mathf.Clamp01(volume);
             if (EnsureCreated())
-                _sfx.volume = Mathf.Clamp01(volume);
+                _sfx.volume = _sfxVolume;
         }
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
@@ -57,6 +68,8 @@ namespace ChainRiposte.Game.Audio
         {
             _bgm = null;
             _sfx = null;
+            _bgmVolume = 1f;
+            _sfxVolume = 1f;
         }
 
         private static bool EnsureCreated()
@@ -73,9 +86,11 @@ namespace ChainRiposte.Game.Audio
             _bgm = root.AddComponent<AudioSource>();
             _bgm.playOnAwake = false;
             _bgm.loop = true;
+            _bgm.volume = _bgmVolume;
 
             _sfx = root.AddComponent<AudioSource>();
             _sfx.playOnAwake = false;
+            _sfx.volume = _sfxVolume;
 
             return true;
         }
