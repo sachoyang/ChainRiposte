@@ -1,3 +1,4 @@
+using ChainRiposte.Game;
 using ChainRiposte.Game.Combat;
 using TMPro;
 using UnityEditor;
@@ -46,12 +47,15 @@ namespace ChainRiposte.Editor
             EditorUiFactory.SetupCanvas(canvasGo, sortingOrder: 17);
             Transform canvas = canvasGo.transform;
 
-            TMP_Text marks = BuildDeathblowMarks(canvas);
             BuildCutscene(canvas, out RectTransform cutsceneRoot, out CanvasGroup group,
                 out Image image, out TMP_Text text, out Button skip);
 
+            BuildBossMarks(screen, out RectTransform markRoot, out Image markTemplate, out Image executeMark);
+
             var so = new SerializedObject(screen);
-            so.FindProperty("deathblowText").objectReferenceValue = marks;
+            so.FindProperty("deathblowMarkRoot").objectReferenceValue = markRoot;
+            so.FindProperty("deathblowMarkTemplate").objectReferenceValue = markTemplate;
+            so.FindProperty("executeMark").objectReferenceValue = executeMark;
             so.FindProperty("cutsceneRoot").objectReferenceValue = cutsceneRoot;
             so.FindProperty("cutsceneGroup").objectReferenceValue = group;
             so.FindProperty("cutsceneImage").objectReferenceValue = image;
@@ -63,26 +67,74 @@ namespace ChainRiposte.Editor
             EditorSceneManager.MarkSceneDirty(SceneManager.GetActiveScene());
             Selection.activeGameObject = canvasGo;
 
-            Debug.Log("[PhaseCutscene] 전환 컷씬과 인살 마크를 얹었습니다. " +
-                      "인살 마크는 페이즈가 여럿인 보스에서만 켜집니다(1페이즈 보스에서는 스스로 꺼짐). " +
-                      "위치는 씬에서 자유롭게 옮기세요.");
+            Debug.Log("[PhaseCutscene] 전환 컷씬 + 인살 게이지(보스 왼쪽 위) + 인살 대기 마크(보스 중앙)를 얹었습니다. " +
+                      "인살 게이지는 페이즈가 여럿인 보스에서만 켜집니다(1페이즈 보스에서는 스스로 꺼짐). " +
+                      "위치·크기는 씬에서 잡고, 실제 아트가 생기면 각 Image 의 스프라이트만 갈아 끼우세요.");
         }
 
         /// <summary>
-        /// 남은 인살 횟수(◆◆). 보스 HP 바 아래에 두는 것을 기본으로 하되 <b>위치는 씬에서 잡는다</b> —
-        /// HP 바 자리는 사용자가 옮겼을 수 있어서 코드가 아는 척하면 겹친다.
+        /// 보스에 붙는 두 가지 빨간 원 (세키로식).
+        ///
+        /// <para><b>인살 게이지</b>는 보스 <b>왼쪽 위</b>. 보스 몸의 자식이 아니라 <b>형제</b>다 —
+        /// 보스는 왼쪽을 보려고 좌우로 뒤집혀 있어서, 자식으로 넣으면 게이지가 오른쪽으로 뒤집혀 나온다.</para>
+        ///
+        /// <para><b>인살 대기 마크</b>는 보스 몸의 <b>자식</b>. 보스가 어디에 있든 그 위에 떠야 하고,
+        /// 원이라 좌우 반전은 눈에 안 띈다.</para>
+        ///
+        /// <para>둘 다 기존 자식은 안 지우고 <b>같은 이름의 것만</b> 갈아 끼운다.</para>
         /// </summary>
-        private static TMP_Text BuildDeathblowMarks(Transform canvas)
+        private static void BuildBossMarks(
+            CombatScreen screen, out RectTransform markRoot, out Image markTemplate, out Image executeMark)
         {
-            TextMeshProUGUI marks = EditorUiFactory.Text(
-                canvas, "DeathblowMarks", new Vector2(0f, -132f), new Vector2(0.5f, 1f), 46f,
-                TextAlignmentOptions.Center, new Vector2(600f, 60f), FontStyles.Bold);
-            marks.color = MarkColor;
-            marks.text = "◆◆";
+            markRoot = null;
+            markTemplate = null;
+            executeMark = null;
 
-            // 문구가 아니라 기호라 현지화하지 않는다 — 마크 글자는 CombatScreen 인스펙터에서 바꾼다
-            marks.gameObject.SetActive(false); // 켜고 끄는 건 CombatScreen 이 정한다
-            return marks;
+            var so = new SerializedObject(screen);
+            var bossBody = so.FindProperty("bossBody").objectReferenceValue as RectTransform;
+            if (bossBody == null)
+            {
+                Debug.LogWarning("[PhaseCutscene] CombatScreen 의 bossBody 가 비어 있어 인살 원을 얹지 못했습니다. " +
+                                 "Build Main Scene UI 로 전투 화면을 만든 뒤 다시 실행하세요.");
+                return;
+            }
+
+            markRoot = ReplaceChild("DeathblowMarks", bossBody.parent);
+            markRoot.anchorMin = markRoot.anchorMax = markRoot.pivot = bossBody.pivot;
+            // 보스 왼쪽 위. 크기를 반쯤 물어 두면 보스를 옮겨도 대체로 따라간다(정밀 배치는 씬에서).
+            markRoot.anchoredPosition = bossBody.anchoredPosition
+                + new Vector2(-bossBody.sizeDelta.x * 0.5f, bossBody.sizeDelta.y * 0.45f);
+            markRoot.sizeDelta = new Vector2(200f, 48f);
+
+            RectTransform markRect = EditorUiFactory.NewRect("MarkTemplate", markRoot);
+            markRect.anchorMin = markRect.anchorMax = markRect.pivot = new Vector2(0f, 0.5f);
+            markRect.anchoredPosition = Vector2.zero;
+            markRect.sizeDelta = new Vector2(40f, 40f);
+            markTemplate = markRect.gameObject.AddComponent<Image>();
+            markTemplate.sprite = PlaceholderSprite.Annulus(0f); // 꽉 찬 원
+            markTemplate.color = MarkColor;
+            markTemplate.raycastTarget = false;
+            markRect.gameObject.SetActive(false); // 복제 원본
+
+            RectTransform executeRect = ReplaceChild("ExecuteMark", bossBody);
+            executeRect.anchorMin = executeRect.anchorMax = executeRect.pivot = new Vector2(0.5f, 0.5f);
+            executeRect.anchoredPosition = Vector2.zero;
+            executeRect.sizeDelta = new Vector2(200f, 200f);
+            executeMark = executeRect.gameObject.AddComponent<Image>();
+            executeMark.sprite = PlaceholderSprite.Annulus(0f);
+            executeMark.color = MarkColor;
+            executeMark.raycastTarget = false;
+            executeRect.gameObject.SetActive(false); // 켜고 끄는 건 CombatScreen 이 정한다
+        }
+
+        /// <summary>같은 이름의 자식이 있으면 그것만 지우고 새로 만든다 — 형제들은 건드리지 않는다.</summary>
+        private static RectTransform ReplaceChild(string name, Transform parent)
+        {
+            Transform existing = parent.Find(name);
+            if (existing != null)
+                Undo.DestroyObjectImmediate(existing.gameObject);
+
+            return EditorUiFactory.NewRect(name, parent);
         }
 
         private static void BuildCutscene(

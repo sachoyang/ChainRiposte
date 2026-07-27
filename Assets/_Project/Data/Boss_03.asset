@@ -1,0 +1,54 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 404a7ca429d088f4984370d133fa87e2, type: 3}
+  m_Name: Boss_03
+  m_EditorClassIdentifier: ChainRiposte.Game::ChainRiposte.Game.Config.BossDataSO
+  bossId: 
+  nameKey: 
+  displayName: The Butcher
+  portrait: {fileID: 0}
+  battleSprite: {fileID: 0}
+  characterVisuals:
+  - character: {fileID: 11400000, guid: dddc9d8434eef9747a421ffefbafc0df, type: 2}
+    battleSprite: {fileID: -1114432692226576877, guid: b82ce1263be26a64e965698fc92ad3b6, type: 3}
+    nameKey: boss.irithyll.03
+    phaseVisuals:
+    - sprite: {fileID: -1114432692226576877, guid: b82ce1263be26a64e965698fc92ad3b6, type: 3}
+      transitionSprite: {fileID: 0}
+    - sprite: {fileID: -8044830404018582729, guid: b82ce1263be26a64e965698fc92ad3b6, type: 3}
+      transitionSprite: {fileID: 904629041377454138, guid: b82ce1263be26a64e965698fc92ad3b6, type: 3}
+  - character: {fileID: 11400000, guid: b80d3be4312e8354fb1decd3396ecc64, type: 2}
+    battleSprite: {fileID: 6486014346560288319, guid: 3ae1fa3d4672ed14a968fcc19ca245ea, type: 3}
+    nameKey: boss.ashina.03
+    phaseVisuals:
+    - sprite: {fileID: 6486014346560288319, guid: 3ae1fa3d4672ed14a968fcc19ca245ea, type: 3}
+      transitionSprite: {fileID: 0}
+    - sprite: {fileID: -4547091980528819496, guid: 3ae1fa3d4672ed14a968fcc19ca245ea, type: 3}
+      transitionSprite: {fileID: -3605114421481357373, guid: 3ae1fa3d4672ed14a968fcc19ca245ea, type: 3}
+  maxHp: 240
+  maxPosture: 200
+  parryPostureGain: 25
+  attackPostureFactor: 0.5
+  postureDecayPerSecond: 6
+  scaleDecayWithHp: 1
+  firstAttackDelaySeconds: 1.5
+  patternGapSeconds: 0.6
+  patterns: []
+  phases: []
+  battlePhases:
+  - label: 
+    sprite: {fileID: 0}
+    transitionSprite: {fileID: 0}
+    transitionTextKey: 
+    maxHp: 0
+    maxPosture: 0
+    hpPhases: []

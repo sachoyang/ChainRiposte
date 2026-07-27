@@ -83,13 +83,22 @@ namespace ChainRiposte.Game.Combat
         [SerializeField] private Image parryButtonImage;
         [SerializeField] private Image attackButtonImage;
 
-        [Header("인살 마크 — 인살 페이즈가 여럿인 보스만")]
-        [Tooltip("남은 인살 횟수. 1페이즈 보스에서는 스스로 꺼진다. 비워도 동작한다.")]
-        [SerializeField] private TMP_Text deathblowText;
-        [Tooltip("아직 남은 인살 한 번을 나타내는 글자. 폰트에 글리프가 없으면 여기서 다른 글자로 바꾼다.")]
-        [SerializeField] private string deathblowMarkRemaining = "◆";
-        [Tooltip("이미 끝낸 인살 한 번을 나타내는 글자")]
-        [SerializeField] private string deathblowMarkSpent = "◇";
+        [Header("인살 게이지 — 보스 왼쪽 위의 빨간 원 (세키로식)")]
+        [Tooltip("빨간 원들이 놓이는 자리. 인살 페이즈가 하나뿐인 보스에서는 스스로 꺼진다.")]
+        [SerializeField] private RectTransform deathblowMarkRoot;
+        [Tooltip("원 하나의 복제 원본. 개수가 보스 데이터로 정해지므로 이것만 씬에 두고 필요한 만큼 복제한다.")]
+        [SerializeField] private Image deathblowMarkTemplate;
+        [Tooltip("아직 남은 인살 한 번")]
+        [SerializeField] private Color deathblowRemainingColor = new(0.88f, 0.14f, 0.16f, 1f);
+        [Tooltip("이미 끝낸 인살 한 번 — 지우지 않고 어둡게 남겨야 '몇 번짜리 보스인지'가 계속 읽힌다")]
+        [SerializeField] private Color deathblowSpentColor = new(0.22f, 0.09f, 0.10f, 0.85f);
+        [Tooltip("원 사이 간격 (픽셀)")]
+        [SerializeField, Min(0f)] private float deathblowMarkSpacing = 52f;
+
+        [Header("인살 대기 마크 — 보스 한가운데")]
+        [Tooltip("체간이 무너져 인살할 수 있을 때 보스 위에 뜨는 빨간 원. 비워도 동작한다.")]
+        [SerializeField] private Image executeMark;
+        [SerializeField] private Color executeMarkColor = new(0.90f, 0.12f, 0.15f, 0.85f);
 
         [Header("페이즈 전환 컷씬 (Add Phase Cutscene To Main 이 배선)")]
         [Tooltip("컷씬 전체 루트. 비어 있으면 컷씬 없이 그림만 갈아 끼우고 바로 재개한다 — " +
@@ -107,6 +116,7 @@ namespace ChainRiposte.Game.Combat
 
         private readonly List<RectTransform> _rings = new();
         private readonly List<Image> _ringImages = new();
+        private readonly List<Image> _deathblowMarks = new();
         private Coroutine _entranceRoutine;
 
         private CombatSystem _combat;
@@ -233,6 +243,7 @@ namespace ChainRiposte.Game.Combat
             noteRingTemplate.gameObject.SetActive(false); // 복제 원본은 항상 꺼 둔다
             popupText.text = string.Empty;
             executeText.gameObject.SetActive(false);
+            SetExecuteMarkVisible(false);
             flashOverlay.color = Color.clear;
             introText.color = new Color(0.85f, 0.2f, 0.25f, 1f);
             _bossBaseScale = new Vector3(flipBossHorizontally ? -1f : 1f, 1f, 1f);
@@ -278,34 +289,74 @@ namespace ChainRiposte.Game.Combat
         }
 
         /// <summary>
-        /// 남은 인살 횟수를 ◆ 로 보여 준다. <b>인살이 한 번뿐인 보스에서는 스스로 꺼진다</b> —
-        /// ◆ 하나만 떠 있으면 "아직 뭔가 남았나?"로 읽혀 오히려 방해다.
+        /// 남은 인살 횟수를 빨간 원으로 그린다. 개수가 보스 데이터로 정해지므로
+        /// 씬의 원본 하나를 복제한다(노트 원·캐릭터 카드와 같은 규칙).
+        ///
+        /// <para><b>인살이 한 번뿐인 보스에서는 통째로 꺼진다</b> — 원 하나만 떠 있으면
+        /// "아직 뭔가 남았나?"로 읽혀 오히려 방해다.</para>
+        ///
+        /// <para>끝낸 몫은 지우지 않고 어둡게 남긴다. 개수가 줄어들면 이 보스가 원래 몇 번짜리였는지 알 수 없다.</para>
         /// </summary>
         private void RefreshDeathblowMarks()
         {
-            if (deathblowText == null)
+            if (deathblowMarkTemplate == null)
                 return;
 
-            bool show = _combat != null && _combat.BattlePhaseCount > 1;
-            if (deathblowText.gameObject.activeSelf != show)
-                deathblowText.gameObject.SetActive(show);
+            deathblowMarkTemplate.gameObject.SetActive(false); // 복제 원본은 항상 꺼 둔다
+
+            int total = _combat != null ? _combat.BattlePhaseCount : 0;
+            bool show = total > 1;
+            if (deathblowMarkRoot != null && deathblowMarkRoot.gameObject.activeSelf != show)
+                deathblowMarkRoot.gameObject.SetActive(show);
+
             if (!show)
+            {
+                SetDeathblowMarkCount(0);
                 return;
+            }
 
-            int spent = _combat.BattlePhaseCount - _combat.RemainingDeathblows;
-            deathblowText.text =
-                string.Concat(Repeat(deathblowMarkSpent, spent), Repeat(deathblowMarkRemaining, _combat.RemainingDeathblows));
+            int remaining = _combat.RemainingDeathblows;
+            for (int i = 0; i < total; i++)
+            {
+                Image mark = GetDeathblowMark(i);
+                ((RectTransform)mark.transform).anchoredPosition = new Vector2(i * deathblowMarkSpacing, 0f);
+                mark.color = i < remaining ? deathblowRemainingColor : deathblowSpentColor;
+            }
+
+            SetDeathblowMarkCount(total);
         }
 
-        private static string Repeat(string mark, int count)
+        private Image GetDeathblowMark(int index)
         {
-            if (string.IsNullOrEmpty(mark) || count <= 0)
-                return string.Empty;
+            while (_deathblowMarks.Count <= index)
+            {
+                Image mark = Instantiate(deathblowMarkTemplate, deathblowMarkTemplate.transform.parent);
+                mark.gameObject.name = $"DeathblowMark_{_deathblowMarks.Count}";
+                _deathblowMarks.Add(mark);
+            }
 
-            var builder = new System.Text.StringBuilder(mark.Length * count);
-            for (int i = 0; i < count; i++)
-                builder.Append(mark);
-            return builder.ToString();
+            Image result = _deathblowMarks[index];
+            if (!result.gameObject.activeSelf)
+                result.gameObject.SetActive(true);
+            return result;
+        }
+
+        private void SetDeathblowMarkCount(int active)
+        {
+            for (int i = active; i < _deathblowMarks.Count; i++)
+                if (_deathblowMarks[i].gameObject.activeSelf)
+                    _deathblowMarks[i].gameObject.SetActive(false);
+        }
+
+        private void SetExecuteMarkVisible(bool visible)
+        {
+            if (executeMark == null)
+                return;
+
+            if (executeMark.gameObject.activeSelf != visible)
+                executeMark.gameObject.SetActive(visible);
+            if (visible)
+                executeMark.color = executeMarkColor;
         }
 
         // ── CombatSystem 이벤트 연출 ──
@@ -460,6 +511,7 @@ namespace ChainRiposte.Game.Combat
         {
             HideTelegraph();
             executeText.gameObject.SetActive(true);
+            SetExecuteMarkVisible(true);
             _executePulseRoutine = StartCoroutine(PulseExecuteMark());
             RefreshButtons(_combat.PlayerState);
         }
@@ -468,6 +520,7 @@ namespace ChainRiposte.Game.Combat
         {
             StopExecutePulse();
             executeText.gameObject.SetActive(false);
+            SetExecuteMarkVisible(false);
             StartCoroutine(Flash(new Color(1f, 1f, 1f, 0.9f)));
         }
 
@@ -584,6 +637,7 @@ namespace ChainRiposte.Game.Combat
             HideTelegraph();
             StopExecutePulse();
             executeText.gameObject.SetActive(false);
+            SetExecuteMarkVisible(false);
 
             if (cutsceneRoot == null)
             {
@@ -745,12 +799,26 @@ namespace ChainRiposte.Game.Combat
             target.localScale = baseScale;
         }
 
+        /// <summary>
+        /// 인살할 수 있다는 신호. 글씨와 보스 위의 빨간 원이 <b>같은 박자로</b> 뛴다 —
+        /// 따로 놀면 어느 쪽이 신호인지 헷갈린다.
+        /// </summary>
         private IEnumerator PulseExecuteMark()
         {
             while (true)
             {
-                float alpha = 0.6f + 0.4f * Mathf.PingPong(Time.time * 3f, 1f);
-                executeText.color = new Color(0.9f, 0.12f, 0.15f, alpha);
+                float beat = Mathf.PingPong(Time.time * 3f, 1f);
+                executeText.color = new Color(0.9f, 0.12f, 0.15f, 0.6f + 0.4f * beat);
+
+                if (executeMark != null)
+                {
+                    Color color = executeMarkColor;
+                    color.a *= 0.55f + 0.45f * beat;
+                    executeMark.color = color;
+                    // 보스 몸에 붙어 있으므로 자기 스케일만 만진다 (보스의 뒤집힘·펀치와 안 싸운다)
+                    executeMark.transform.localScale = Vector3.one * Mathf.Lerp(0.9f, 1.1f, beat);
+                }
+
                 yield return null;
             }
         }

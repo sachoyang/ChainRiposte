@@ -12,16 +12,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 404a7ca429d088f4984370d133fa87e2, type: 3}
   m_Name: Boss_01
   m_EditorClassIdentifier: ChainRiposte.Game::ChainRiposte.Game.Config.BossDataSO
+  bossId: 
+  nameKey: 
   displayName: Mushroom King
   portrait: {fileID: 357749872346554099, guid: f2316670ef79ad34d9d26cbe7bff1cf8, type: 3}
   battleSprite: {fileID: 357749872346554099, guid: f2316670ef79ad34d9d26cbe7bff1cf8, type: 3}
   characterVisuals:
   - character: {fileID: 11400000, guid: dddc9d8434eef9747a421ffefbafc0df, type: 2}
-    battleSprite: {fileID: 0}
+    battleSprite: {fileID: 8391435947887372931, guid: 4bcbc7cd81d75174db98d611b59b6b9b, type: 3}
     nameKey: boss.irithyll.01
+    phaseVisuals: []
   - character: {fileID: 11400000, guid: b80d3be4312e8354fb1decd3396ecc64, type: 2}
-    battleSprite: {fileID: 0}
+    battleSprite: {fileID: 357749872346554099, guid: f2316670ef79ad34d9d26cbe7bff1cf8, type: 3}
     nameKey: boss.ashina.01
+    phaseVisuals: []
   maxHp: 120
   maxPosture: 100
   parryPostureGain: 25
@@ -111,3 +115,4 @@ MonoBehaviour:
       weight: 1
     - patternIndex: 2
       weight: 2
+  battlePhases: []
