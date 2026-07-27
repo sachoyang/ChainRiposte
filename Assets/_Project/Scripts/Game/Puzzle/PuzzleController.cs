@@ -127,7 +127,8 @@ namespace ChainRiposte.Game.Puzzle
                 if (result.TotalPotions > 0)
                     gameManager.Session.Health.Heal(result.TotalPotions * _stageConfig.PotionHealAmount);
 
-                gameManager.Session.Stats.AddSouls(result.TotalSouls);
+                // 런 경제(인컴 배수 + 사슬 배수)를 통과시킨 뒤 적립한다 (Docs/PROGRESSION.md §2.4)
+                gameManager.Session.Stats.AddSouls(gameManager.ScaleSoulIncome(result.TotalSouls));
 
                 // 기믹 피해(시한폭탄 폭발 등)는 퍼즐 중에도 HP를 깎는다 (GDD §3.6)
                 if (result.Gimmicks.PlayerDamage > 0 &&

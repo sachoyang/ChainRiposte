@@ -3727,6 +3727,7 @@ MonoBehaviour:
   parryBandColor: {r: 1, g: 1, b: 1, a: 0.22}
   generateBandSprite: 1
   approachSpeed: 1.4
+  noteRingInnerRatio: 0.88
   maxVisibleScale: 3.6
   farthestRingAlpha: 0.2
   root: {fileID: 1035008949}
@@ -3737,6 +3738,7 @@ MonoBehaviour:
   playerHpText: {fileID: 794691425}
   bossBody: {fileID: 1965708521}
   bossBodyImage: {fileID: 1965708518}
+  flipBossHorizontally: 1
   playerBody: {fileID: 258278970}
   playerBodyImage: {fileID: 258278967}
   playerSprite: {fileID: -5854442186229547440, guid: d347dbf99bf68e442968b889e751c7b0, type: 3}
@@ -3756,6 +3758,19 @@ MonoBehaviour:
   attackButton: {fileID: 114538762}
   parryButtonImage: {fileID: 163108003}
   attackButtonImage: {fileID: 114538758}
+  deathblowMarkRoot: {fileID: 0}
+  deathblowMarkTemplate: {fileID: 0}
+  deathblowRemainingColor: {r: 0.88, g: 0.14, b: 0.16, a: 1}
+  deathblowSpentColor: {r: 0.22, g: 0.09, b: 0.1, a: 0.85}
+  deathblowMarkSpacing: 52
+  executeMark: {fileID: 0}
+  executeMarkColor: {r: 0.9, g: 0.12, b: 0.15, a: 0.85}
+  cutsceneRoot: {fileID: 0}
+  cutsceneGroup: {fileID: 0}
+  cutsceneImage: {fileID: 0}
+  cutsceneText: {fileID: 0}
+  cutsceneSkipButton: {fileID: 0}
+  cutsceneHoldSeconds: 2.5
 --- !u!224 &386097828
 RectTransform:
   m_ObjectHideFlags: 0
@@ -6867,6 +6882,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: ChainRiposte.Game::ChainRiposte.Game.GameManager
   statsConfig: {fileID: 11400000, guid: 1883bb283f8c36a4997c3546bd217d03, type: 2}
+  economyConfig: {fileID: 11400000, guid: 2855227397a00ef4095e2a08cddc98e8, type: 2}
   stageData: {fileID: 11400000, guid: 8ed742f06d704e843a992345432087db, type: 2}
 --- !u!4 &775320525
 Transform:

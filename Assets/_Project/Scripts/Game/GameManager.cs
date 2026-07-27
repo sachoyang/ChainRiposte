@@ -15,7 +15,13 @@ namespace ChainRiposte.Game
     public sealed class GameManager : MonoBehaviour
     {
         [SerializeField] private PlayerStatsConfigSO statsConfig;
+        [Tooltip("런 경제(소울 인컴·사슬 배수). 비우면 기본값(배수 1)으로 동작한다 — Main 단독 실행 대비.")]
+        [SerializeField] private RunEconomyConfigSO economyConfig;
         [SerializeField] private StageDataSO stageData;
+
+        private RunEconomyConfig _economy;
+        // 사슬 배수는 이 판에 들어온 시점 값으로 고정한다 — 판 도중에 바뀌지 않는다(승리 시에만 오른다).
+        private int _chainStepAtEntry;
 
         public GameSession Session { get; private set; }
 
@@ -45,12 +51,22 @@ namespace ChainRiposte.Game
             // 저장된 런의 성장을 씨앗으로 이어받는다 — 성장 캐리 (Docs/PROGRESSION.md)
             Session = new GameSession(BuildStatsConfig(), RunStateService.Current.Stats);
             Session.PhaseChanged += OnPhaseChanged;
+
+            _economy = economyConfig != null ? economyConfig.ToConfig() : new RunEconomyConfig();
+            _chainStepAtEntry = RunStateService.Current.ChainStep;
         }
 
         private void Start()
         {
             Session.StartPuzzle();
         }
+
+        /// <summary>
+        /// 매치로 번 소울에 런 경제(인컴 배수 + 이 판의 사슬 배수)를 적용한 최종 획득량.
+        /// 퍼즐이 <see cref="Core.Stats.PlayerStats.AddSouls"/>에 넣기 전에 이걸 통과시킨다.
+        /// </summary>
+        public int ScaleSoulIncome(int rawSouls) =>
+            (_economy ?? new RunEconomyConfig()).ScaleSoulIncome(rawSouls, _chainStepAtEntry);
 
         /// <summary>
         /// 공용 밸런스 + 고른 캐릭터의 특화. 캐릭터가 없으면(Main 단독 실행 등) 공용 값 그대로다.
