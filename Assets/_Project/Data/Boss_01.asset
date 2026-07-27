@@ -15,6 +15,13 @@ MonoBehaviour:
   displayName: Mushroom King
   portrait: {fileID: 357749872346554099, guid: f2316670ef79ad34d9d26cbe7bff1cf8, type: 3}
   battleSprite: {fileID: 357749872346554099, guid: f2316670ef79ad34d9d26cbe7bff1cf8, type: 3}
+  characterVisuals:
+  - character: {fileID: 11400000, guid: dddc9d8434eef9747a421ffefbafc0df, type: 2}
+    battleSprite: {fileID: 0}
+    nameKey: boss.irithyll.01
+  - character: {fileID: 11400000, guid: b80d3be4312e8354fb1decd3396ecc64, type: 2}
+    battleSprite: {fileID: 0}
+    nameKey: boss.ashina.01
   maxHp: 120
   maxPosture: 100
   parryPostureGain: 25

@@ -24,6 +24,9 @@ namespace ChainRiposte.Game.UI
         [SerializeField] private Image pauseButtonIcon;
         [SerializeField] private Sprite pauseSprite;
         [SerializeField] private Sprite playSprite;
+        [Tooltip("Sprite Swap 을 쓰는 버튼일 때의 눌림 그림. 비워도 된다(그때는 눌림 그림이 안 바뀐다).")]
+        [SerializeField] private Sprite pausePressedSprite;
+        [SerializeField] private Sprite playPressedSprite;
         [SerializeField] private Button settingsButton;
 
         [Header("일시정지 패널")]
@@ -131,6 +134,15 @@ namespace ChainRiposte.Game.UI
             Sprite icon = _pausedByMenu ? playSprite : pauseSprite;
             if (icon != null)
                 pauseButtonIcon.sprite = icon;
+
+            // 눌림 그림도 같이 갈아야 한다 — 아이콘만 ▶로 바꾸면 누르는 동안 ⏸의 눌림 그림이 뜬다.
+            Sprite pressed = _pausedByMenu ? playPressedSprite : pausePressedSprite;
+            if (pauseButton == null || pressed == null)
+                return;
+
+            SpriteState state = pauseButton.spriteState;
+            state.pressedSprite = pressed;
+            pauseButton.spriteState = state;
         }
 
         private static void SetActive(GameObject target, bool active)

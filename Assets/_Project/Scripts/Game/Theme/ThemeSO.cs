@@ -33,25 +33,14 @@ namespace ChainRiposte.Game.Theming
             public Sprite sprite;
         }
 
-        [Serializable]
-        public sealed class BossEntry
-        {
-            [Tooltip("BossDataSO의 Boss Id (비워 두면 그 에셋 이름)")]
-            public string bossId;
-            [Tooltip("전투 화면에 서는 그림. 비우면 BossDataSO의 그림을 쓴다.")]
-            public Sprite sprite;
-            [Tooltip("이름의 현지화 키 (CSV에 있어야 한다). 비우면 BossDataSO의 이름을 쓴다.")]
-            public string nameKey;
-        }
-
         [Tooltip("비우면 에셋 이름을 쓴다. CharacterId·StageId와 같은 규칙.")]
         [SerializeField] private string themeId;
 
         [Tooltip("화면별 배경. 씬의 ThemedSprite가 키로 찾아간다.")]
         [SerializeField] private BackgroundEntry[] backgrounds = Array.Empty<BackgroundEntry>();
 
-        [Tooltip("보스의 겉모습만 갈아 끼운다 — 성능은 BossDataSO 그대로다.")]
-        [SerializeField] private BossEntry[] bosses = Array.Empty<BossEntry>();
+        // 보스 겉모습은 여기 없다 — 보스 에셋(BossDataSO)의 「캐릭터별 겉모습」이 맡는다.
+        // 보스를 새로 만들 때 테마를 전부 열어 줄을 추가해야 하는 구조라 빠뜨리기 쉬웠다.
 
         [Tooltip("이 테마에서 노드가 놓이는 자리(월드 좌표). 길 그림마다 길이 다르므로 테마가 위치를 들고 있는다. " +
                  "개수는 씬의 노드 수와 같아야 적용된다. 씬 인스펙터의 「길 그리기」에서 저장한다.")]
@@ -87,23 +76,5 @@ namespace ChainRiposte.Game.Theming
             return null;
         }
 
-        /// <summary>이 테마에서의 보스 겉모습. 항목이 없으면 false — 부르는 쪽이 SO 기본값으로 떨어진다.</summary>
-        public bool TryGetBoss(string bossId, out BossEntry entry)
-        {
-            entry = null;
-            if (string.IsNullOrWhiteSpace(bossId))
-                return false;
-
-            foreach (BossEntry candidate in bosses)
-            {
-                if (candidate != null && candidate.bossId == bossId)
-                {
-                    entry = candidate;
-                    return true;
-                }
-            }
-
-            return false;
-        }
     }
 }

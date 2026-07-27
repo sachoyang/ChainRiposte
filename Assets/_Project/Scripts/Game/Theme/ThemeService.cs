@@ -29,15 +29,7 @@ namespace ChainRiposte.Game.Theming
             return theme != null ? theme.GetBackground(key) : null;
         }
 
-        /// <summary>테마의 보스 겉모습. 없으면 false.</summary>
-        public static bool TryGetBoss(string bossId, out ThemeSO.BossEntry entry)
-        {
-            ThemeSO theme = Current;
-            if (theme != null)
-                return theme.TryGetBoss(bossId, out entry);
-
-            entry = null;
-            return false;
-        }
+        // 보스 겉모습은 이 창구를 지나지 않는다 — 보스 에셋이 캐릭터별로 직접 들고 있고,
+        // 규칙은 BossVisual 한 곳뿐이다.
     }
 }

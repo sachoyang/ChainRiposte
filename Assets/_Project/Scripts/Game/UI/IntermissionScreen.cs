@@ -128,20 +128,11 @@ namespace ChainRiposte.Game.UI
         }
 
         /// <summary>
-        /// 이 판 보스의 그림. 전투 화면과 같은 규칙 — 테마가 겉모습을 갈아 끼우고, 없으면 SO 그림.
-        /// (여기선 <see cref="BossShadow"/>가 어둡게 칠하므로 원본 색은 중요하지 않다.)
+        /// 이 판 보스의 그림. <b>전투 화면과 같은 것을 부른다</b> — 따로 계산하면 다가온 실루엣과
+        /// 실제로 나오는 보스가 달라진다. (여기선 <see cref="BossShadow"/>가 어둡게 칠하므로 원본 색은 상관없다.)
         /// </summary>
-        private Sprite ResolveBossShadowSprite()
-        {
-            Config.BossDataSO boss = gameManager.StageData != null ? gameManager.StageData.BossData : null;
-            if (boss == null)
-                return null;
-
-            if (Theming.ThemeService.TryGetBoss(boss.BossId, out Theming.ThemeSO.BossEntry themed) && themed.sprite != null)
-                return themed.sprite;
-
-            return boss.BattleSprite;
-        }
+        private Sprite ResolveBossShadowSprite() =>
+            Config.BossVisual.ResolveSprite(gameManager.StageData != null ? gameManager.StageData.BossData : null);
 
         private void Refresh()
         {

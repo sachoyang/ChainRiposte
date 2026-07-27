@@ -15,6 +15,13 @@ MonoBehaviour:
   displayName: The Butcher
   portrait: {fileID: 0}
   battleSprite: {fileID: 0}
+  characterVisuals:
+  - character: {fileID: 11400000, guid: dddc9d8434eef9747a421ffefbafc0df, type: 2}
+    battleSprite: {fileID: 0}
+    nameKey: boss.irithyll.02
+  - character: {fileID: 11400000, guid: b80d3be4312e8354fb1decd3396ecc64, type: 2}
+    battleSprite: {fileID: 0}
+    nameKey: boss.ashina.02
   maxHp: 160
   maxPosture: 120
   parryPostureGain: 25

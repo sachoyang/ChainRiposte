@@ -1,6 +1,7 @@
 using System.IO;
 using ChainRiposte.Game;
 using ChainRiposte.Game.Characters;
+using ChainRiposte.Game.Combat;
 using ChainRiposte.Game.Flow;
 using ChainRiposte.Game.Map;
 using ChainRiposte.Game.Theming;
@@ -8,6 +9,7 @@ using ChainRiposte.Game.UI;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
 namespace ChainRiposte.Editor
@@ -36,18 +38,17 @@ namespace ChainRiposte.Editor
                 AssetDatabase.Refresh();
             }
 
-            ThemeSO irithyll = Ensure("Theme_Irithyll", "irithyll", "Irithyll",
-                "boss.irithyll.01", "boss.irithyll.02");
-            ThemeSO ashina = Ensure("Theme_Ashina", "ashina", "ashina",
-                "boss.ashina.01", "boss.ashina.02");
+            ThemeSO irithyll = Ensure("Theme_Irithyll", "irithyll", "Irithyll");
+            ThemeSO ashina = Ensure("Theme_Ashina", "ashina", "ashina");
 
             AssignTheme("Character_Knight", irithyll);
             AssignTheme("Character_Sekiro", ashina);
 
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
-            Debug.Log($"[Theme] {Folder} 준비 완료. 보스 그림은 비워 뒀습니다 — " +
-                      "비어 있으면 BossDataSO의 그림으로 떨어지므로, 컨셉별 보스 아트가 생기면 그때 꽂으면 됩니다.");
+            Debug.Log($"[Theme] {Folder} 준비 완료. 비어 있던 슬롯만 채웠습니다(배경·이름 키). " +
+                      "보스 그림은 이 툴이 고르지 않습니다 — 캐릭터별 보스는 " +
+                      "Stage_*.asset ▸ 캐릭터별 보스 겉모습 에서 지정하세요.");
         }
 
         /// <summary>
@@ -75,8 +76,157 @@ namespace ChainRiposte.Editor
                 return;
             }
 
+            // 전투·퍼즐 화면은 평소 꺼져 있으므로 꺼진 것까지 찾아야 Main 씬인 줄 안다.
+            if (Object.FindFirstObjectByType<CombatScreen>(FindObjectsInactive.Include) != null ||
+                Object.FindFirstObjectByType<PuzzleHud>(FindObjectsInactive.Include) != null)
+            {
+                SetupMain();
+                return;
+            }
+
             EditorUtility.DisplayDialog("배경 배치",
-                "Intro / Title / StageSelect 씬을 연 상태에서 실행하세요.", "확인");
+                "Intro / Title / StageSelect / Main 씬을 연 상태에서 실행하세요.", "확인");
+        }
+
+        /// <summary>
+        /// 전투 씬(퍼즐 + 보스전)의 배경 두 자리. <b>비파괴</b>다 — 배경 오브젝트만 만들거나 배선하고
+        /// 다른 UI 는 건드리지 않는다.
+        ///
+        /// <para>퍼즐과 전투는 <b>층이 달라 방식도 다르다</b>: 판(보드)은 월드 스프라이트라 그 배경도
+        /// 월드여야 뒤에 깔리고, 전투 화면은 화면을 덮는 Overlay 캔버스라 그 배경도 <b>캔버스 안</b>이어야 한다.
+        /// (Overlay 캔버스는 언제나 월드 스프라이트 위에 그려지므로 월드 배경으로는 전투 화면 뒤에 못 간다.)</para>
+        /// </summary>
+        private static void SetupMain()
+        {
+            GameObject puzzle = SetupPuzzleBackground();
+            GameObject combat = SetupCombatBackground();
+
+            EditorSceneManager.MarkSceneDirty(SceneManager.GetActiveScene());
+            Debug.Log($"[Theme] 전투 씬 배경 배선 완료 — " +
+                      $"{(puzzle != null ? "퍼즐(PuzzleBackground, 월드, puzzle)" : "퍼즐 배경 실패")} / " +
+                      $"{(combat != null ? "전투(CombatScreen ▸ Root/Background, UI, combat)" : "전투 배경 실패")}. " +
+                      "그림은 테마의 puzzle·combat 키가 채웁니다. 너무 밝거나 어지러우면 그 Image·SpriteRenderer 의 색으로 눌러 주세요.");
+        }
+
+        /// <summary>
+        /// 전투 씬의 배경 두 자리를 <b>도로 걷어낸다</b>. 그림을 정하기 전까지는 자리만 남아 있어도
+        /// 화면을 가리므로, 붙이는 메뉴와 짝으로 둔다. 다른 UI 는 건드리지 않는다.
+        /// </summary>
+        [MenuItem("Tools/ChainRiposte/Theme/Remove Screen Backgrounds From Main")]
+        private static void RemoveMainBackgrounds()
+        {
+            Transform puzzle = FindRootObject("PuzzleBackground");
+            if (puzzle != null)
+                Undo.DestroyObjectImmediate(puzzle.gameObject);
+
+            var screen = Object.FindFirstObjectByType<CombatScreen>(FindObjectsInactive.Include);
+            Transform combat = screen != null ? screen.transform.Find("Root/Background") : null;
+            if (combat != null)
+                Undo.DestroyObjectImmediate(combat.gameObject);
+
+            if (puzzle == null && combat == null)
+            {
+                Debug.Log("[Theme] 지울 배경이 없습니다 (Main 씬을 연 상태인지 확인하세요).");
+                return;
+            }
+
+            EditorSceneManager.MarkSceneDirty(SceneManager.GetActiveScene());
+            Debug.Log("[Theme] 전투 씬 배경을 걷어냈습니다. 다시 깔려면 Setup Background In Open Scene 을 실행하세요.");
+        }
+
+        /// <summary>
+        /// 판 뒤에 깔리는 배경. 카메라가 보는 범위를 덮되 <b>흔들지는 않는다</b> —
+        /// 판 위에서 눈이 타일을 훑는 화면이라 뒤가 움직이면 방해가 된다.
+        /// </summary>
+        private static GameObject SetupPuzzleBackground()
+        {
+            Transform found = FindRootObject("PuzzleBackground");
+            bool created = found == null;
+
+            GameObject go;
+            if (created)
+            {
+                go = new GameObject("PuzzleBackground");
+                Undo.RegisterCreatedObjectUndo(go, "Setup Background");
+                go.transform.position = new Vector3(0f, 0f, 2f); // 카메라(z −10)보다 앞
+            }
+            else
+            {
+                go = found.gameObject;
+            }
+
+            var renderer = go.GetComponent<SpriteRenderer>();
+            if (renderer == null)
+                renderer = Undo.AddComponent<SpriteRenderer>(go);
+            renderer.sortingOrder = -300; // 배경 셀(−10)·타일보다 뒤
+
+            if (created)
+            {
+                renderer.color = BackgroundTint; // 처음 깔 때만 — 손으로 맞춘 색을 되돌리지 않는다
+                renderer.sprite = LargestSprite($"{BackFolder}/Irithyll.png");
+            }
+
+            SetThemeKey(go, ThemeSO.KeyPuzzle);
+            EnsureStillPanner(go); // 화면은 덮되 amplitude 0
+            return go;
+        }
+
+        /// <summary>
+        /// 전투 화면의 배경. <see cref="CombatScreen"/> 의 <c>Root</c> 는 불투명한 단색이라
+        /// 그 <b>자식</b>으로 넣어야 색 위에 그려진다(uGUI 는 자식이 부모 위).
+        /// </summary>
+        private static GameObject SetupCombatBackground()
+        {
+            var screen = Object.FindFirstObjectByType<CombatScreen>(FindObjectsInactive.Include);
+            if (screen == null)
+                return null;
+
+            // UnityEngine.Object 에 ?? 를 쓰면 '가짜 null' 을 못 걸러낸다 — 직접 확인한다.
+            Transform root = screen.transform.Find("Root");
+            if (root == null)
+            {
+                var canvas = screen.GetComponentInChildren<Canvas>(true);
+                if (canvas == null)
+                    return null;
+                root = canvas.transform;
+            }
+
+            Transform found = root.Find("Background");
+            bool created = found == null;
+
+            GameObject go;
+            if (created)
+            {
+                Image image = EditorUiFactory.Stretch(root, "Background", BackgroundTint, raycast: false);
+                image.sprite = LargestSprite($"{BackFolder}/Irithyll.png");
+                image.type = Image.Type.Simple;
+                go = image.gameObject;
+            }
+            else
+            {
+                go = found.gameObject;
+            }
+
+            go.transform.SetAsFirstSibling(); // 보스·플레이어·게이지보다 뒤
+            SetThemeKey(go, ThemeSO.KeyCombat);
+            // 늘려서 뭉개지 않고 <원본 비율 그대로> 화면을 덮게 한다. 흔들지는 않는다 —
+            // 눈이 다가오는 패링 원을 좇는 화면이라 뒤가 움직이면 방해가 된다.
+            EnsureStillPanner(go);
+            return go;
+        }
+
+        /// <summary>배경은 눌러서 깐다 — 그 위의 판·게이지·글씨가 먼저 읽혀야 한다.</summary>
+        private static readonly Color BackgroundTint = new(0.45f, 0.45f, 0.55f, 1f);
+
+        private static Transform FindRootObject(string name)
+        {
+            foreach (GameObject go in SceneManager.GetActiveScene().GetRootGameObjects())
+            {
+                if (go.name == name)
+                    return go.transform;
+            }
+
+            return null;
         }
 
         /// <summary>
@@ -505,8 +655,7 @@ namespace ChainRiposte.Editor
 
         // ─────────────────────────────────────────────────────────────
 
-        private static ThemeSO Ensure(string assetName, string themeId, string backTexture,
-            string boss01NameKey, string boss02NameKey)
+        private static ThemeSO Ensure(string assetName, string themeId, string backTexture)
         {
             string path = $"{Folder}/{assetName}.asset";
             var theme = AssetDatabase.LoadAssetAtPath<ThemeSO>(path);
@@ -522,23 +671,18 @@ namespace ChainRiposte.Editor
             if (string.IsNullOrWhiteSpace(id.stringValue))
                 id.stringValue = themeId;
 
-            // 없는 키만 뒤에 붙인다 — 이미 채워 둔 슬롯은 건드리지 않고, 키가 늘어도 다시 돌리면 따라온다.
+            // 없는 키는 붙이고, 있는데 비어 있는 슬롯만 채운다 — 손으로 꽂아 둔 그림은 그대로 둔다.
             SerializedProperty backgrounds = so.FindProperty("backgrounds");
             Sprite back = LargestSprite($"{BackFolder}/{backTexture}.png");
             EnsureBackgroundKey(backgrounds, ThemeSO.KeyMap, back);
-            EnsureBackgroundKey(backgrounds, ThemeSO.KeyPath, back); // 우선 배경과 같은 그림을 재활용한다
+            // 길·퍼즐·전투는 아직 전용 아트가 없어 <같은 그림을 재활용>한다. 화면마다 키가 따로 있으므로
+            // 전용 아트가 생기면 그 슬롯만 갈아 끼우면 되고 코드는 안 바뀐다.
+            EnsureBackgroundKey(backgrounds, ThemeSO.KeyPath, back);
+            // 퍼즐·전투는 <칸만> 만들어 둔다. 어떤 그림을 깔지는 기획이라 툴이 고르지 않는다.
             EnsureBackgroundKey(backgrounds, ThemeSO.KeyPuzzle, null);
             EnsureBackgroundKey(backgrounds, ThemeSO.KeyCombat, null);
             if (back == null)
                 Debug.LogWarning($"[Theme] '{backTexture}.png' 에서 스프라이트를 찾지 못했습니다. 텍스처 타입이 Sprite 인지 확인하세요.");
-
-            SerializedProperty bosses = so.FindProperty("bosses");
-            if (bosses.arraySize == 0)
-            {
-                // 그림은 비워 둔다 — 비면 BossDataSO 의 그림으로 떨어지므로 이름만 먼저 갈린다.
-                AddBoss(bosses, 0, "Boss_01", boss01NameKey);
-                AddBoss(bosses, 1, "Boss_02", boss02NameKey);
-            }
 
             so.ApplyModifiedPropertiesWithoutUndo();
             EditorUtility.SetDirty(theme);
@@ -548,26 +692,49 @@ namespace ChainRiposte.Editor
 
         private static void EnsureBackgroundKey(SerializedProperty list, string key, Sprite sprite)
         {
+            SerializedProperty element = FindOrAdd(list, "key", key);
+            SerializedProperty slot = element.FindPropertyRelative("sprite");
+            if (slot.objectReferenceValue == null && sprite != null)
+                slot.objectReferenceValue = sprite;
+        }
+
+        /// <summary>식별자가 같은 항목을 찾고, 없으면 끝에 하나 붙여서 돌려준다.</summary>
+        private static SerializedProperty FindOrAdd(SerializedProperty list, string idField, string id)
+        {
             for (int i = 0; i < list.arraySize; i++)
             {
-                if (list.GetArrayElementAtIndex(i).FindPropertyRelative("key").stringValue == key)
-                    return;
+                SerializedProperty element = list.GetArrayElementAtIndex(i);
+                if (element.FindPropertyRelative(idField).stringValue == id)
+                    return element;
             }
 
             int index = list.arraySize;
             list.InsertArrayElementAtIndex(index);
-            SerializedProperty element = list.GetArrayElementAtIndex(index);
-            element.FindPropertyRelative("key").stringValue = key;
-            element.FindPropertyRelative("sprite").objectReferenceValue = sprite;
+            SerializedProperty added = list.GetArrayElementAtIndex(index);
+            Clear(added); // Unity 의 배열 삽입은 <직전 항목을 복제>한다 — 비우지 않으면 남의 값이 딸려 온다
+            added.FindPropertyRelative(idField).stringValue = id;
+            return added;
         }
 
-        private static void AddBoss(SerializedProperty list, int index, string bossId, string nameKey)
+        private static void Clear(SerializedProperty element)
         {
-            list.InsertArrayElementAtIndex(index);
-            SerializedProperty element = list.GetArrayElementAtIndex(index);
-            element.FindPropertyRelative("bossId").stringValue = bossId;
-            element.FindPropertyRelative("sprite").objectReferenceValue = null;
-            element.FindPropertyRelative("nameKey").stringValue = nameKey;
+            SerializedProperty iterator = element.Copy();
+            SerializedProperty end = element.GetEndProperty();
+            bool enterChildren = true;
+
+            while (iterator.NextVisible(enterChildren) && !SerializedProperty.EqualContents(iterator, end))
+            {
+                enterChildren = false;
+                switch (iterator.propertyType)
+                {
+                    case SerializedPropertyType.String:
+                        iterator.stringValue = string.Empty;
+                        break;
+                    case SerializedPropertyType.ObjectReference:
+                        iterator.objectReferenceValue = null;
+                        break;
+                }
+            }
         }
 
         private static void AssignTheme(string characterAsset, ThemeSO theme)

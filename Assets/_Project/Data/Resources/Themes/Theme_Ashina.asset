@@ -22,13 +22,6 @@ MonoBehaviour:
     sprite: {fileID: 0}
   - key: path
     sprite: {fileID: -5934537515865234363, guid: d531a59577ed26d49b4ca8af28f184b1, type: 3}
-  bosses:
-  - bossId: Boss_01
-    sprite: {fileID: 0}
-    nameKey: boss.ashina.01
-  - bossId: Boss_02
-    sprite: {fileID: 0}
-    nameKey: boss.ashina.02
   nodeLayout:
   - {x: -5.347941, y: -3.3392897}
   - {x: -3.0983002, y: -2.3119478}

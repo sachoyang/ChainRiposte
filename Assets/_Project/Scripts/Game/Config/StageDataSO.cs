@@ -66,6 +66,8 @@ namespace ChainRiposte.Game.Config
         [Header("전투 (7단계)")]
         [Tooltip("이 스테이지에 난입하는 보스")]
         [SerializeField] private BossDataSO bossData;
+        // 보스의 캐릭터별 겉모습은 여기 없다 — 보스 에셋(BossDataSO)의 「캐릭터별 겉모습」이 맡는다.
+        // 스테이지마다 적으면 같은 그림을 스테이지 수만큼 되풀이하게 되고, 한 곳만 빠뜨려도 보스가 달라진다.
 
         [Header("스테이지 기믹 on/off (GDD §3.6) — 목록에 넣은 것만 활성화, 조합 가능")]
         [SerializeField] private GimmickType[] gimmicks = Array.Empty<GimmickType>();

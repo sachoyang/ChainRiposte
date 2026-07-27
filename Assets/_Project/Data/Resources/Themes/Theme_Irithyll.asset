@@ -22,13 +22,6 @@ MonoBehaviour:
     sprite: {fileID: 0}
   - key: path
     sprite: {fileID: -8473886284158217743, guid: 9f1ce03430b3f3e4091991cac094ef90, type: 3}
-  bosses:
-  - bossId: Boss_01
-    sprite: {fileID: 0}
-    nameKey: boss.irithyll.01
-  - bossId: Boss_02
-    sprite: {fileID: 0}
-    nameKey: boss.irithyll.02
   nodeLayout:
   - {x: -5.347941, y: -3.3392897}
   - {x: -3.0983002, y: -2.3119478}

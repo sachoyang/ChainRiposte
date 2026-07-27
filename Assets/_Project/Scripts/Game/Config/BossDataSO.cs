@@ -25,6 +25,11 @@ namespace ChainRiposte.Game.Config
         [Tooltip("전투 화면에 서는 보스 이미지. 비우면 위 초상을 그대로 쓴다.")]
         [SerializeField] private Sprite battleSprite;
 
+        [Header("캐릭터별 겉모습 — 같은 보스를 캐릭터마다 다르게 보이게 한다")]
+        [Tooltip("고른 캐릭터에 해당하는 줄이 있으면 그 그림·이름을 쓴다. 없거나 칸이 비면 위의 공용 값. " +
+                 "HP·체간·채보는 아래 수치 하나를 모두가 공유하므로 난이도는 절대 갈리지 않는다.")]
+        [SerializeField] private CharacterVisual[] characterVisuals = Array.Empty<CharacterVisual>();
+
         [Header("생존/체간")]
         [SerializeField, Min(1f)] private float maxHp = 120f;
         [Tooltip("체간 한계치 — 도달 시 인살 가능")]
@@ -50,6 +55,21 @@ namespace ChainRiposte.Game.Config
         [SerializeField] private PatternEntry[] patterns = Array.Empty<PatternEntry>();
         [Tooltip("HP 구간별 패턴 풀. 비우면 모든 패턴을 균등하게 쓰는 단일 페이즈로 동작한다.")]
         [SerializeField] private PhaseEntry[] phases = Array.Empty<PhaseEntry>();
+
+        /// <summary>
+        /// 한 캐릭터로 이 보스를 만났을 때의 <b>겉모습</b>. 그림과 이름이 한 줄에 같이 있어야
+        /// "이 캐릭터에겐 이렇게 생긴 누구"가 한눈에 읽히고, 원천이 둘로 갈리지 않는다.
+        /// </summary>
+        [Serializable]
+        public sealed class CharacterVisual
+        {
+            [Tooltip("이 겉모습을 쓸 캐릭터")]
+            public Characters.PlayerCharacterSO character;
+            [Tooltip("전투 화면에 서는 그림. 준비 화면의 그림자도 이 그림을 쓴다. 비우면 공용 그림.")]
+            public Sprite battleSprite;
+            [Tooltip("이름의 현지화 키(CSV). 비우면 공용 이름.")]
+            public string nameKey;
+        }
 
         [Serializable]
         private sealed class NoteEntry
@@ -92,8 +112,36 @@ namespace ChainRiposte.Game.Config
             public PatternWeight[] patterns = Array.Empty<PatternWeight>();
         }
 
-        /// <summary>테마의 보스 항목이 찾아올 키. StageId·CharacterId와 같은 규칙 — 비우면 에셋 이름.</summary>
+        /// <summary>보스를 가리키는 키. StageId·CharacterId와 같은 규칙 — 비우면 에셋 이름.</summary>
         public string BossId => string.IsNullOrWhiteSpace(bossId) ? name : bossId;
+
+        /// <summary>이 캐릭터로 만났을 때의 그림. 지정이 없으면 null — 부르는 쪽이 공용 그림으로 떨어진다.</summary>
+        public Sprite GetBattleSprite(Characters.PlayerCharacterSO character)
+        {
+            CharacterVisual visual = Find(character);
+            return visual != null ? visual.battleSprite : null;
+        }
+
+        /// <summary>이 캐릭터로 만났을 때의 이름 키. 지정이 없으면 null.</summary>
+        public string GetNameKey(Characters.PlayerCharacterSO character)
+        {
+            CharacterVisual visual = Find(character);
+            return visual != null && !string.IsNullOrWhiteSpace(visual.nameKey) ? visual.nameKey : null;
+        }
+
+        private CharacterVisual Find(Characters.PlayerCharacterSO character)
+        {
+            if (character == null || characterVisuals == null)
+                return null;
+
+            foreach (CharacterVisual visual in characterVisuals)
+            {
+                if (visual != null && visual.character == character)
+                    return visual;
+            }
+
+            return null;
+        }
 
         /// <summary>이름 문구. 현지화 키를 걸었으면 그것, 아니면 생 문자열(구 데이터 호환).</summary>
         public string NameKey => string.IsNullOrWhiteSpace(nameKey) ? displayName : nameKey;
