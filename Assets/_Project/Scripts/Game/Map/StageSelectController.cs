@@ -49,6 +49,9 @@ namespace ChainRiposte.Game.Map
         [SerializeField] private Image bossPortrait;
         [Tooltip("정보가 공개되지 않은 스테이지의 초상 색 (검은 그림자)")]
         [SerializeField] private Color silhouetteTint = new(0f, 0f, 0f, 0.85f);
+        [Tooltip("선택 사항 — 꽂으면 정보 패널에 그 스테이지의 소울 광맥 잔량을 한 줄 더 띄운다. " +
+            "비우면 그 줄만 빠지고 나머지는 그대로 (Main 의 GameManager 에 꽂은 것과 같은 에셋).")]
+        [SerializeField] private RunEconomyConfigSO economyConfig;
 
         [Header("동작 값")]
         [SerializeField, Min(0.5f)] private float moveSpeed = 6f;
@@ -407,7 +410,8 @@ namespace ChainRiposte.Game.Map
                     "map.info",
                     index / 3 + 1, width, height, config.TurnLimit,
                     revealed ? BossName(stage) : Loc.GetText("map.unknown"),
-                    revealed ? GimmickSummary(stage) : Loc.GetText("map.unknown"));
+                    revealed ? GimmickSummary(stage) : Loc.GetText("map.unknown"))
+                    + VeinLine(stage);
             if (startButton != null)
                 startButton.interactable = true;
 
@@ -415,6 +419,26 @@ namespace ChainRiposte.Game.Map
 
             if (infoPanel != null)
                 infoPanel.SetActive(true);
+        }
+
+        /// <summary>
+        /// 정보 패널에 덧붙이는 소울 광맥 한 줄 — <b>다시 가도 벌이가 있는 땅인지</b>를 여기서 판단한다.
+        /// 경제 에셋을 안 꽂았거나 매장량이 무제한이면 빈 문자열이라 패널 모양이 그대로 유지된다.
+        /// </summary>
+        private string VeinLine(StageDataSO stage)
+        {
+            if (economyConfig == null || stage == null)
+                return string.Empty;
+
+            RunEconomyConfig economy = economyConfig.ToConfig();
+            int budget = economy.ResolveBudget(stage.SoulBudget);
+            if (budget <= 0)
+                return string.Empty; // 매장량을 안 정한 스테이지 — 광맥 개념이 꺼져 있다
+
+            int remaining = economy.RemainingSouls(stage.SoulBudget, RunStateService.Current.GetHarvested(stage.StageId));
+            return "\n" + (remaining <= 0
+                ? Loc.GetText("map.vein.depleted")
+                : Loc.GetText("map.vein.remaining", remaining, budget));
         }
 
         /// <summary>잠긴 노드를 눌렀을 때 — 이동은 하지 않고 패널로 이유만 표시한다. 정보는 일절 공개하지 않는다.</summary>

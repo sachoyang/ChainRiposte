@@ -15,3 +15,4 @@ MonoBehaviour:
   soulIncomeMultiplier: 0.8
   chainSoulBonusPerStep: 0.1
   maxChainMultiplier: 2
+  defaultStageSoulBudget: 220

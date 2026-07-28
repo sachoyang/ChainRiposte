@@ -40,14 +40,22 @@ namespace ChainRiposte.Core.Stage
         /// <summary>x=경과 초 → y=보스 타일 스폰 확률(0~1). 점수 곡선과 둘 중 최댓값 적용.</summary>
         public Func<float, float> BossChanceBySeconds = _ => 0f;
 
-        /// <summary>보스 타일별 듀얼 카운트다운 — 실시간 초.</summary>
-        public float BossCountdownSeconds = 20f;
+        /// <summary>
+        /// 판 전체 시계 — 퍼즐 시작 후 이 시간이 지나면 보스 타일과 무관하게 보스전에 돌입한다.
+        /// 0 이하면 시계를 끄고 보스 타일이 내려올 때까지 기다린다.
+        ///
+        /// <para>예전에는 보스 타일마다 카운트다운이 돌고 만료되면 <b>HP 반토막</b>으로 기습 돌입했다.
+        /// 지금은 페널티가 규칙이 아니라 <b>플레이 결과</b>에서 나온다 — 퍼즐에서 잡몹에게 맞은 HP가
+        /// 그대로 보스전으로 이어진다.</para>
+        /// </summary>
+        public float BossEngageSeconds = 90f;
 
-        /// <summary>보스 타일별 듀얼 카운트다운 — 잔여 턴.</summary>
-        public int BossCountdownTurns = 8;
-
-        /// <summary>기습 돌입 시 시작 HP 배율 (0.5 = 반토막).</summary>
-        public float AmbushHpMultiplier = 0.5f;
+        /// <summary>
+        /// 보드 위에 동시에 존재할 수 있는 보스 타일 수.
+        /// 스폰 확률은 <b>리필 타일 하나하나에</b> 굴려지므로, 이 상한이 없으면 한 웨이브에 여러 개가
+        /// 쏟아져 보드가 보스 타일로 도배된다.
+        /// </summary>
+        public int MaxLiveBossTiles = 1;
 
         // ── 전투 (7단계에서 사용) ──
         /// <summary>이 스테이지에 난입하는 보스. null이면 전투 없음 (테스트/퍼즐 전용).</summary>

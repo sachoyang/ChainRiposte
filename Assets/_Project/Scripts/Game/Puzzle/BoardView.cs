@@ -36,12 +36,35 @@ namespace ChainRiposte.Game.Puzzle
         [SerializeField] private Sprite corruptionSprite;
         [Tooltip("사슬 결박 오버레이 아트 (비우면 회색 띠)")]
         [SerializeField] private Sprite chainSprite;
+        [Tooltip("성난 몬스터의 틴트 — 공격 예고 중인 잡몹이 한눈에 보여야 '저놈부터 없앤다'가 성립한다.")]
+        [SerializeField] private Color enrageTint = new(1f, 0.42f, 0.35f);
+
+        [Header("검기 — 매치 한 줄을 한 번에 벤다")]
+        [SerializeField] private bool slashEnabled = true;
+        [Tooltip("검기 아트. 비우면 양 끝이 뾰족한 눈 모양 플레이스홀더를 구워 쓴다. " +
+            "가로로 누운 그림을 쓸 것 — 방향은 코드가 회전시킨다.")]
+        [SerializeField] private Sprite slashSprite;
+        [SerializeField] private Color slashColor = new(1f, 0.97f, 0.85f, 0.9f);
+        [Tooltip("검기 굵기 (타일 1칸 = 1)")]
+        [SerializeField, Min(0.01f)] private float slashThickness = 0.35f;
+        [Tooltip("줄의 양 끝을 넘겨 긋는 길이. 0이면 벤 자국이 타일 안에 갇혀 '지나갔다'가 안 읽힌다.")]
+        [SerializeField, Min(0f)] private float slashOvershoot = 0.55f;
+        [SerializeField, Min(0.02f)] private float slashDuration = 0.22f;
+
+        [Header("타일 크기 — 셀 1칸 기준. 그림의 픽셀 크기·PPU와 무관하게 여기에 맞춰진다")]
+        [Tooltip("일반 몬스터 타일이 셀에서 차지하는 비율. 1보다 작아야 타일 사이가 벌어져 개수가 읽힌다.")]
+        [SerializeField, Range(0.1f, 1.2f)] private float tileFillRatio = 0.9f;
+        [Tooltip("벽 타일 비율. 벽은 '지형'이라 셀을 꽉 채워야 움직이는 타일과 확실히 구분된다.")]
+        [SerializeField, Range(0.1f, 1.2f)] private float wallFillRatio = 1f;
+        [Tooltip("보스 타일 비율. 판에서 가장 급한 타일이라 크게 보여야 한다.")]
+        [SerializeField, Range(0.1f, 1.2f)] private float bossFillRatio = 1f;
 
         [Header("타일 배경판 — 아이콘만 있으면 타일 경계가 안 읽힌다")]
         [Tooltip("타일 SO에 전용 배경이 없을 때 쓰는 공용 받침. 비워도 SO의 배경 색만 넣으면 사각 받침이 깔린다.")]
         [SerializeField] private Sprite tileBackgroundSprite;
-        [Tooltip("받침 크기 (1 = 아이콘과 같은 크기). 살짝 커야 받침으로 읽힌다.")]
-        [SerializeField, Min(0.1f)] private float tileBackgroundScale = 1.05f;
+        [Tooltip("받침이 셀에서 차지하는 비율 (1 = 셀을 꽉 채움). 아이콘보다 커야 받침으로 읽힌다. " +
+            "타일 사이가 붙어 보이면 1보다 살짝 낮춘다.")]
+        [SerializeField, Min(0.1f)] private float tileBackgroundScale = 1f;
         [Tooltip("타일 SO가 배경 색을 안 정했을 때(알파 0) 대신 쓸 색. 여기도 알파가 0이면 받침을 안 그린다.")]
         [SerializeField] private Color tileBackgroundColor = new(1f, 1f, 1f, 0f);
         [Tooltip("벽에도 받침을 깔지 — 벽은 셀을 꽉 채우는 지형이라 보통은 필요 없다")]
@@ -239,11 +262,82 @@ namespace ChainRiposte.Game.Puzzle
                 case GimmickEventType.BombTicked:
                     view.SetBombTurns(gimmickEvent.Value);
                     break;
+                case GimmickEventType.EnrageStarted:
+                case GimmickEventType.EnrageTicked:
+                    view.SetEnrageTurns(gimmickEvent.Value, enrageTint);
+                    break;
+                case GimmickEventType.EnrageAttacked:
+                    // 때린 뒤에도 사라지지 않는다 — 재장전된 카운트를 그대로 다시 보여주고 한 번 튄다.
+                    view.SetEnrageTurns(gimmickEvent.Tile.Status.EnrageTurnsRemaining, enrageTint);
+                    StartCoroutine(view.PunchOnce());
+                    break;
             }
+        }
+
+        /// <summary>
+        /// 매치를 벤다 — <b>줄 하나당 검기 하나</b>. 매치의 단위는 타일이 아니라 라인이다.
+        ///
+        /// <para><see cref="MatchGroup"/>은 ㄱ/T자로 겹친 가로·세로 런을 <b>한 그룹으로 병합</b>해 두므로
+        /// 좌표만 있고 어느 줄이었는지는 없다. 여기서 행·열별 연속 구간으로 되돌려 다시 쪼갠다 —
+        /// Core가 연출을 위해 자료구조를 바꿀 이유는 없고, 되돌리는 건 순수 기하라 안전하다.</para>
+        ///
+        /// <para>쪼갠 줄들은 <b>동시에</b> 터진다. 순차로 내면 "두 번 벴다"가 되어 한 수의 무게가 흩어진다.</para>
+        /// </summary>
+        private void PlaySlashes(CascadeStep step)
+        {
+            if (!slashEnabled)
+                return;
+
+            foreach (MatchGroup group in step.Matches)
+            {
+                foreach ((GridPos from, GridPos to) in ResolveRuns(group.Positions))
+                {
+                    SlashView slash = SlashView.Create(
+                        transform, GridToLocal(from), GridToLocal(to),
+                        slashSprite, slashColor, slashThickness, slashOvershoot, sortingOrder: 20);
+                    StartCoroutine(slash.Play(slashDuration));
+                }
+            }
+        }
+
+        /// <summary>
+        /// 좌표 뭉치를 곧은 줄(3칸 이상 연속)들로 되돌린다. 곧은 3매치는 1개, ㄱ/T자는 가로 1 + 세로 1이 나온다.
+        /// 3칸 미만인 조각은 버린다 — 그건 줄이 아니라 다른 줄에 딸린 꼬리다.
+        /// </summary>
+        private static List<(GridPos from, GridPos to)> ResolveRuns(IReadOnlyList<GridPos> positions)
+        {
+            var runs = new List<(GridPos, GridPos)>();
+            var set = new HashSet<GridPos>(positions);
+
+            foreach (GridPos pos in positions)
+            {
+                // 각 줄의 시작점에서만 센다 — 앞칸이 같은 줄에 있으면 그 칸이 이미 셌다.
+                if (!set.Contains(new GridPos(pos.X - 1, pos.Y)))
+                {
+                    int length = 1;
+                    while (set.Contains(new GridPos(pos.X + length, pos.Y)))
+                        length++;
+                    if (length >= 3)
+                        runs.Add((pos, new GridPos(pos.X + length - 1, pos.Y)));
+                }
+
+                if (!set.Contains(new GridPos(pos.X, pos.Y - 1)))
+                {
+                    int length = 1;
+                    while (set.Contains(new GridPos(pos.X, pos.Y + length)))
+                        length++;
+                    if (length >= 3)
+                        runs.Add((pos, new GridPos(pos.X, pos.Y + length - 1)));
+                }
+            }
+
+            return runs;
         }
 
         private IEnumerator PlayClear(CascadeStep step)
         {
+            PlaySlashes(step); // 사라지기 전에 그어야 '베어서 사라졌다'로 읽힌다
+
             var anims = new List<IEnumerator>();
 
             // 매치 좌표가 아니라 '실제로 사라진 칸'을 기준으로 지운다 —
@@ -312,13 +406,6 @@ namespace ChainRiposte.Game.Puzzle
             }
         }
 
-        /// <summary>보드 위 보스 타일의 카운트다운 표시를 갱신한다.</summary>
-        public void UpdateBossCountdown(long tileId, float seconds, int turns)
-        {
-            if (TryFindView(tileId, out TileView view))
-                view.SetCountdown(seconds, turns);
-        }
-
         private bool TryFindView(long tileId, out TileView found)
         {
             foreach (TileView view in _views.Values)
@@ -351,12 +438,13 @@ namespace ChainRiposte.Game.Puzzle
                 Color = color,
                 Background = BackgroundFor(tile),
                 BackgroundColor = BackgroundColorFor(tile),
-                BackgroundScale = tileBackgroundScale,
+                IconSize = FillRatioFor(tile),
+                BackgroundSize = tileBackgroundScale,
             });
             if (tile.Category == TileCategory.Wall && wallDamageSprites.Length > 0)
                 view.SetWallStages(wallDamageSprites);
             view.transform.localPosition = GridToLocal(pos);
-            view.ApplyStatus(tile, chainSprite); // 사슬/폭탄 뱃지 (GDD §3.6)
+            view.ApplyStatus(tile, chainSprite, enrageTint); // 사슬/폭탄/성남 뱃지 (GDD §3.6)
             _views[pos] = view;
             return view;
         }
@@ -370,6 +458,17 @@ namespace ChainRiposte.Game.Puzzle
                 case TileCategory.Corruption: return corruptionColor;
                 default:
                     return _colorByDefinition.TryGetValue(tile.Definition, out Color color) ? color : unknownColor;
+            }
+        }
+
+        /// <summary>이 타일이 셀에서 차지할 크기 (셀 = 1). 부패는 일반 타일과 같은 무게로 읽혀야 한다.</summary>
+        private float FillRatioFor(Tile tile)
+        {
+            switch (tile.Category)
+            {
+                case TileCategory.Wall: return wallFillRatio;
+                case TileCategory.Boss: return bossFillRatio;
+                default: return tileFillRatio;
             }
         }
 

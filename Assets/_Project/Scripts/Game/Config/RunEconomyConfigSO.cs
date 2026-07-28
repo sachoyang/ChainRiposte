@@ -21,11 +21,17 @@ namespace ChainRiposte.Game.Config
         [Tooltip("사슬 인컴 배수 상한. 2 = 최대 +100%")]
         [SerializeField, Min(1f)] private float maxChainMultiplier = 2f;
 
+        [Header("소울 광맥 (스테이지별 매장량)")]
+        [Tooltip("스테이지가 자기 매장량(Stage Data ▸ 소울 매장량)을 안 적었을 때 쓰는 기본값. " +
+            "한 스테이지에서 이 런 동안 캘 수 있는 총량이다. 0이면 무제한 — 앞 스테이지 반복 파밍이 열린다.")]
+        [SerializeField, Min(0)] private int defaultStageSoulBudget;
+
         public RunEconomyConfig ToConfig() => new()
         {
             SoulIncomeMultiplier = soulIncomeMultiplier,
             ChainSoulBonusPerStep = chainSoulBonusPerStep,
             MaxChainMultiplier = maxChainMultiplier,
+            DefaultStageSoulBudget = defaultStageSoulBudget,
         };
     }
 }

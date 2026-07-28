@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using ChainRiposte.Core.Board;
 using ChainRiposte.Core.Match;
 using ChainRiposte.Core.Stage;
@@ -9,13 +8,21 @@ namespace ChainRiposte.Core.Intrusion
     /// <summary>
     /// 보스 난입 시스템 (GDD §4).
     /// 점수/시간 곡선에 따라 보스 타일을 스폰시키고(스포너 데코레이터),
-    /// 보드 위 각 보스 타일의 듀얼 카운트다운을 독립적으로 굴리며,
-    /// 바닥 도달(정상 돌입)과 카운트다운 만료(기습 돌입)를 판정한다.
+    /// <b>판 전체 시계</b>와 <b>보스 타일의 바닥 도달</b> 두 가지로 전투 돌입을 판정한다.
+    ///
+    /// <para>돌입 경로는 둘뿐이고 <b>어느 쪽도 페널티가 없다</b>:</para>
+    /// <list type="number">
+    ///   <item>판 시계(<see cref="StageConfig.BossEngageSeconds"/>) 만료 — 보스 타일과 무관하게 즉시.</item>
+    ///   <item>보스 타일이 열 최하단에 도달 — 그만큼 일찍 만난다.</item>
+    /// </list>
+    ///
+    /// <para>예전에는 보스 타일마다 듀얼 카운트다운이 돌고, 만료되면 <b>HP 반토막</b>을 물리는
+    /// 기습 돌입이 있었다. 페널티를 규칙으로 물리는 대신 퍼즐 자체가 아프도록 바꿨으므로
+    /// (성난 몬스터) 그 규칙은 없앴다 — 깎인 HP가 그대로 보스전으로 이어지는 것이 곧 처벌이다.</para>
     /// </summary>
     public sealed class IntrusionSystem
     {
         private readonly StageConfig _config;
-        private readonly Dictionary<long, BossCountdown> _countdowns = new();
         private BoardGrid _board;
 
         public TileDefinition BossDefinition { get; } = new("Boss", TileCategory.Boss);
@@ -28,11 +35,19 @@ namespace ChainRiposte.Core.Intrusion
         /// <summary>전투 돌입 이후 true — 모든 판정이 정지한다.</summary>
         public bool Engaged { get; private set; }
 
-        /// <summary>(보스 타일 id, 남은 초, 남은 턴) — 타일 위 카운트다운 표시용.</summary>
-        public event Action<long, float, int> CountdownChanged;
+        /// <summary>판 시계를 쓰는가 — 0 이하면 보스 타일이 내려올 때까지 기다린다.</summary>
+        public bool HasEngageTimer => _config.BossEngageSeconds > 0f;
 
-        /// <summary>(돌입 계기가 된 보스 타일, 기습 여부). 기습이면 HP 페널티 적용 후 전투 전환.</summary>
-        public event Action<Tile, bool> Engage;
+        /// <summary>보스전까지 남은 초. 시계를 안 쓰면 <see cref="float.PositiveInfinity"/>.</summary>
+        public float SecondsUntilEngage => HasEngageTimer
+            ? Math.Max(0f, _config.BossEngageSeconds - ElapsedSeconds)
+            : float.PositiveInfinity;
+
+        /// <summary>(남은 초) — HUD 시계 갱신 훅. 시계를 안 쓰면 발행되지 않는다.</summary>
+        public event Action<float> EngageTimerChanged;
+
+        /// <summary>(돌입 계기가 된 보스 타일. 판 시계 만료면 null) — 전투로 넘어간다.</summary>
+        public event Action<Tile> Engage;
 
         public IntrusionSystem(StageConfig config, Func<float> scoreGetter, Random rng = null)
         {
@@ -47,6 +62,8 @@ namespace ChainRiposte.Core.Intrusion
                 config.BossChanceBySeconds,
                 scoreGetter,
                 () => ElapsedSeconds,
+                CountLiveBossTiles,
+                config.MaxLiveBossTiles,
                 rng);
         }
 
@@ -61,52 +78,25 @@ namespace ChainRiposte.Core.Intrusion
 
             ElapsedSeconds += deltaSeconds;
 
-            foreach (BossCountdown countdown in SnapshotCountdowns())
-            {
-                countdown.SecondsRemaining -= deltaSeconds;
-                CountdownChanged?.Invoke(
-                    countdown.Tile.InstanceId,
-                    Math.Max(0f, countdown.SecondsRemaining),
-                    countdown.TurnsRemaining);
-
-                if (countdown.Expired)
-                {
-                    EngageNow(countdown.Tile, ambush: true);
-                    return;
-                }
-            }
-        }
-
-        /// <summary>턴 소모 통지 (PuzzleEngine.TurnsChanged와 시그니처 호환).</summary>
-        public void OnTurnConsumed(int turnsRemaining)
-        {
-            if (Engaged)
+            if (!HasEngageTimer)
                 return;
 
-            foreach (BossCountdown countdown in SnapshotCountdowns())
-            {
-                countdown.TurnsRemaining--;
-                CountdownChanged?.Invoke(
-                    countdown.Tile.InstanceId,
-                    Math.Max(0f, countdown.SecondsRemaining),
-                    countdown.TurnsRemaining);
+            EngageTimerChanged?.Invoke(SecondsUntilEngage);
 
-                if (countdown.Expired)
-                {
-                    EngageNow(countdown.Tile, ambush: true);
-                    return;
-                }
-            }
+            if (SecondsUntilEngage <= 0f)
+                EngageNow(null);
         }
 
         /// <summary>
-        /// 스왑 해석 직후 호출 — 새로 스폰된 보스 타일의 카운트다운을 시작하고,
-        /// 열 최하단 활성 셀에 도달한 보스 타일이 있으면 정상 돌입한다.
+        /// 스왑 해석 직후 호출 — 열 최하단 활성 셀에 도달한 보스 타일이 있으면 돌입한다.
+        /// 보드가 정착했으므로 스포너의 웨이브 누적도 여기서 비운다.
         /// </summary>
         public void OnBoardSettled()
         {
             if (Engaged || _board == null)
                 return;
+
+            Spawner.ResetPendingGrants();
 
             foreach (GridPos pos in _board.ActivePositions())
             {
@@ -114,29 +104,36 @@ namespace ChainRiposte.Core.Intrusion
                 if (tile == null || tile.Category != TileCategory.Boss)
                     continue;
 
-                if (!_countdowns.ContainsKey(tile.InstanceId))
-                {
-                    var countdown = new BossCountdown(tile, _config.BossCountdownSeconds, _config.BossCountdownTurns);
-                    _countdowns[tile.InstanceId] = countdown;
-                    CountdownChanged?.Invoke(tile.InstanceId, countdown.SecondsRemaining, countdown.TurnsRemaining);
-                }
-
                 GridPos? bottom = _board.BottomActiveCell(pos.X);
                 if (bottom.HasValue && bottom.Value == pos)
                 {
-                    EngageNow(tile, ambush: false);
+                    EngageNow(tile);
                     return;
                 }
             }
         }
 
-        private void EngageNow(Tile tile, bool ambush)
+        /// <summary>보드 위 보스 타일 수 — 스포너의 동시 개수 상한이 이 값을 본다.</summary>
+        private int CountLiveBossTiles()
         {
-            Engaged = true;
-            Engage?.Invoke(tile, ambush);
+            if (_board == null)
+                return 0;
+
+            int count = 0;
+            foreach (GridPos pos in _board.ActivePositions())
+            {
+                Tile tile = _board.GetTile(pos);
+                if (tile != null && tile.Category == TileCategory.Boss)
+                    count++;
+            }
+
+            return count;
         }
 
-        /// <summary>이벤트 핸들러가 상태를 건드려도 안전하도록 복사본을 순회한다.</summary>
-        private List<BossCountdown> SnapshotCountdowns() => new(_countdowns.Values);
+        private void EngageNow(Tile tile)
+        {
+            Engaged = true;
+            Engage?.Invoke(tile);
+        }
     }
 }

@@ -89,12 +89,15 @@ namespace ChainRiposte.Core.Combat
 
         /// <summary>
         /// 타격 <b>이전</b>으로 열려 있는 패링 판정 폭(초). PARRY 스탯을 올리면 넓어진다.
-        /// 뷰는 이것과 <see cref="ParryLateGraceSeconds"/>를 합쳐 회색 띠의 두께로 그린다.
+        /// 뷰는 이것과 <see cref="ParryLateGraceSeconds"/>로 회색 띠의 위치·두께를 정한다.
         /// </summary>
         public float ParryWindowSeconds => _stats.ParryWindowSeconds;
 
-        /// <summary>타격 <b>이후</b>로 열려 있는 유예(초). 띠의 안쪽 절반이 이것이다.</summary>
+        /// <summary>타격 <b>이후</b>로 열려 있는 유예(초).</summary>
         public float ParryLateGraceSeconds => _stats.ParryLateGraceSeconds;
+
+        /// <summary>무투자 상태의 판정 폭 — 뷰가 노트 원의 두께를 여기에 맞춘다.</summary>
+        public float BaseParryWindowSeconds => _stats.BaseParryWindowSeconds;
 
         /// <summary>체간 파괴 — 화면에 붉은 인살 마크가 뜨는 상태. 공격 버튼이 인살로 바뀐다.</summary>
         public bool ExecutionReady => BossState == BossActionState.Broken;

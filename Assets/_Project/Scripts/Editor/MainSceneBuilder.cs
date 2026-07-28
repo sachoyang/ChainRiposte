@@ -115,14 +115,14 @@ namespace ChainRiposte.Editor
             var bossHome = new Vector2(250f, 420f);
             var playerHome = new Vector2(-230f, -180f);
 
-            // 패링 가능 구간 — 플레이어를 감싸는 연한 회색 '띠'.
-            // 흰 원이 이 띠에 겹쳐 있는 동안 누르면 패링이다. 두께는 런타임에 판정 폭으로 다시 그려진다.
+            // 패링 가능 구간 — 플레이어를 감싸는 연한 회색 원. 노트 원과 같은 두께다.
+            // 흰 원이 여기에 조금이라도 겹치면 패링이다. 두께는 런타임에 판정 폭으로 다시 그려진다.
             RectTransform band = EditorUiFactory.NewRect("ParryBand", root);
             band.anchorMin = band.anchorMax = new Vector2(0.5f, 0.5f);
             band.anchoredPosition = playerHome;
             band.sizeDelta = new Vector2(300f, 300f); // 플레이어 본체와 같은 크기 = 스케일 1이 타격 지점
             var bandImg = band.gameObject.AddComponent<Image>();
-            bandImg.sprite = ChainRiposte.Game.PlaceholderSprite.Annulus(0.73f); // 기본 판정 기준 두께
+            bandImg.sprite = ChainRiposte.Game.PlaceholderSprite.Annulus(0.89f); // 노트 원과 같은 두께
             bandImg.color = new Color(1f, 1f, 1f, 0.15f);
             bandImg.raycastTarget = false;
 

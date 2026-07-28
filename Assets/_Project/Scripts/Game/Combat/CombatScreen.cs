@@ -25,14 +25,18 @@ namespace ChainRiposte.Game.Combat
         [Header("패링 타이밍 원")]
         [Tooltip("다가오는 노트를 나타내는 원의 색")]
         [SerializeField] private Color noteRingColor = Color.white;
-        [Tooltip("패링 가능 구간을 나타내는 띠의 색 — 흰 원이 이 위에 겹치면 패링이 된다. 연하게 깔아 둘 것.")]
+        [Tooltip("패링 가능 구간을 나타내는 회색 원의 색 — 흰 원이 여기에 <b>조금이라도 겹치면</b> 패링이 된다. 연하게 깔아 둘 것.")]
         [SerializeField] private Color parryBandColor = new(1f, 1f, 1f, 0.15f);
         [Tooltip("띠 두께를 판정 폭에 맞춰 자동으로 다시 그린다. 실제 아트를 꽂았다면 끌 것.")]
         [SerializeField] private bool generateBandSprite = true;
         [Tooltip("원이 다가오는 속도 (초당 스케일). 모든 노트가 같은 속도로 와야 회색 띠가 의미를 갖는다.")]
         [SerializeField, Min(0.05f)] private float approachSpeed = 0.9f;
+        [Tooltip("노트 원 그림도 회색 원과 같은 두께로 자동으로 굽는다 — " +
+            "무투자(PARRY 0) 상태에서 두 원이 정확히 포개지는 것이 이 화면의 기준이다. " +
+            "실제 아트를 꽂았다면 끄고 아래 비율을 그 그림에 맞춰 적을 것.")]
+        [SerializeField] private bool matchNoteRingToBand = true;
         [Tooltip("노트 원 그림의 안쪽 구멍 비율(안쪽 반지름 ÷ 바깥 반지름). " +
-            "이 원의 <b>안쪽 테두리</b>가 타이밍을 가리키므로, 실제 아트로 갈아 끼우면 그 그림의 비율을 여기에 적어야 " +
+            "이 원의 <b>두께</b>가 곧 판정의 여유분이므로, 실제 아트로 갈아 끼우면 그 그림의 비율을 여기에 적어야 " +
             "보이는 것과 판정이 계속 맞는다. 기본 원(PlaceholderSprite.Ring)은 0.88.")]
         [SerializeField, Range(0.05f, 0.99f)] private float noteRingInnerRatio = 0.88f;
         [Tooltip("이 스케일보다 멀리 있는 노트는 아직 그리지 않는다")]
@@ -47,6 +51,10 @@ namespace ChainRiposte.Game.Combat
         [SerializeField] private Image bossHpFill;
         [SerializeField] private Image postureFill;
         [SerializeField] private Image playerHpFill;
+        [Tooltip("게이지 이미지를 자동으로 Filled(가로·왼쪽 기준)로 맞춘다. " +
+            "9슬라이스 스프라이트를 꽂으면 Unity가 Image Type 을 Sliced 로 되돌리는데, 그러면 fillAmount 가 " +
+            "아무 효과도 없어 게이지가 <b>조용히 안 줄어든다</b>. 게이지를 다른 방식으로 그린다면 끌 것.")]
+        [SerializeField] private bool forceFilledGauges = true;
         [SerializeField] private TMP_Text playerHpText;
         [SerializeField] private RectTransform bossBody;
         [SerializeField] private Image bossBodyImage;
@@ -127,6 +135,7 @@ namespace ChainRiposte.Game.Combat
         private Vector2 _popupOrigin;
         private bool _popupPlaying;
         private float _bandInnerRatio = -1f;
+        private float _ringInnerRatio = -1f;
 
         /// <summary>
         /// 보스의 '평상시' 스케일. 좌우 반전을 여기 한 곳에만 담아 두고 연출(펀치 등)은 이 값에 곱하기만 한다 —
@@ -150,6 +159,13 @@ namespace ChainRiposte.Game.Combat
                 return;
             }
 
+            if (forceFilledGauges)
+            {
+                EnsureFilled(bossHpFill);
+                EnsureFilled(postureFill);
+                EnsureFilled(playerHpFill);
+            }
+
             parryButton.onClick.AddListener(() => input.PressParry());
             attackButton.onClick.AddListener(() => input.PressAttack());
 
@@ -163,6 +179,20 @@ namespace ChainRiposte.Game.Combat
             }
 
             root.gameObject.SetActive(false);
+        }
+
+        /// <summary>
+        /// 게이지 이미지가 <c>fillAmount</c>에 반응하도록 보장한다. 스프라이트 교체 한 번으로
+        /// 세 게이지가 통째로 멈추는 사고를 씬 상태에 기대지 않고 막는다.
+        /// </summary>
+        private static void EnsureFilled(Image image)
+        {
+            if (image == null || image.type == Image.Type.Filled)
+                return;
+
+            image.type = Image.Type.Filled;
+            image.fillMethod = Image.FillMethod.Horizontal;
+            image.fillOrigin = (int)Image.OriginHorizontal.Left;
         }
 
         private void OnDestroy() => Unbind();
@@ -369,11 +399,10 @@ namespace ChainRiposte.Game.Combat
         /// 패링 구간을 두께가 고정된 회색 띠 하나로 표현할 수 있다.
         /// 예비동작이 긴 노트는 그만큼 더 멀리서부터 보인다.
         ///
-        /// <para><b>원의 안쪽 테두리가 곧 노트의 위치다.</b> 원 그림에는 두께가 있어서
-        /// 어느 테두리를 기준으로 삼을지 정해 두지 않으면 "띠에 걸친 것처럼 보이는데 판정은 아직 안 열린"
-        /// 구간이 생긴다(두께만큼 통째로 어긋난다). 안쪽 테두리를 기준으로 잡으면
-        /// <b>안쪽 테두리가 띠에 들어오는 순간 = 판정 시작 / 띠의 안쪽 끝을 지나는 순간 = 유예 종료</b>가
-        /// 정확히 맞아떨어져, 보이는 겹침이 그대로 판정이 된다.</para>
+        /// <para><b>판정은 두 원이 겹치는 동안이다.</b> 흰 원과 회색 원은 같은 두께로 그려져 있고,
+        /// 무투자 상태에서 정확히 포개지는 순간이 완벽한 타이밍이다. 조금만 걸쳐도 패링이 되므로
+        /// 원의 두께 자체가 여유분이 된다 — "겹친 것처럼 보이는데 판정은 아직"이 생길 수 없다.
+        /// 기준선은 여전히 <b>원의 안쪽 테두리</b>(= 노트의 위치)이고, 겹침 계산이 두께를 얹어 준다.</para>
         /// </summary>
         private void Update()
         {
@@ -383,7 +412,8 @@ namespace ChainRiposte.Game.Combat
                 return;
             }
 
-            UpdateParryBand();
+            float ringRatio = ResolveRingInnerRatio();
+            UpdateParryBand(ringRatio);
 
             IReadOnlyList<ActiveNote> notes = _combat.ActiveNotes;
             int drawn = 0;
@@ -397,7 +427,7 @@ namespace ChainRiposte.Game.Combat
 
                 RectTransform ring = GetRing(drawn);
                 // 안쪽 테두리가 그 반지름에 오도록 키운다
-                ring.localScale = Vector3.one * (radius / noteRingInnerRatio);
+                ring.localScale = Vector3.one * (radius / ringRatio);
 
                 // 임박할수록 진하게 — 어느 것을 먼저 쳐야 하는지가 한눈에 읽힌다
                 float nearness = Mathf.InverseLerp(maxVisibleScale, 1f, radius);
@@ -412,15 +442,59 @@ namespace ChainRiposte.Game.Combat
         }
 
         /// <summary>
-        /// 패링 구간 띠 — <b>흰 원이 이 띠에 겹쳐 있는 동안 누르면 패링이 된다.</b> 그게 전부다.
-        /// (겹침의 기준은 원의 안쪽 테두리다 — <see cref="Update"/> 참조.)
+        /// 노트 원 그림의 안쪽 구멍 비율. <see cref="matchNoteRingToBand"/>가 켜져 있으면
+        /// <b>무투자 상태의 회색 원과 두께가 같아지는 값</b>을 판정 수치에서 역산해 그림까지 다시 굽는다.
         ///
-        /// 판정은 타격 시점 T를 기준으로 <c>[T - 윈도우, T + 유예]</c> 에 열린다.
-        /// 원은 "남은 시간 × 속도"로 다가오므로 그 구간은 그대로 반지름 구간이 된다:
-        /// 바깥 = 1 + 윈도우×속도 (가장 이른 성공), 안쪽 = 1 - 유예×속도 (가장 늦은 성공).
-        /// PARRY를 올리면 윈도우가 넓어져 <b>띠가 실제로 굵어진다</b> — 보이는 것과 판정이 같다.
+        /// <para>유도: 회색 원 = [(1 − 유예×속도) ÷ k, 1 + 기본윈도우×속도], 흰 원의 두께 = 1/k − 1
+        /// (반지름 1에서). 둘을 같게 놓으면 <c>k = (2 − 유예×속도) ÷ (2 + 기본윈도우×속도)</c>.
+        /// 판정 값을 인스펙터에서 조여도 두 원이 계속 같은 두께로 남는다 —
+        /// 숫자를 코드와 그림 양쪽에 적어 두면 한쪽만 고쳐 어긋난다.</para>
         /// </summary>
-        private void UpdateParryBand()
+        private float ResolveRingInnerRatio()
+        {
+            if (!matchNoteRingToBand)
+                return noteRingInnerRatio;
+
+            float grace = _combat.ParryLateGraceSeconds * approachSpeed;
+            float baseWindow = _combat.BaseParryWindowSeconds * approachSpeed;
+            // 구워 주는 실제 비율(0.01 단위)로 맞춰야 아래 띠 계산과 그림이 어긋나지 않는다.
+            float ratio = PlaceholderSprite.QuantizeRatio(
+                Mathf.Clamp((2f - grace) / (2f + baseWindow), 0.05f, 0.99f));
+
+            if (!Mathf.Approximately(ratio, _ringInnerRatio))
+            {
+                _ringInnerRatio = ratio;
+                Sprite sprite = PlaceholderSprite.Annulus(ratio);
+                if (noteRingTemplate != null)
+                {
+                    var templateImage = noteRingTemplate.GetComponent<Image>();
+                    if (templateImage != null)
+                        templateImage.sprite = sprite;
+                }
+
+                for (int i = 0; i < _ringImages.Count; i++)
+                    if (_ringImages[i] != null)
+                        _ringImages[i].sprite = sprite;
+            }
+
+            return ratio;
+        }
+
+        /// <summary>
+        /// 패링 구간 회색 원 — <b>흰 원이 여기에 조금이라도 겹치면 패링이 된다.</b> 그게 전부다.
+        ///
+        /// <para>판정은 타격 시점 T를 기준으로 <c>[T − 윈도우, T + 유예]</c>에 열린다. 원은
+        /// "남은 시간 × 속도"로 다가오므로 그 구간은 그대로 노트 반지름 구간
+        /// <c>[1 − 유예×속도, 1 + 윈도우×속도]</c>이 된다. 흰 원은 안쪽 테두리 r 에서
+        /// <c>[r, r/k]</c>를 차지하므로 <b>겹침</b> 조건은 <c>k×안쪽 &lt; r &lt; 바깥</c> —
+        /// 즉 겹침이 곧 판정이 되려면 바깥 = 1 + 윈도우×속도, <b>안쪽 = (1 − 유예×속도) ÷ k</b>다.
+        /// 안쪽을 원 두께만큼 밀어 올린 이 한 줄이 "회색 원을 흰 원과 같은 두께로 얇게 그리고,
+        /// 대신 조금 겹쳐도 인정"의 전부다.</para>
+        ///
+        /// <para>PARRY를 올리면 바깥이 커져 <b>회색 원이 실제로 굵어지고</b> 판정이 더 일찍 열린다 —
+        /// 보이는 것과 판정이 같다.</para>
+        /// </summary>
+        private void UpdateParryBand(float ringInnerRatio)
         {
             if (parryBand == null)
                 return;
@@ -432,7 +506,9 @@ namespace ChainRiposte.Game.Combat
                 return;
 
             float outerScale = 1f + _combat.ParryWindowSeconds * approachSpeed;
-            float innerScale = Mathf.Max(0.05f, 1f - _combat.ParryLateGraceSeconds * approachSpeed);
+            float innerScale = Mathf.Clamp(
+                (1f - _combat.ParryLateGraceSeconds * approachSpeed) / ringInnerRatio,
+                0.05f, outerScale - 0.001f);
             parryBand.localScale = Vector3.one * outerScale;
 
             if (parryBandImage == null)

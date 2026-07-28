@@ -14,6 +14,10 @@ namespace ChainRiposte.Game.Puzzle
         private Sprite[] _wallStages;
         private int _maxHp;
         private int _remainingHp;
+        private bool _enraged;
+        private Color _enrageTint = Color.white;
+        // 폭탄 숫자가 카운트 자리를 쓰고 있는가 — 성남 표시가 그것을 덮지 않게 한다.
+        private bool _hasBombText;
 
         public long TileId { get; private set; }
 
@@ -30,23 +34,32 @@ namespace ChainRiposte.Game.Puzzle
             public Sprite Background;
             public Color BackgroundColor;
 
-            /// <summary>받침 크기 (1 = 아이콘과 같은 크기). 살짝 커야 받침으로 읽힌다.</summary>
-            public float BackgroundScale;
+            /// <summary>아이콘이 차지할 <b>월드 크기</b>(셀 = 1). 그림의 픽셀 크기·PPU와 무관하게 여기에 맞춘다.</summary>
+            public float IconSize;
+
+            /// <summary>받침이 차지할 월드 크기. 아이콘보다 살짝 커야 받침으로 읽힌다.</summary>
+            public float BackgroundSize;
         }
 
         public static TileView Create(Transform parent, Tile tile, Visual visual)
         {
             var go = new GameObject($"Tile_{tile.Definition.Id}_{tile.InstanceId}");
             go.transform.SetParent(parent, false);
-            // 벽은 셀을 꽉 채워 '지형'으로 읽히게 하고, 움직이는 타일과 확실히 구분한다
-            go.transform.localScale = Vector3.one * (tile.Category == TileCategory.Wall ? 1f : 0.9f);
 
             var view = go.AddComponent<TileView>();
             view.TileId = tile.InstanceId;
-            view.CreateBackground(visual);
+
+            Sprite sprite = visual.Sprite != null ? visual.Sprite : PlaceholderSprite.Square;
+
+            // 그림마다 픽셀 크기와 PPU가 다르다 — 그대로 두면 어떤 타일은 셀을 채우고 어떤 타일은 점만 하다.
+            // 스케일을 그림에서 역산해 항상 같은 크기로 맞춘다(임포트 설정에 기대지 않는다).
+            float iconScale = ScaleToFit(sprite, visual.IconSize);
+            go.transform.localScale = Vector3.one * iconScale;
+
+            view.CreateBackground(visual, iconScale);
 
             view._renderer = go.AddComponent<SpriteRenderer>();
-            view._renderer.sprite = visual.Sprite != null ? visual.Sprite : PlaceholderSprite.Square;
+            view._renderer.sprite = sprite;
             view._baseColor = visual.Color;
             view._maxHp = tile.Definition.MaxHp;
             view._remainingHp = tile.RemainingHp;
@@ -58,19 +71,36 @@ namespace ChainRiposte.Game.Puzzle
         /// 받침은 아이콘보다 <b>뒤에</b>(sortingOrder -1) 깔리고 타일과 함께 움직인다.
         /// 배경 셀(고정, -10)과 달리 낙하·스왑을 따라가야 아이콘과 어긋나지 않는다.
         /// </summary>
-        private void CreateBackground(Visual visual)
+        private void CreateBackground(Visual visual, float parentScale)
         {
             if (visual.Background == null || visual.BackgroundColor.a <= 0f)
                 return;
 
             var go = new GameObject("Background");
             go.transform.SetParent(transform, false);
-            go.transform.localScale = Vector3.one * (visual.BackgroundScale > 0f ? visual.BackgroundScale : 1f);
+
+            // 받침은 아이콘이 아니라 <b>셀</b>에 맞춰야 한다. 자식이라 부모 스케일을 물려받으므로
+            // 그만큼 나눠 준다 — 안 그러면 작게 그려진 아이콘을 따라 받침까지 쪼그라든다.
+            float scale = ScaleToFit(visual.Background, visual.BackgroundSize);
+            go.transform.localScale = Vector3.one * (parentScale > 0f ? scale / parentScale : scale);
 
             var renderer = go.AddComponent<SpriteRenderer>();
             renderer.sprite = visual.Background;
             renderer.color = visual.BackgroundColor;
             renderer.sortingOrder = -1;
+        }
+
+        /// <summary>그림이 <paramref name="target"/> 월드 크기 안에 꽉 들어가게 하는 스케일 (비율 유지).</summary>
+        private static float ScaleToFit(Sprite sprite, float target)
+        {
+            if (target <= 0f)
+                target = 1f;
+            if (sprite == null)
+                return target;
+
+            Vector2 size = sprite.bounds.size;
+            float longest = Mathf.Max(size.x, size.y);
+            return longest > 0f ? target / longest : target;
         }
 
         /// <summary>
@@ -90,25 +120,18 @@ namespace ChainRiposte.Game.Puzzle
             RefreshColor();
         }
 
-        /// <summary>보스 타일의 듀얼 카운트다운 표시 ("남은초|남은턴").</summary>
-        public void SetCountdown(float seconds, int turns)
-        {
-            if (_countdownText == null)
-                _countdownText = CreateCountdownText();
-
-            _countdownText.text = Localization.Loc.GetText("puzzle.countdown", Mathf.CeilToInt(seconds), turns);
-        }
-
-        /// <summary>기믹 상태(사슬/폭탄)를 타일에 반영한다 (GDD §3.6).</summary>
-        public void ApplyStatus(Tile tile, Sprite chainSprite)
+        /// <summary>기믹 상태(사슬/폭탄/성남)를 타일에 반영한다 (GDD §3.6).</summary>
+        public void ApplyStatus(Tile tile, Sprite chainSprite, Color enrageTint)
         {
             SetChained(tile.Status.Chained, chainSprite);
             SetBombTurns(tile.Status.BombTurnsRemaining);
+            SetEnrageTurns(tile.Status.EnrageTurnsRemaining, enrageTint);
         }
 
         /// <summary>시한폭탄 남은 턴 표시. 0 이하면 표시를 지운다 (해체/폭발).</summary>
         public void SetBombTurns(int turns)
         {
+            _hasBombText = turns > 0;
             if (turns <= 0)
             {
                 if (_countdownText != null)
@@ -121,6 +144,55 @@ namespace ChainRiposte.Game.Puzzle
 
             _countdownText.color = new Color(1f, 0.45f, 0.35f);
             _countdownText.text = turns.ToString();
+        }
+
+        /// <summary>
+        /// 성난 몬스터 표시 — 공격까지 남은 턴 + 몸통 틴트. 0 이하면 평범한 타일로 되돌린다.
+        /// <b>틴트까지 거는 이유</b>: 숫자만으로는 보드를 훑을 때 안 읽힌다. 색이 있어야
+        /// "저놈부터 없앤다"는 판단이 한눈에 선다.
+        /// </summary>
+        public void SetEnrageTurns(int turns, Color enrageTint)
+        {
+            bool enraged = turns > 0;
+            if (_enraged != enraged)
+            {
+                _enraged = enraged;
+                _enrageTint = enrageTint;
+                RefreshColor();
+            }
+
+            if (!enraged)
+            {
+                if (_countdownText != null && !_hasBombText)
+                    _countdownText.text = string.Empty;
+                return;
+            }
+
+            if (_countdownText == null)
+                _countdownText = CreateCountdownText();
+
+            // 폭탄 숫자가 이미 자리를 쓰고 있으면 그쪽을 덮지 않는다 — 둘 다 걸린 타일은 폭탄이 더 급하다.
+            if (_hasBombText)
+                return;
+
+            _countdownText.color = enrageTint;
+            _countdownText.text = turns.ToString();
+        }
+
+        /// <summary>성난 몬스터가 때린 순간 한 번 튄다 — HP가 왜 깎였는지가 보드에서 읽혀야 한다.</summary>
+        public IEnumerator PunchOnce()
+        {
+            Vector3 baseScale = transform.localScale;
+            const float duration = 0.18f;
+
+            for (float t = 0f; t < duration; t += Time.deltaTime)
+            {
+                float k = 1f + 0.25f * Mathf.Sin(t / duration * Mathf.PI);
+                transform.localScale = baseScale * k;
+                yield return null;
+            }
+
+            transform.localScale = baseScale;
         }
 
         /// <summary>사슬 결박 표시 — 스프라이트를 주면 그걸 쓰고, 없으면 어두운 띠로 대체한다.</summary>
@@ -209,9 +281,12 @@ namespace ChainRiposte.Game.Puzzle
                 return;
             }
 
-            _renderer.color = _maxHp > 0
+            Color color = _maxHp > 0
                 ? Color.Lerp(Color.black, _baseColor, 0.4f + 0.6f * _remainingHp / _maxHp)
                 : _baseColor;
+
+            // 성난 놈은 원래 색과 섞어 물들인다 — 통째로 갈아치우면 무슨 몬스터인지 못 알아본다.
+            _renderer.color = _enraged ? Color.Lerp(color, _enrageTint, 0.6f) : color;
         }
     }
 }

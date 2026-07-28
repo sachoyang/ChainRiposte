@@ -36,6 +36,12 @@ namespace ChainRiposte.Core.Stats
         public float ParryWindowSeconds =>
             _config.BaseParryWindowSeconds + _config.ParryWindowPerLevelSeconds * GetStatLevel(StatType.Parry);
 
+        /// <summary>
+        /// 아무것도 안 찍은 상태의 판정 폭. 뷰가 <b>노트 원의 두께</b>를 이 값에 맞춰 굽는다 —
+        /// "기본 상태에서 회색 띠와 흰 원이 같은 두께"가 성립해야 겹침이 곧 판정으로 읽힌다.
+        /// </summary>
+        public float BaseParryWindowSeconds => _config.BaseParryWindowSeconds;
+
         /// <summary>공격 커밋 시간 — 스탯이 아닌 고정 템포 값이지만 전투가 참조하는 단일 창구를 유지한다.</summary>
         public float AttackCommitSeconds => _config.AttackCommitSeconds;
 

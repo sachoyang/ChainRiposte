@@ -74,33 +74,25 @@ namespace ChainRiposte.Game.Puzzle
             _engine = new PuzzleEngine(_stageConfig, _intrusion.Spawner);
             _intrusion.AttachBoard(_engine.Board);
 
-            _engine.TurnsChanged += _intrusion.OnTurnConsumed;
-            _intrusion.CountdownChanged += boardView.UpdateBossCountdown;
+            _intrusion.EngageTimerChanged += hud.SetBossTimer;
             _intrusion.Engage += OnBossEngage;
 
             boardView.Build(_engine.Board);
             cameraFit.FitTo(boardView.WorldBounds);
-            hud.Bind(gameManager.Session, _engine);
+            hud.Bind(gameManager.Session, _engine, gameManager);
             if (juice != null)
                 juice.BindPuzzle(boardView, _intrusion.Spawner);
             input.SetActive(true);
         }
 
-        private void OnBossEngage(Tile bossTile, bool ambush)
+        /// <summary>
+        /// 보스전 돌입 — 판 시계 만료(<paramref name="bossTile"/>가 null)이거나 보스 타일이 바닥에 닿았을 때.
+        /// <b>어느 쪽도 페널티가 없다.</b> 퍼즐에서 성난 몬스터에게 맞아 깎인 HP가 그대로 전투로 이어지는 것이
+        /// 곧 "퍼즐을 못 풀었을 때의 처벌"이다 — 예전의 기습 반토막 규칙을 대체한다.
+        /// </summary>
+        private void OnBossEngage(Tile bossTile)
         {
             input.SetActive(false);
-
-            if (ambush)
-            {
-                // 기습 페널티: 현재 HP를 배율만큼 깎는다 (기본 0.5 = 반토막)
-                var health = gameManager.Session.Health;
-                int damage = Mathf.CeilToInt(health.Current * (1f - _stageConfig.AmbushHpMultiplier));
-                if (health.ApplyDamage(damage))
-                {
-                    gameManager.Session.EndStage(victory: false);
-                    return;
-                }
-            }
 
             // 곧바로 전투로 넘기지 않는다 — 파밍한 포인트를 쓸 시간을 먼저 준다 (시간 제한 없음)
             gameManager.Session.StartIntermission();

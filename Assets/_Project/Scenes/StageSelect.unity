@@ -2293,9 +2293,11 @@ MonoBehaviour:
   startButton: {fileID: 1433097226}
   bossPortrait: {fileID: 1121759316}
   silhouetteTint: {r: 0, g: 0, b: 0, a: 0.85}
+  economyConfig: {fileID: 11400000, guid: 2855227397a00ef4095e2a08cddc98e8, type: 2}
   moveSpeed: 6
   characterOffset: {x: 0, y: 0, z: 0}
   clickRadius: 0.8
+  pathClickRadius: 1.2
   cameraPadding: 1.5
   pathSmoothing: 8
   blockedBumpRatio: 0.35
@@ -3442,7 +3444,7 @@ RectTransform:
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
   m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 1138.42, y: 630.87445}
+  m_SizeDelta: {x: 1138.2645, y: 630.78827}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1028906507
 MonoBehaviour:

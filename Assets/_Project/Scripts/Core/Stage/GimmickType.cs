@@ -14,5 +14,12 @@ namespace ChainRiposte.Core.Stage
 
         /// <summary>사슬 결박 — 타일이 스왑/낙하 불가로 고정. 매치 또는 인접 매칭으로 해제.</summary>
         LockedTiles = 2,
+
+        /// <summary>
+        /// 성난 몬스터 — 보드의 잡몹이 카운트다운 후 플레이어를 때린다. 매치로 없애면 취소.
+        /// <b>다른 셋과 달리 상시 규칙이다</b> — 스테이지 목록에 없어도 항상 켜지고,
+        /// 세기는 <see cref="GimmickSettings.EnrageChance"/>로 조절한다(0이면 사실상 꺼짐).
+        /// </summary>
+        EnragedMonsters = 3,
     }
 }

@@ -15,6 +15,10 @@ namespace ChainRiposte.Game.Config
         [Tooltip("벽 등 내구도형 타일의 최대 HP (일반 타일은 0)")]
         [SerializeField, Min(0)] private int maxHp;
 
+        [Tooltip("이 몬스터가 성났을 때 때리는 피해. 0이면 스테이지의 공용값(성난 몬스터 ▸ 기본 피해)을 쓴다. " +
+            "해골은 세게, 슬라임은 약하게 같은 차등을 주고 싶을 때만 적으면 된다.")]
+        [SerializeField, Min(0)] private int attackDamage;
+
         [Header("프로토타입 비주얼 (에셋 단계에서 교체)")]
         [SerializeField] private Color placeholderColor = Color.white;
         [SerializeField] private Sprite sprite;
@@ -35,6 +39,6 @@ namespace ChainRiposte.Game.Config
 
         /// <summary>동일 SO는 항상 같은 TileDefinition 인스턴스를 반환한다 (뷰 매핑 키로 사용 가능).</summary>
         public TileDefinition ToDefinition() =>
-            _cached ??= new TileDefinition(name, category, baseSouls, maxHp);
+            _cached ??= new TileDefinition(name, category, baseSouls, maxHp, attackDamage);
     }
 }

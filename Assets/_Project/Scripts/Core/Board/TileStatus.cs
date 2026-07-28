@@ -13,5 +13,13 @@ namespace ChainRiposte.Core.Board
         public int BombTurnsRemaining;
 
         public bool IsBomb => BombTurnsRemaining > 0;
+
+        /// <summary>
+        /// 성난 몬스터 — 공격까지 남은 턴. 0이면 평범한 타일이다.
+        /// 폭탄과 달리 <b>때린 뒤에도 사라지지 않고 재장전</b>한다. 없애는 방법은 매치뿐이다.
+        /// </summary>
+        public int EnrageTurnsRemaining;
+
+        public bool IsEnraged => EnrageTurnsRemaining > 0;
     }
 }

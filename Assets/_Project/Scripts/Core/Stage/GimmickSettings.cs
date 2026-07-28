@@ -32,5 +32,24 @@ namespace ChainRiposte.Core.Stage
 
         /// <summary>새로 스폰되는 몬스터 타일이 결박될 확률 (0~1).</summary>
         public float ChainChance = 0.08f;
+
+        // ── 성난 몬스터 (상시) ──
+        /// <summary>
+        /// 매 턴 몬스터 하나가 새로 성날 확률 (0~1). <b>0이면 잡몹 공격이 꺼진다.</b>
+        /// 한 턴에 최대 하나만 성나므로 갑자기 도배되지 않는다.
+        /// </summary>
+        public float EnrageChance = 0.35f;
+
+        /// <summary>턴이 지날수록 성날 확률에 더해지는 양. 0이면 처음부터 끝까지 같은 압박.</summary>
+        public float EnrageChanceRampPerTurn = 0.01f;
+
+        /// <summary>성난 뒤 때리기까지의 턴 수. 이 안에 매치로 없애면 취소된다.</summary>
+        public int EnrageTurns = 3;
+
+        /// <summary>성난 몬스터가 때리는 기본 피해. 타일 종류가 자기 공격력을 적었으면 그쪽이 이긴다.</summary>
+        public int EnrageDamage = 8;
+
+        /// <summary>동시에 성날 수 있는 최대 수 — 보드가 통째로 성나 손쓸 수 없게 되는 것을 막는다.</summary>
+        public int MaxEnragedTiles = 3;
     }
 }

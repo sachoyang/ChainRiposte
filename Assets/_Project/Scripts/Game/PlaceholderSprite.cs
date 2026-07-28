@@ -10,6 +10,7 @@ namespace ChainRiposte.Game
 
         private static Sprite _square;
         private static Sprite _ring;
+        private static Sprite _slash;
         // 두께가 다른 띠를 매 프레임 새로 굽지 않도록 비율별로 캐시한다.
         private static readonly Dictionary<int, Sprite> Annuli = new();
 
@@ -34,7 +35,7 @@ namespace ChainRiposte.Game
         public static Sprite Annulus(float innerRatio)
         {
             // 0.01 단위로 반올림해 캐시 — 스탯이 바뀔 때만 새로 굽는다.
-            int key = Mathf.Clamp(Mathf.RoundToInt(innerRatio * 100f), 0, 99);
+            int key = RatioKey(innerRatio);
             if (!Annuli.TryGetValue(key, out Sprite sprite) || sprite == null)
             {
                 sprite = CreateRing(RingResolution, key / 100f);
@@ -42,6 +43,67 @@ namespace ChainRiposte.Game
             }
 
             return sprite;
+        }
+
+        /// <summary>
+        /// <see cref="Annulus"/>가 실제로 구워 주는 비율. 캐시가 0.01 단위로 반올림하므로,
+        /// <b>그림의 두께를 계산에 쓰는 쪽</b>은 원하는 값이 아니라 이 값을 써야 보이는 것과 판정이 어긋나지 않는다.
+        /// </summary>
+        public static float QuantizeRatio(float innerRatio) => RatioKey(innerRatio) / 100f;
+
+        private static int RatioKey(float innerRatio) =>
+            Mathf.Clamp(Mathf.RoundToInt(innerRatio * 100f), 0, 99);
+
+        /// <summary>
+        /// 검기 띠 — <b>가운데가 굵고 양 끝이 뾰족하게 모이는 눈(렌즈) 모양</b>.
+        ///
+        /// <para>사각형을 늘려 쓰면 끝이 일자로 뚝 끊겨 "그어진 자국"이 아니라 "막대"로 보인다.
+        /// 프로파일을 <c>(1 − x²)^p</c> 로 잡는 것이 요점인데, 이 곡선은 끝점에서 <b>기울기가 유한</b>해
+        /// 뾰족하게 모인다. 원/타원(<c>√(1 − x²)</c>)을 쓰면 끝에서 접선이 수직이라 오히려 뭉툭해진다.</para>
+        ///
+        /// <para>가로로 누운 그림이다 — 방향은 <c>SlashView</c>가 회전으로 맞춘다.</para>
+        /// </summary>
+        public static Sprite Slash
+        {
+            get
+            {
+                if (_slash == null)
+                    _slash = CreateSlash(width: 256, height: 64, tipSharpness: 1.25f);
+                return _slash;
+            }
+        }
+
+        private static Sprite CreateSlash(int width, int height, float tipSharpness)
+        {
+            var texture = new Texture2D(width, height, TextureFormat.RGBA32, mipChain: false)
+            {
+                filterMode = FilterMode.Bilinear,
+                wrapMode = TextureWrapMode.Clamp,
+            };
+
+            var pixels = new Color32[width * height];
+            float halfHeight = (height - 1) * 0.5f;
+
+            for (int x = 0; x < width; x++)
+            {
+                // 가로 위치를 -1..1 로. 이 자리에서의 반두께가 곧 렌즈의 윤곽이다.
+                float nx = (x / (float)(width - 1)) * 2f - 1f;
+                float profile = Mathf.Pow(Mathf.Max(0f, 1f - nx * nx), tipSharpness);
+                float reach = profile * halfHeight;
+
+                for (int y = 0; y < height; y++)
+                {
+                    float dy = Mathf.Abs(y - halfHeight);
+                    // 경계를 1픽셀 폭으로 부드럽게 — 얇아지는 끝에서 계단이 제일 잘 보인다
+                    float alpha = Mathf.Clamp01(reach - dy);
+                    pixels[y * width + x] = new Color32(255, 255, 255, (byte)(alpha * 255f));
+                }
+            }
+
+            texture.SetPixels32(pixels);
+            texture.Apply(updateMipmaps: false);
+
+            return Sprite.Create(texture, new Rect(0f, 0f, width, height), new Vector2(0.5f, 0.5f), width);
         }
 
         /// <param name="innerRatio">안쪽 구멍의 반지름 / 바깥 반지름. 0이면 꽉 찬 원.</param>

@@ -546,6 +546,8 @@ namespace ChainRiposte.Editor
                 "WORLD {0}   BOARD {1}x{2}   TURNS {3}\\nBOSS  {4}\\nHAZARD  {5}");
             Row(builder, "map.unknown", "???", "???");
             Row(builder, "map.hazard.none", "없음", "NONE");
+            Row(builder, "map.vein.remaining", "남은 소울  {0} / {1}", "SOULS LEFT  {0} / {1}");
+            Row(builder, "map.vein.depleted", "이 땅의 소울은 모두 거뒀다", "THIS LAND IS SPENT");
 
             // 기믹 이름 (GDD 3.6)
             Row(builder, "gimmick.corruption", "전염", "CORRUPTION");
@@ -556,6 +558,8 @@ namespace ChainRiposte.Editor
             Row(builder, "puzzle.hp", "체력 {0}/{1}", "HP {0}/{1}");
             Row(builder, "puzzle.turns", "턴 {0}", "TURNS {0}");
             Row(builder, "puzzle.souls", "Lv {0}   영혼석 {1}/{2}   포인트 {3}", "Lv {0}   Souls {1}/{2}   Points {3}");
+            Row(builder, "puzzle.vein.remaining", "남은 소울 {0}", "SOULS LEFT {0}");
+            Row(builder, "puzzle.vein.depleted", "이 땅의 소울은 모두 거뒀다", "THIS LAND IS SPENT");
             Row(builder, "puzzle.stats",
                 "공격 {0:0}   방어 {1:0}   패링 {2:0.00}초",
                 "ATK {0:0}   DEF {1:0}   PARRY {2:0.00}s");
@@ -590,7 +594,7 @@ namespace ChainRiposte.Editor
             Row(builder, "character.sekiro", "낭인", "WANDERER");
             Row(builder, "character.sekiro.desc", "공격과 패링 판정이 조금 더 넓다. 무녀가 곁을 지킨다.",
                 "A little more attack and a wider parry. A shrine maiden watches over them.");
-            Row(builder, "puzzle.countdown", "{0}초|{1}턴", "{0}s|{1}t");
+            Row(builder, "puzzle.bossTimer", "보스까지 {0}초", "BOSS IN {0}s");
 
             // 전투
             Row(builder, "combat.boss", "보스", "BOSS");

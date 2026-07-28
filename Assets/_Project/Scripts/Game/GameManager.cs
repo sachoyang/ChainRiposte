@@ -22,6 +22,24 @@ namespace ChainRiposte.Game
         private RunEconomyConfig _economy;
         // 사슬 배수는 이 판에 들어온 시점 값으로 고정한다 — 판 도중에 바뀌지 않는다(승리 시에만 오른다).
         private int _chainStepAtEntry;
+        // 이 판에 들어온 시점의 광맥 잔량. 판 도중에는 이 값에서 깎아 나가고, 클리어해야 세이브에 확정된다.
+        private int _remainingSoulsAtEntry;
+        private int _harvestedThisRun;
+
+        /// <summary>
+        /// 이 스테이지에 아직 남아 있는 소울(광맥 잔량). 무제한이면 <see cref="int.MaxValue"/>.
+        /// HUD가 "이 땅의 넋을 다 거뒀다"를 띄우는 근거다.
+        /// </summary>
+        public int RemainingStageSouls => Mathf.Max(0, _remainingSoulsAtEntry - _harvestedThisRun);
+
+        /// <summary>이 스테이지에 매장량이 정해져 있는가 — false면 광맥 개념이 꺼진 것이라 UI도 아무 말 안 한다.</summary>
+        public bool HasSoulBudget => _remainingSoulsAtEntry != int.MaxValue;
+
+        /// <summary>광맥이 말랐다 — 더 캐도 소울이 안 나온다.</summary>
+        public bool StageSoulsDepleted => HasSoulBudget && RemainingStageSouls <= 0;
+
+        /// <summary>광맥 잔량이 바뀔 때 — HUD 갱신 훅. (남은 양)</summary>
+        public event System.Action<int> RemainingStageSoulsChanged;
 
         public GameSession Session { get; private set; }
 
@@ -54,6 +72,9 @@ namespace ChainRiposte.Game
 
             _economy = economyConfig != null ? economyConfig.ToConfig() : new RunEconomyConfig();
             _chainStepAtEntry = RunStateService.Current.ChainStep;
+            _remainingSoulsAtEntry = _economy.RemainingSouls(
+                stageData.SoulBudget, RunStateService.Current.GetHarvested(stageData.StageId));
+            _harvestedThisRun = 0;
         }
 
         private void Start()
@@ -62,11 +83,28 @@ namespace ChainRiposte.Game
         }
 
         /// <summary>
-        /// 매치로 번 소울에 런 경제(인컴 배수 + 이 판의 사슬 배수)를 적용한 최종 획득량.
-        /// 퍼즐이 <see cref="Core.Stats.PlayerStats.AddSouls"/>에 넣기 전에 이걸 통과시킨다.
+        /// 매치로 번 소울에 런 경제(인컴 배수 + 이 판의 사슬 배수)를 적용하고, <b>남은 광맥만큼으로 자른</b>
+        /// 최종 획득량. 퍼즐이 <see cref="Core.Stats.PlayerStats.AddSouls"/>에 넣기 전에 이걸 통과시킨다.
+        ///
+        /// <para>소울이 지나는 창구가 여기 하나뿐이라 자르는 지점도 하나다 — 매치·콤보·기믹 어디서 왔든
+        /// 광맥을 넘길 수 없다. 다만 <b>확정은 클리어할 때</b>다(<see cref="SaveRunProgress"/>) —
+        /// 죽으면 그 판의 벌이가 통째로 무효이므로 캔 양도 남으면 안 된다.</para>
         /// </summary>
-        public int ScaleSoulIncome(int rawSouls) =>
-            (_economy ?? new RunEconomyConfig()).ScaleSoulIncome(rawSouls, _chainStepAtEntry);
+        public int ScaleSoulIncome(int rawSouls)
+        {
+            int scaled = (_economy ?? new RunEconomyConfig()).ScaleSoulIncome(rawSouls, _chainStepAtEntry);
+            if (!HasSoulBudget)
+                return scaled;
+
+            int granted = Mathf.Clamp(scaled, 0, RemainingStageSouls);
+            if (granted > 0)
+            {
+                _harvestedThisRun += granted;
+                RemainingStageSoulsChanged?.Invoke(RemainingStageSouls);
+            }
+
+            return granted;
+        }
 
         /// <summary>
         /// 공용 밸런스 + 고른 캐릭터의 특화. 캐릭터가 없으면(Main 단독 실행 등) 공용 값 그대로다.
@@ -109,9 +147,12 @@ namespace ChainRiposte.Game
         }
 
         /// <summary>
-        /// 런 상태를 세이브에 반영한다. 클리어면 이번 판의 성장을 이어받고 사슬을 한 칸 잇는다.
-        /// 패배면 <b>성장은 다시 저장하지 않고</b>(직전 클리어 지점 유지) 사슬만 끊는다 —
-        /// 죽은 판에서 파밍한 소울을 은행에 넣지 않기 위해서다(§5 보스 재도전과 이어진다).
+        /// 런 상태를 세이브에 반영한다. 클리어면 이번 판의 성장을 이어받고, 캔 소울을 광맥에서 덜어내고,
+        /// 사슬을 한 칸 잇는다.
+        ///
+        /// <para>패배면 <b>아무것도 저장하지 않고</b>(직전 클리어 지점 유지) 사슬만 끊는다 —
+        /// 성장도 채굴량도 남지 않으므로 "죽으면 그 판은 없던 일"이 규칙 하나로 유지된다(§5).
+        /// 둘 중 하나만 남기면 죽을수록 그 스테이지가 가난해지는 이중 처벌이 된다.</para>
         /// </summary>
         private void SaveRunProgress(bool cleared)
         {
@@ -119,6 +160,7 @@ namespace ChainRiposte.Game
             if (cleared)
             {
                 run.UpdateStats(Session.Stats.Capture());
+                run.Harvest(stageData.StageId, _harvestedThisRun);
                 run.AdvanceChain();
             }
             else

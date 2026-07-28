@@ -33,6 +33,9 @@ namespace ChainRiposte.Core.Tests
         {
             StageConfig config = TestUtils.Config(Plain3x3);
             config.Gimmicks = new[] { gimmick };
+            // 성난 몬스터는 상시 기믹이라 목록과 무관하게 붙는다. 다른 기믹을 재는 판에서는
+            // 그 무작위 피해가 섞이지 않도록 꺼 둔다 (성난 몬스터 자체는 아래 전용 테스트에서 잰다).
+            settings.EnrageChance = 0f;
             config.GimmickSettings = settings;
             return config;
         }
@@ -47,6 +50,117 @@ namespace ChainRiposte.Core.Tests
             foreach (GridPos pos in board.ActivePositions())
                 board.PlaceTile(pos, new Tile(definition));
             return board;
+        }
+
+        // ── 성난 몬스터 (상시) ──
+
+        private static GimmickSettings EnrageSettings(float chance, int turns = 2, int damage = 7, int max = 3) =>
+            new()
+            {
+                EnrageChance = chance,
+                EnrageChanceRampPerTurn = 0f,
+                EnrageTurns = turns,
+                EnrageDamage = damage,
+                MaxEnragedTiles = max,
+            };
+
+        private static int CountEnraged(BoardGrid board)
+        {
+            int count = 0;
+            foreach (GridPos pos in board.ActivePositions())
+            {
+                Tile tile = board.GetTile(pos);
+                if (tile != null && tile.Status.IsEnraged)
+                    count++;
+            }
+            return count;
+        }
+
+        [Test]
+        public void 성난_몬스터는_한_턴에_하나씩만_늘어난다()
+        {
+            BoardGrid board = FilledBoard(Plain3x3, S);
+            GimmickContext context = Context(board, EnrageSettings(chance: 1f));
+            var gimmick = new EnragedMonstersGimmick();
+
+            gimmick.OnTurnEnded(context);
+            Assert.That(CountEnraged(board), Is.EqualTo(1), "확률 1이라도 한 턴에 하나");
+
+            gimmick.OnTurnEnded(context);
+            Assert.That(CountEnraged(board), Is.EqualTo(2));
+        }
+
+        [Test]
+        public void 동시_상한을_넘겨_성나지_않는다()
+        {
+            BoardGrid board = FilledBoard(Plain3x3, S);
+            GimmickContext context = Context(board, EnrageSettings(chance: 1f, turns: 99, max: 2));
+            var gimmick = new EnragedMonstersGimmick();
+
+            for (int i = 0; i < 6; i++)
+                gimmick.OnTurnEnded(context);
+
+            Assert.That(CountEnraged(board), Is.EqualTo(2), "보드가 통째로 성나지 않는다");
+        }
+
+        [Test]
+        public void 카운트가_0이_되면_때리고_재장전한다()
+        {
+            BoardGrid board = FilledBoard(Plain3x3, S);
+            GimmickContext context = Context(board, EnrageSettings(chance: 1f, turns: 2, damage: 7, max: 1));
+            var gimmick = new EnragedMonstersGimmick();
+
+            context.BeginTurn();
+            gimmick.OnTurnEnded(context); // 성남 (남은 2) — 갓 성난 턴에는 안 줄어든다
+            Assert.That(context.PlayerDamage, Is.EqualTo(0));
+
+            context.BeginTurn();
+            gimmick.OnTurnEnded(context); // 남은 1
+            Assert.That(context.PlayerDamage, Is.EqualTo(0));
+
+            context.BeginTurn();
+            gimmick.OnTurnEnded(context); // 0 → 공격
+            Assert.That(context.PlayerDamage, Is.EqualTo(7), "플레이어 HP를 직접 깎는다");
+            Assert.That(CountEnraged(board), Is.EqualTo(1), "때린 뒤에도 사라지지 않고 재장전한다");
+        }
+
+        [Test]
+        public void 타일_종류가_적은_공격력이_공용값을_이긴다()
+        {
+            var brute = new TileDefinition("Brute", TileCategory.Monster, baseSouls: 10, maxHp: 0, attackDamage: 25);
+            BoardGrid board = FilledBoard(Plain3x3, brute);
+            GimmickContext context = Context(board, EnrageSettings(chance: 1f, turns: 1, damage: 7, max: 1));
+            var gimmick = new EnragedMonstersGimmick();
+
+            context.BeginTurn();
+            gimmick.OnTurnEnded(context); // 성남 (남은 1)
+            context.BeginTurn();
+            gimmick.OnTurnEnded(context); // 0 → 공격
+
+            Assert.That(context.PlayerDamage, Is.EqualTo(25));
+        }
+
+        [Test]
+        public void 확률이_0이면_잡몹_공격이_꺼진다()
+        {
+            BoardGrid board = FilledBoard(Plain3x3, S);
+            GimmickContext context = Context(board, EnrageSettings(chance: 0f));
+            var gimmick = new EnragedMonstersGimmick();
+
+            for (int i = 0; i < 10; i++)
+                gimmick.OnTurnEnded(context);
+
+            Assert.That(CountEnraged(board), Is.EqualTo(0));
+            Assert.That(context.PlayerDamage, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void 성난_몬스터는_상시라_기믹_목록이_비어도_붙는다()
+        {
+            IReadOnlyList<IStageGimmick> gimmicks = GimmickFactory.CreateAll(Array.Empty<GimmickType>());
+
+            Assert.That(gimmicks.Count, Is.EqualTo(1));
+            Assert.That(gimmicks[0].Type, Is.EqualTo(GimmickType.EnragedMonsters));
         }
 
         // ── 사슬 결박 ──
@@ -243,7 +357,10 @@ namespace ChainRiposte.Core.Tests
         [Test]
         public void 기믹이_없으면_결과에_기믹_기록이_없다()
         {
-            PuzzleEngine engine = CreateEngine(TestUtils.Config(Plain3x3));
+            // 성난 몬스터는 상시라 목록이 비어도 붙는다 — '기믹이 없는 판'을 재려면 확률을 0으로 둬야 한다.
+            StageConfig config = TestUtils.Config(Plain3x3);
+            config.GimmickSettings.EnrageChance = 0f;
+            PuzzleEngine engine = CreateEngine(config);
 
             SwapResult result = engine.TrySwap(new GridPos(2, 0), new GridPos(2, 1));
 

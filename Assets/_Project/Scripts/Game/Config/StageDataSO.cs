@@ -47,6 +47,10 @@ namespace ChainRiposte.Game.Config
         [Tooltip("물약 타일 1개 매치당 HP 회복량")]
         [SerializeField, Min(0)] private int potionHealAmount = 10;
 
+        [Tooltip("소울 매장량 — 이 스테이지에서 한 런 동안 캘 수 있는 소울 총량(광맥). " +
+            "다 캐면 재방문해도 더 안 나온다. 0이면 Run Economy Config 의 기본값으로 떨어진다.")]
+        [SerializeField, Min(0)] private int soulBudget;
+
         [Header("타일 스폰 가중치 (리필 시 추첨 확률)")]
         [SerializeField] private SpawnWeightEntry[] spawnWeights = Array.Empty<SpawnWeightEntry>();
 
@@ -56,12 +60,12 @@ namespace ChainRiposte.Game.Config
         [Tooltip("x = 퍼즐 경과 시간(초)")]
         [SerializeField] private AnimationCurve bossChanceBySeconds = AnimationCurve.Linear(45f, 0f, 180f, 0.3f);
 
-        [Tooltip("보스 타일별 듀얼 카운트다운 — 실시간 초")]
-        [SerializeField, Min(1f)] private float bossCountdownSeconds = 20f;
-        [Tooltip("보스 타일별 듀얼 카운트다운 — 잔여 턴")]
-        [SerializeField, Min(1)] private int bossCountdownTurns = 8;
-        [Tooltip("기습 돌입 시 시작 HP 배율 (0.5 = 반토막)")]
-        [SerializeField, Range(0.1f, 1f)] private float ambushHpMultiplier = 0.5f;
+        [Tooltip("판 전체 시계 — 퍼즐 시작 후 이 시간이 지나면 보스 타일과 무관하게 보스전에 돌입한다. " +
+            "0이면 시계를 끄고 보스 타일이 내려올 때까지 기다린다. (페널티 없음 — 깎인 HP가 그대로 이어지는 것이 처벌)")]
+        [SerializeField, Min(0f)] private float bossEngageSeconds = 90f;
+        [Tooltip("보드 위 보스 타일 동시 최대 개수. 스폰 확률은 리필 타일 하나하나에 굴려지므로, " +
+            "이 상한이 없으면 한 웨이브에 여러 개가 쏟아져 보드가 도배된다.")]
+        [SerializeField, Min(1)] private int maxLiveBossTiles = 1;
 
         [Header("전투 (7단계)")]
         [Tooltip("이 스테이지에 난입하는 보스")]
@@ -108,6 +112,19 @@ namespace ChainRiposte.Game.Config
             [Tooltip("새로 스폰되는 몬스터가 결박될 확률")]
             [Range(0f, 1f)] public float chainChance = 0.08f;
 
+            [Header("성난 몬스터 (상시 — 위 목록과 무관하게 항상 켜짐)")]
+            [Tooltip("매 턴 몬스터 하나가 새로 성날 확률. 0이면 잡몹 공격이 꺼진다. " +
+                "한 턴에 최대 하나만 성나므로 갑자기 도배되지 않는다.")]
+            [Range(0f, 1f)] public float enrageChance = 0.35f;
+            [Tooltip("턴이 지날수록 성날 확률에 더해지는 양. 0이면 처음부터 끝까지 같은 압박")]
+            [Range(0f, 0.1f)] public float enrageChanceRampPerTurn = 0.01f;
+            [Tooltip("성난 뒤 때리기까지의 턴 수. 이 안에 매치로 없애면 취소된다")]
+            [Min(1)] public int enrageTurns = 3;
+            [Tooltip("성난 몬스터가 때리는 기본 피해. 타일 종류가 자기 공격력을 적었으면 그쪽이 이긴다")]
+            [Min(0)] public int enrageDamage = 8;
+            [Tooltip("동시에 성날 수 있는 최대 수 — 보드가 통째로 성나 손쓸 수 없게 되는 것을 막는다")]
+            [Min(0)] public int maxEnragedTiles = 3;
+
             public GimmickSettings ToSettings() => new()
             {
                 CorruptionSeeds = corruptionSeeds,
@@ -118,11 +135,22 @@ namespace ChainRiposte.Game.Config
                 BombDamage = bombDamage,
                 ChainInitialCount = chainInitialCount,
                 ChainChance = chainChance,
+                EnrageChance = enrageChance,
+                EnrageChanceRampPerTurn = enrageChanceRampPerTurn,
+                EnrageTurns = enrageTurns,
+                EnrageDamage = enrageDamage,
+                MaxEnragedTiles = maxEnragedTiles,
             };
         }
 
         /// <summary>진행도 세이브가 이 스테이지를 가리키는 이름 (GDD §9.2).</summary>
         public string StageId => string.IsNullOrWhiteSpace(stageId) ? name : stageId;
+
+        /// <summary>
+        /// 이 스테이지의 소울 매장량(광맥). 0이면 <see cref="Core.Progress.RunEconomyConfig.DefaultStageSoulBudget"/>로 떨어진다 —
+        /// 스테이지마다 적지 않아도 경제가 돌게 하기 위한 폴백이다.
+        /// </summary>
+        public int SoulBudget => soulBudget;
 
         /// <summary>월드맵 정보 표시용 — 보스 초상/이름을 읽는다 (Core의 BossConfig에는 스프라이트를 담을 수 없다).</summary>
         public BossDataSO BossData => bossData;
@@ -153,9 +181,8 @@ namespace ChainRiposte.Game.Config
                 SpawnWeights = weights,
                 BossChanceByScore = bossChanceByScore.Evaluate,
                 BossChanceBySeconds = bossChanceBySeconds.Evaluate,
-                BossCountdownSeconds = bossCountdownSeconds,
-                BossCountdownTurns = bossCountdownTurns,
-                AmbushHpMultiplier = ambushHpMultiplier,
+                BossEngageSeconds = bossEngageSeconds,
+                MaxLiveBossTiles = maxLiveBossTiles,
                 Boss = bossData != null ? bossData.ToConfig() : null,
                 Gimmicks = (GimmickType[])gimmicks.Clone(),
                 // 이 필드가 없던 시절의 에셋도 열 수 있게 방어 (순수 C# 클래스라 ?? 사용 가능)

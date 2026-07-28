@@ -22,6 +22,18 @@ namespace ChainRiposte.Core.Stage.Gimmicks
 
         /// <summary>매치/인접 매치로 사슬이 풀렸다 (타일은 살아남는다).</summary>
         ChainBroken = 5,
+
+        /// <summary>몬스터가 성났다 — 공격 예고 (Value = 남은 턴).</summary>
+        EnrageStarted = 6,
+
+        /// <summary>성난 몬스터의 카운트가 줄었다 (Value = 남은 턴).</summary>
+        EnrageTicked = 7,
+
+        /// <summary>성난 몬스터가 플레이어를 때렸다 (Value = 피해량). <b>타일은 남아서 재장전한다.</b></summary>
+        EnrageAttacked = 8,
+
+        /// <summary>매치로 성난 몬스터를 없앴다 — 공격이 취소됐다.</summary>
+        EnrageCleared = 9,
     }
 
     /// <summary>기믹 사건 1건. Core는 이벤트만 기록하고 연출/HP 반영은 상위 레이어가 한다.</summary>

@@ -118,5 +118,53 @@ namespace ChainRiposte.Core.Tests
             run.AdvanceChain();
             Assert.That(run.ChainStep, Is.EqualTo(2));
         }
+
+        [Test]
+        public void 채굴량은_스테이지별로_쌓인다()
+        {
+            RunState run = new();
+
+            Assert.That(run.GetHarvested("Stage_1_1"), Is.EqualTo(0), "안 가본 땅은 0");
+
+            run.Harvest("Stage_1_1", 120);
+            run.Harvest("Stage_1_1", 30);
+            run.Harvest("Stage_1_2", 50);
+
+            Assert.That(run.GetHarvested("Stage_1_1"), Is.EqualTo(150), "같은 스테이지는 누적");
+            Assert.That(run.GetHarvested("Stage_1_2"), Is.EqualTo(50), "다른 스테이지는 따로");
+        }
+
+        [Test]
+        public void 채굴량도_세이브를_왕복한다()
+        {
+            RunState run = new(chainStep: 3);
+            run.Harvest("Stage_1_1", 200);
+            run.Harvest("Stage_2_3", 75);
+
+            RunState restored = RunState.Deserialize(run.Serialize());
+
+            Assert.That(restored.GetHarvested("Stage_1_1"), Is.EqualTo(200));
+            Assert.That(restored.GetHarvested("Stage_2_3"), Is.EqualTo(75));
+            Assert.That(restored.ChainStep, Is.EqualTo(3), "기존 칸도 그대로");
+        }
+
+        [Test]
+        public void 광맥은_남은_만큼만_준다()
+        {
+            RunEconomyConfig economy = new() { DefaultStageSoulBudget = 300 };
+
+            Assert.That(economy.RemainingSouls(budget: 0, harvested: 0), Is.EqualTo(300), "기본값 폴백");
+            Assert.That(economy.RemainingSouls(budget: 500, harvested: 120), Is.EqualTo(380), "스테이지 값 우선");
+            Assert.That(economy.RemainingSouls(budget: 100, harvested: 250), Is.EqualTo(0), "넘게 캤어도 음수 아님");
+        }
+
+        [Test]
+        public void 매장량을_안_정하면_무제한이다()
+        {
+            RunEconomyConfig economy = new(); // 기본값 0 = 광맥 개념 끔
+
+            Assert.That(economy.ResolveBudget(0), Is.EqualTo(0), "0이면 무제한");
+            Assert.That(economy.RemainingSouls(budget: 0, harvested: 9999), Is.EqualTo(int.MaxValue));
+        }
     }
 }

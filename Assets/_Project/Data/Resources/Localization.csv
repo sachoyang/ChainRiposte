@@ -21,6 +21,8 @@ map.title.locked,스테이지 {0}  - 잠김,STAGE {0}  - LOCKED
 map.locked.body,잠김\n이전 스테이지를 먼저 클리어하세요,LOCKED\nCLEAR THE PREVIOUS STAGE FIRST
 map.info,월드 {0}   보드 {1}x{2}   턴 {3}\n보스  {4}\n위험  {5},WORLD {0}   BOARD {1}x{2}   TURNS {3}\nBOSS  {4}\nHAZARD  {5}
 map.unknown,???,???
+map.vein.remaining,남은 소울  {0} / {1},SOULS LEFT  {0} / {1}
+map.vein.depleted,이 땅의 소울은 모두 거뒀다,THIS LAND IS SPENT
 map.hazard.none,없음,NONE
 gimmick.corruption,전염,CORRUPTION
 gimmick.timebomb,시한폭탄,TIME BOMB
@@ -28,6 +30,8 @@ gimmick.chains,사슬 결박,CHAINS
 puzzle.hp,체력 {0}/{1},HP {0}/{1}
 puzzle.turns,턴 {0},TURNS {0}
 puzzle.souls,Lv {0}   영혼석 {1}/{2}   포인트 {3},Lv {0}   Souls {1}/{2}   Points {3}
+puzzle.vein.remaining,남은 소울 {0},SOULS LEFT {0}
+puzzle.vein.depleted,이 땅의 소울은 모두 거뒀다,THIS LAND IS SPENT
 puzzle.stats,공격 {0:0}   방어 {1:0}   패링 {2:0.00}초,ATK {0:0}   DEF {1:0}   PARRY {2:0.00}s
 puzzle.alloc.attack,+공격\nLv {0},+ATK\nLv {0}
 puzzle.alloc.defense,+방어\nLv {0},+DEF\nLv {0}
@@ -40,7 +44,7 @@ puzzle.banner.victory,스테이지 클리어,STAGE CLEAR
 puzzle.banner.defeat,패배,DEFEAT
 puzzle.banner.combat,보스!,BOSS!
 puzzle.banner.noMoves,둘 수 있는 수 없음 — 섞는 중,NO MOVES — SHUFFLING
-puzzle.countdown,{0}초|{1}턴,{0}s|{1}t
+puzzle.bossTimer,보스까지 {0}초,BOSS IN {0}s
 combat.boss,보스,BOSS
 combat.hp,체력 {0}/{1},HP {0}/{1}
 combat.posture,체간,POSTURE
