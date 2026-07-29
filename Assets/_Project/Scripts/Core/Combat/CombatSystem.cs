@@ -259,9 +259,35 @@ namespace ChainRiposte.Core.Combat
                 return;
             }
 
-            // 헛침 — 연타 방지 후딜레이
+            Whiff();
+        }
+
+        /// <summary>
+        /// 헛침 — 잠깐 잠기고(연타 방지), <b>보스는 그만큼 체간을 되찾는다</b>
+        /// (<see cref="BossConfig.WhiffPostureRecovery"/>).
+        ///
+        /// <para>잠금만 있으면 헛치는 비용이 0.35초뿐이라 <b>막 눌러도 손해가 없다</b> —
+        /// 판정을 읽는 게임이 아니라 연타 게임이 된다. 체간을 되돌려 놓아야 헛침이
+        /// "여태 쌓은 것을 무르는 일"이 된다.</para>
+        /// </summary>
+        private void Whiff()
+        {
             SetPlayerState(PlayerActionState.ParryRecovering);
             _playerTimer = _stats.ParryWhiffLockSeconds;
+            RecoverPosture(_config.WhiffPostureRecovery);
+        }
+
+        /// <summary>
+        /// 보스가 체간을 되찾는다(게이지가 내려간다). <b>이미 무너진 보스는 안 되돌린다</b> —
+        /// 인살을 기다리는 동안 헛쳤다고 보스가 일어서면 인살 자체를 놓칠 수 있다.
+        /// </summary>
+        private void RecoverPosture(float amount)
+        {
+            if (amount <= 0f || Posture <= 0f || BossState == BossActionState.Broken)
+                return;
+
+            Posture = Math.Max(0f, Posture - amount);
+            PostureChanged?.Invoke(Posture, _battle.MaxPosture);
         }
 
         private RuntimeNote FindInGrace()
@@ -335,8 +361,7 @@ namespace ChainRiposte.Core.Combat
             if (BossState == BossActionState.Telegraphing)
             {
                 // 날아오는 노트가 있는데 공격을 시도했다 — 빈 박까지 기다려야 한다
-                SetPlayerState(PlayerActionState.ParryRecovering);
-                _playerTimer = _stats.ParryWhiffLockSeconds;
+                Whiff();
                 return;
             }
 

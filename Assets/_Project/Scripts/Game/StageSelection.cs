@@ -21,13 +21,25 @@ namespace ChainRiposte.Game
         public static bool SelectedIsFinalLink;
 
         /// <summary>
-        /// 둘은 <b>항상 같이</b> 정해진다 — 스테이지만 바꾸고 깃발을 그대로 두면
-        /// 앞 판의 "마지막이었다"가 다음 판에 묻어 엉뚱한 곳에서 엔딩이 난다.
+        /// 고른 판이 사슬의 <b>몇 번째 고리</b>인가 (첫 판 = 0). 난이도 곡선의 입력이다
+        /// (<c>Docs/PROGRESSION.md</c> §2.5) — 보스 에셋을 스테이지들이 돌려 쓰므로,
+        /// 뒤로 갈수록 부풀리는 몫은 이 깊이가 정한다.
+        ///
+        /// <para>최종 고리 여부와 같은 이유로 <b>지도가 세어서 실어 보낸다</b> — 스테이지 목록은
+        /// 노드 순서로만 존재하고, Main 씬은 자기가 몇 번째인지 알 방법이 없다.</para>
         /// </summary>
-        public static void Select(StageDataSO stage, bool isFinalLink)
+        public static int SelectedLinkDepth;
+
+        /// <summary>
+        /// 셋은 <b>항상 같이</b> 정해진다 — 스테이지만 바꾸고 나머지를 그대로 두면
+        /// 앞 판의 "마지막이었다"·"몇 번째였다"가 다음 판에 묻어 엉뚱한 곳에서 엔딩이 나거나
+        /// 첫 판이 후반 난이도로 부푼다.
+        /// </summary>
+        public static void Select(StageDataSO stage, bool isFinalLink, int linkDepth)
         {
             Selected = stage;
             SelectedIsFinalLink = isFinalLink;
+            SelectedLinkDepth = linkDepth;
         }
     }
 }

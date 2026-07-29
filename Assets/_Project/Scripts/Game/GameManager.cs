@@ -17,6 +17,8 @@ namespace ChainRiposte.Game
         [SerializeField] private PlayerStatsConfigSO statsConfig;
         [Tooltip("런 경제(소울 인컴·사슬 배수). 비우면 기본값(배수 1)으로 동작한다 — Main 단독 실행 대비.")]
         [SerializeField] private RunEconomyConfigSO economyConfig;
+        [Tooltip("난이도 곡선(고리 깊이·NG+ 회차별 보스 배수). 비우면 배수 1 — 보스 에셋 값 그대로 싸운다.")]
+        [SerializeField] private DifficultyCurveSO difficultyCurve;
         [SerializeField] private StageDataSO stageData;
 
         private RunEconomyConfig _economy;
@@ -55,6 +57,19 @@ namespace ChainRiposte.Game
         /// </summary>
         public bool IsFinalLink { get; private set; }
 
+        /// <summary>
+        /// 이 판이 사슬의 몇 번째 고리인가 (첫 판 = 0). 지도가 세어 준 값이고,
+        /// 월드맵을 안 거친 Main 단독 실행이면 0이다.
+        /// </summary>
+        public int LinkDepth { get; private set; }
+
+        /// <summary>
+        /// 이 판에 적용된 보스 배수 — 이미 <see cref="StageConfig"/>의 보스에 곱해져 있다.
+        /// 디버그·HUD 표시용으로만 읽을 것(다시 곱하면 두 번 부푼다).
+        /// </summary>
+        public Core.Combat.DifficultyConfig Difficulty { get; private set; } =
+            Core.Combat.DifficultyConfig.Identity;
+
         private void Awake()
         {
             // 월드맵에서 선택하고 들어왔다면 그 스테이지를 우선한다
@@ -64,6 +79,7 @@ namespace ChainRiposte.Game
 
             IsFinalLink = (fromMap && StageSelection.SelectedIsFinalLink)
                 || (stageData != null && stageData.IsFinalLink);
+            LinkDepth = fromMap ? StageSelection.SelectedLinkDepth : 0;
 
             if (statsConfig == null || stageData == null)
             {
@@ -76,6 +92,7 @@ namespace ChainRiposte.Game
             ProgressService.MarkAttempted(stageData.StageId);
 
             StageConfig = stageData.ToConfig();
+            ApplyDifficulty();
             // 저장된 런의 성장을 씨앗으로 이어받는다 — 성장 캐리 (Docs/PROGRESSION.md)
             Session = new GameSession(BuildStatsConfig(), RunStateService.Current.Stats);
             Session.PhaseChanged += OnPhaseChanged;
@@ -114,6 +131,25 @@ namespace ChainRiposte.Game
             }
 
             return granted;
+        }
+
+        /// <summary>
+        /// 고리 깊이·NG+ 회차만큼 보스를 부풀린다 (<c>Docs/PROGRESSION.md</c> §2.5).
+        ///
+        /// <para><b>자르는 지점이 여기 하나</b>인 것이 요점이다 — 보스 config가 만들어지는 곳도,
+        /// 배수가 곱해지는 곳도 하나뿐이라 "두 번 부풀었다"가 생길 수 없다. 전투 쪽은 이미 부푼 값을
+        /// 받아 평소처럼 싸울 뿐이고, 스케일링을 아는 코드가 <c>CombatSystem</c>에 없다.</para>
+        /// </summary>
+        private void ApplyDifficulty()
+        {
+            if (difficultyCurve == null || StageConfig?.Boss == null)
+                return;
+
+            Difficulty = difficultyCurve.ToConfig().Evaluate(LinkDepth, RunStateService.Current.NewGamePlusCount);
+            StageConfig.Boss = Core.Combat.BossConfigScaler.Scale(StageConfig.Boss, Difficulty);
+
+            if (!Difficulty.IsIdentity)
+                Debug.Log($"[GameManager] 고리 깊이 {LinkDepth} 난이도 — {Difficulty}");
         }
 
         /// <summary>

@@ -505,8 +505,23 @@ namespace ChainRiposte.Game.Map
 
         private void StartStage()
         {
-            StageSelection.Select(nodes[_currentIndex].Stage, IsLastLink(_currentIndex));
+            StageSelection.Select(nodes[_currentIndex].Stage, IsLastLink(_currentIndex), LinkDepth(_currentIndex));
             SceneManager.LoadScene("Main");
+        }
+
+        /// <summary>
+        /// 이 노드가 몇 번째 고리인가 = <b>앞에 스테이지가 걸린 노드가 몇 개인가</b> (첫 판 = 0).
+        /// <see cref="IsLastLink"/>와 같은 규칙으로 세는 이유는, 지도에 장식용 빈 노드를 하나 찍은 순간
+        /// 뒤 스테이지들의 난이도가 통째로 한 칸씩 밀리면 안 되기 때문이다.
+        /// </summary>
+        private int LinkDepth(int index)
+        {
+            int depth = 0;
+            for (int i = 0; i < index && i < nodes.Length; i++)
+                if (nodes[i] != null && nodes[i].Stage != null)
+                    depth++;
+
+            return depth;
         }
 
         /// <summary>

@@ -25,6 +25,16 @@ namespace ChainRiposte.Core.Combat
         /// <summary>체간 자연 회복 속도 (초당). 0이면 회복 없음.</summary>
         public float PostureDecayPerSecond = 6f;
 
+        /// <summary>
+        /// <b>헛침 1회당 보스가 되찾는 체간</b> (Docs/PROGRESSION.md §2.5 — 실패 처벌).
+        /// 0이면 옛 동작(헛쳐도 잠금뿐).
+        ///
+        /// <para>헛침의 비용이 0.35초 잠금뿐이면 <b>막 눌러도 손해가 없다</b> — 패링이 읽기가 아니라
+        /// 연타 게임이 된다. 되찾는 양은 <see cref="ParryPostureGain"/>과 나란히 읽을 것:
+        /// 25 상승에 8 회복이면 헛침 하나가 패링 3분의 1을 무른다.</para>
+        /// </summary>
+        public float WhiffPostureRecovery;
+
         /// <summary>true면 보스 HP 비율에 비례해 체간 회복이 느려진다 (HP가 낮을수록 무너지기 쉬움, GDD §5.2).</summary>
         public bool ScaleDecayWithHp = true;
 

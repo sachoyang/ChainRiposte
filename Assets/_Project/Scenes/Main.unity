@@ -7954,6 +7954,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: ChainRiposte.Game::ChainRiposte.Game.GameManager
   statsConfig: {fileID: 11400000, guid: 1883bb283f8c36a4997c3546bd217d03, type: 2}
   economyConfig: {fileID: 11400000, guid: 2855227397a00ef4095e2a08cddc98e8, type: 2}
+  difficultyCurve: {fileID: 11400000, guid: 8d94b4f8a281e4c43958fbe8038c2587, type: 2}
   stageData: {fileID: 11400000, guid: 8ed742f06d704e843a992345432087db, type: 2}
 --- !u!4 &775320525
 Transform:

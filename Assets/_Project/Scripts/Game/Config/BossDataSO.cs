@@ -39,6 +39,9 @@ namespace ChainRiposte.Game.Config
         [SerializeField, Min(0f)] private float attackPostureFactor = 0.5f;
         [Tooltip("체간 자연 회복 속도 (초당). 0이면 회복 없음")]
         [SerializeField, Min(0f)] private float postureDecayPerSecond = 6f;
+        [Tooltip("헛침 1회당 보스가 되찾는 체간. 0이면 헛쳐도 잠금뿐이라 막 눌러도 손해가 없다 " +
+                 "— 위의 '패링 성공 1회당 상승량'과 나란히 볼 것. 25 상승에 8이면 헛침 하나가 패링 3분의 1을 무른다.")]
+        [SerializeField, Min(0f)] private float whiffPostureRecovery = 8f;
         [Tooltip("체크 시 보스 HP 비율에 비례해 체간 회복이 느려진다 (HP가 낮을수록 무너지기 쉬움)")]
         [SerializeField] private bool scaleDecayWithHp = true;
 
@@ -282,6 +285,7 @@ namespace ChainRiposte.Game.Config
                 ParryPostureGain = parryPostureGain,
                 AttackPostureFactor = attackPostureFactor,
                 PostureDecayPerSecond = postureDecayPerSecond,
+                WhiffPostureRecovery = whiffPostureRecovery,
                 ScaleDecayWithHp = scaleDecayWithHp,
                 FirstAttackDelaySeconds = firstAttackDelaySeconds,
                 PatternGapSeconds = patternGapSeconds,
