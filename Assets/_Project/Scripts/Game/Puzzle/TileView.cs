@@ -19,7 +19,36 @@ namespace ChainRiposte.Game.Puzzle
         // 폭탄 숫자가 카운트 자리를 쓰고 있는가 — 성남 표시가 그것을 덮지 않게 한다.
         private bool _hasBombText;
 
+        // 이번 성남이 시작될 때의 숫자. 커지는 정도를 여기에 견주므로, 몇 박짜리 위협이든
+        // "마지막 한 칸"에서 가장 크게 보인다 (박 수를 스테이지마다 바꿔도 연출이 안 깨진다).
+        private int _enrageStart;
+        private int _enrageShown;
+        private Vector3 _countBaseScale = Vector3.one;
+        private Coroutine _countPopRoutine;
+
         public long TileId { get; private set; }
+
+        /// <summary>
+        /// 성난 몬스터 뱃지의 겉모습. 값은 <see cref="BoardView"/> 인스펙터가 정하고
+        /// 여기서는 그대로 쓰기만 한다 — 튜닝 다이얼이 코드에 흩어지지 않게.
+        /// </summary>
+        public readonly struct EnrageStyle
+        {
+            public readonly Color Tint;
+
+            /// <summary>카운트가 1까지 줄었을 때의 숫자 크기 배율. 1이면 안 커진다.</summary>
+            public readonly float MaxCountScale;
+
+            /// <summary>숫자가 한 칸 줄 때 순간적으로 튀는 배율.</summary>
+            public readonly float PopScale;
+
+            public EnrageStyle(Color tint, float maxCountScale, float popScale)
+            {
+                Tint = tint;
+                MaxCountScale = Mathf.Max(1f, maxCountScale);
+                PopScale = Mathf.Max(1f, popScale);
+            }
+        }
 
         /// <summary>
         /// 타일 하나를 그리는 데 필요한 그림 정보. 파라미터가 늘어날 때마다 호출부를 고치지 않으려고 묶었다.
@@ -121,11 +150,11 @@ namespace ChainRiposte.Game.Puzzle
         }
 
         /// <summary>기믹 상태(사슬/폭탄/성남)를 타일에 반영한다 (GDD §3.6).</summary>
-        public void ApplyStatus(Tile tile, Sprite chainSprite, Color enrageTint)
+        public void ApplyStatus(Tile tile, Sprite chainSprite, EnrageStyle enrage)
         {
             SetChained(tile.Status.Chained, chainSprite);
             SetBombTurns(tile.Status.BombTurnsRemaining);
-            SetEnrageCountdown(tile.Status.EnrageCountdown, enrageTint);
+            SetEnrageCountdown(tile.Status.EnrageCountdown, enrage);
         }
 
         /// <summary>시한폭탄 남은 턴 표시. 0 이하면 표시를 지운다 (해체/폭발).</summary>
@@ -142,6 +171,9 @@ namespace ChainRiposte.Game.Puzzle
             if (_countdownText == null)
                 _countdownText = CreateCountdownText();
 
+            // 성남이 키워 놓은 크기를 물려받지 않는다 — 폭탄 숫자는 일정한 크기로 읽혀야 한다.
+            _countBaseScale = Vector3.one;
+            _countdownText.transform.localScale = _countBaseScale;
             _countdownText.color = new Color(1f, 0.45f, 0.35f);
             _countdownText.text = turns.ToString();
         }
@@ -151,20 +183,26 @@ namespace ChainRiposte.Game.Puzzle
         /// <b>틴트까지 거는 이유</b>: 숫자만으로는 보드를 훑을 때 안 읽힌다. 색이 있어야
         /// "저놈부터 없앤다"는 판단이 한눈에 선다.
         /// </summary>
-        public void SetEnrageCountdown(int turns, Color enrageTint)
+        public void SetEnrageCountdown(int count, EnrageStyle style)
         {
-            bool enraged = turns > 0;
+            bool enraged = count > 0;
             if (_enraged != enraged)
             {
                 _enraged = enraged;
-                _enrageTint = enrageTint;
+                _enrageTint = style.Tint;
                 RefreshColor();
             }
 
             if (!enraged)
             {
+                _enrageStart = 0;
+                _enrageShown = 0;
                 if (_countdownText != null && !_hasBombText)
+                {
                     _countdownText.text = string.Empty;
+                    _countBaseScale = Vector3.one;
+                    _countdownText.transform.localScale = _countBaseScale;
+                }
                 return;
             }
 
@@ -175,8 +213,51 @@ namespace ChainRiposte.Game.Puzzle
             if (_hasBombText)
                 return;
 
-            _countdownText.color = enrageTint;
-            _countdownText.text = turns.ToString();
+            // 새로 성났거나 때린 뒤 재장전됐다 — 이번 사이클의 기준 숫자를 다시 잡는다.
+            if (count > _enrageStart)
+                _enrageStart = count;
+
+            bool ticked = _enrageShown > 0 && count < _enrageShown;
+            _enrageShown = count;
+
+            _countdownText.color = style.Tint;
+            _countdownText.text = count.ToString();
+
+            // 숫자가 줄수록 커진다 — 3·2·1이 같은 크기면 "급해지고 있다"가 안 읽힌다.
+            float urgency = _enrageStart > 1 ? Mathf.InverseLerp(_enrageStart, 1f, count) : 1f;
+            _countBaseScale = Vector3.one * Mathf.Lerp(1f, style.MaxCountScale, urgency);
+            _countdownText.transform.localScale = _countBaseScale;
+
+            // 한 칸 줄어든 <b>그 순간</b>에만 튄다. 보드를 다시 그릴 때(스왑·낙하)도 이 함수가 불리는데
+            // 그때마다 튀면 아무 일도 없는데 숫자가 계속 들썩인다.
+            if (ticked)
+                RestartCountPop(style.PopScale);
+        }
+
+        private void RestartCountPop(float popScale)
+        {
+            if (popScale <= 1f)
+                return;
+
+            if (_countPopRoutine != null)
+                StopCoroutine(_countPopRoutine);
+            _countPopRoutine = StartCoroutine(CountPop(popScale));
+        }
+
+        private IEnumerator CountPop(float popScale)
+        {
+            const float Duration = 0.18f;
+            Transform text = _countdownText.transform;
+
+            for (float t = 0f; t < Duration; t += Time.deltaTime)
+            {
+                // 커진 채로 시작해 제 크기로 돌아온다 — 사라지는 쪽이 '줄었다'로 읽힌다
+                text.localScale = _countBaseScale * Mathf.Lerp(popScale, 1f, t / Duration);
+                yield return null;
+            }
+
+            text.localScale = _countBaseScale;
+            _countPopRoutine = null;
         }
 
         /// <summary>성난 몬스터가 때린 순간 한 번 튄다 — HP가 왜 깎였는지가 보드에서 읽혀야 한다.</summary>
@@ -193,6 +274,48 @@ namespace ChainRiposte.Game.Puzzle
             }
 
             transform.localScale = baseScale;
+        }
+
+        /// <summary>
+        /// 때리는 순간 <b>체력 바 쪽으로 달려들었다가 제자리로</b> 돌아온다 —
+        /// 어느 놈이 때렸고 무엇이 깎였는지가 한 동작으로 이어져 읽힌다.
+        ///
+        /// <para>나갈 때는 짧고 빠르게, 돌아올 때는 길고 느리게. 같은 속도로 오가면
+        /// 달려든 것이 아니라 그냥 흔들린 것으로 보인다.</para>
+        /// </summary>
+        public IEnumerator LungeToward(Vector3 worldTarget, float distance, float seconds)
+        {
+            if (distance <= 0f)
+                yield break;
+
+            Vector3 home = transform.localPosition;
+            Vector3 local = transform.parent != null
+                ? transform.parent.InverseTransformPoint(worldTarget)
+                : worldTarget;
+
+            Vector3 direction = local - home;
+            direction.z = 0f;
+            if (direction.sqrMagnitude < 1e-6f)
+                yield break;
+
+            Vector3 target = home + direction.normalized * distance;
+            float out_ = Mathf.Max(0.02f, seconds * 0.32f);
+            float back = Mathf.Max(0.02f, seconds - out_);
+
+            for (float t = 0f; t < out_; t += Time.deltaTime)
+            {
+                float k = t / out_;
+                transform.localPosition = Vector3.Lerp(home, target, k * k); // 가속 — 튀어나가는 느낌
+                yield return null;
+            }
+
+            for (float t = 0f; t < back; t += Time.deltaTime)
+            {
+                transform.localPosition = Vector3.Lerp(target, home, Mathf.SmoothStep(0f, 1f, t / back));
+                yield return null;
+            }
+
+            transform.localPosition = home;
         }
 
         /// <summary>사슬 결박 표시 — 스프라이트를 주면 그걸 쓰고, 없으면 어두운 띠로 대체한다.</summary>

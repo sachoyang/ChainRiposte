@@ -7100,6 +7100,11 @@ MonoBehaviour:
   corruptionSprite: {fileID: 0}
   chainSprite: {fileID: 0}
   enrageTint: {r: 1, g: 0.42, b: 0.35, a: 1}
+  enrageCountMaxScale: 1.9
+  enrageCountPopScale: 1.5
+  enrageLungeDistance: 0.6
+  enrageLungeSeconds: 0.34
+  enrageAttackTarget: {fileID: 707713648}
   slashEnabled: 1
   slashSprite: {fileID: 0}
   slashColor: {r: 1, g: 0.97, b: 0.85, a: 0.9}

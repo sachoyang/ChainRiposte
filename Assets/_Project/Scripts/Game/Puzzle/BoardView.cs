@@ -39,6 +39,18 @@ namespace ChainRiposte.Game.Puzzle
         [Tooltip("성난 몬스터의 틴트 — 공격 예고 중인 잡몹이 한눈에 보여야 '저놈부터 없앤다'가 성립한다.")]
         [SerializeField] private Color enrageTint = new(1f, 0.42f, 0.35f);
 
+        [Header("성난 몬스터 연출 — 성났는지·맞았는지가 보드에서 읽혀야 한다")]
+        [Tooltip("카운트가 1까지 줄었을 때의 숫자 크기 배율. 3·2·1이 같은 크기면 급해지는 게 안 읽힌다. 1이면 안 커진다.")]
+        [SerializeField, Min(1f)] private float enrageCountMaxScale = 1.9f;
+        [Tooltip("숫자가 한 칸 줄 때 순간적으로 튀는 배율. 1이면 안 튄다.")]
+        [SerializeField, Min(1f)] private float enrageCountPopScale = 1.5f;
+        [Tooltip("때릴 때 몬스터가 체력 바 쪽으로 달려가는 거리 (셀 1칸 기준). 0이면 안 달린다.")]
+        [SerializeField, Min(0f)] private float enrageLungeDistance = 0.6f;
+        [SerializeField, Min(0.05f)] private float enrageLungeSeconds = 0.34f;
+        [Tooltip("몬스터가 달려드는 목표 — 퍼즐 하단 체력 바를 꽂는다. " +
+            "비우면 화면 아래쪽으로 달려든다(하단 바가 있는 방향이라 배선을 덜 해도 말은 된다).")]
+        [SerializeField] private RectTransform enrageAttackTarget;
+
         [Header("검기 — 매치 한 줄을 한 번에 벤다")]
         [SerializeField] private bool slashEnabled = true;
         [Tooltip("검기 아트. 비우면 양 끝이 뾰족한 눈 모양 플레이스홀더를 구워 쓴다. " +
@@ -264,14 +276,52 @@ namespace ChainRiposte.Game.Puzzle
                     break;
                 case GimmickEventType.EnrageStarted:
                 case GimmickEventType.EnrageTicked:
-                    view.SetEnrageCountdown(gimmickEvent.Value, enrageTint);
+                    view.SetEnrageCountdown(gimmickEvent.Value, Enrage);
                     break;
                 case GimmickEventType.EnrageAttacked:
-                    // 때린 뒤에도 사라지지 않는다 — 재장전된 카운트를 그대로 다시 보여주고 한 번 튄다.
-                    view.SetEnrageCountdown(gimmickEvent.Tile.Status.EnrageCountdown, enrageTint);
-                    StartCoroutine(view.PunchOnce());
+                    // 때린 뒤에도 사라지지 않는다 — 재장전된 카운트를 그대로 다시 보여주고,
+                    // 체력 바 쪽으로 달려들었다 돌아온다.
+                    view.SetEnrageCountdown(gimmickEvent.Tile.Status.EnrageCountdown, Enrage);
+                    // 코루틴은 <b>타일 쪽에서</b> 돌린다 — 연출 도중 그 타일이 사라지면 같이 멈춰야 한다.
+                    view.StartCoroutine(view.PunchOnce());
+                    view.StartCoroutine(view.LungeToward(
+                        ResolveAttackTargetWorld(view.transform.position), enrageLungeDistance, enrageLungeSeconds));
                     break;
             }
+        }
+
+        /// <summary>성난 몬스터 뱃지의 겉모습 — 튜닝 다이얼은 전부 이 컴포넌트의 인스펙터에 있다.</summary>
+        private TileView.EnrageStyle Enrage =>
+            new(enrageTint, enrageCountMaxScale, enrageCountPopScale);
+
+        /// <summary>
+        /// 몬스터가 달려들 목표를 <b>월드 좌표</b>로 바꾼다. 체력 바는 UI(화면 좌표)에 있고
+        /// 타일은 월드에 있으므로 한 번 건너와야 한다.
+        ///
+        /// <para>배선이 없거나 카메라를 못 찾으면 <b>화면 아래쪽</b>으로 떨어진다 —
+        /// 하단 바가 있는 방향이라 배선을 덜 해도 연출이 말이 되고, 무엇보다 멈추지 않는다.</para>
+        /// </summary>
+        private Vector3 ResolveAttackTargetWorld(Vector3 from)
+        {
+            Vector3 fallback = from + Vector3.down * 10f;
+            if (enrageAttackTarget == null)
+                return fallback;
+
+            Camera boardCamera = Camera.main;
+            if (boardCamera == null)
+                return fallback;
+
+            // Overlay 캔버스는 RectTransform.position 자체가 화면 좌표라 카메라를 넘기면 안 된다.
+            var canvas = enrageAttackTarget.GetComponentInParent<Canvas>();
+            Camera uiCamera = canvas != null && canvas.renderMode != RenderMode.ScreenSpaceOverlay
+                ? canvas.worldCamera
+                : null;
+
+            Vector2 screen = RectTransformUtility.WorldToScreenPoint(uiCamera, enrageAttackTarget.position);
+            Vector3 world = boardCamera.ScreenToWorldPoint(
+                new Vector3(screen.x, screen.y, Mathf.Abs(boardCamera.transform.position.z - from.z)));
+            world.z = from.z;
+            return world;
         }
 
         /// <summary>
@@ -444,7 +494,7 @@ namespace ChainRiposte.Game.Puzzle
             if (tile.Category == TileCategory.Wall && wallDamageSprites.Length > 0)
                 view.SetWallStages(wallDamageSprites);
             view.transform.localPosition = GridToLocal(pos);
-            view.ApplyStatus(tile, chainSprite, enrageTint); // 사슬/폭탄/성남 뱃지 (GDD §3.6)
+            view.ApplyStatus(tile, chainSprite, Enrage); // 사슬/폭탄/성남 뱃지 (GDD §3.6)
             _views[pos] = view;
             return view;
         }
