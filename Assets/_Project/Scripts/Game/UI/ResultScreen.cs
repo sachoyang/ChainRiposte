@@ -32,8 +32,14 @@ namespace ChainRiposte.Game.UI
         [SerializeField] private Button mapButton;
 
         [Header("승리 연출")]
-        [Tooltip("승리 후 지도로 넘어가기까지의 텀(초). 나중에 인살 컷씬이 이 자리를 채운다.")]
+        [Tooltip("승리 후 지도로 넘어가기까지의 텀(초).")]
         [SerializeField, Min(0f)] private float victoryToMapDelay = 1.6f;
+
+        [Header("엔딩 (마지막 고리를 끊었을 때)")]
+        [Tooltip("캐릭터별 엔딩 영상을 트는 자리. 비어 있어도 엔딩은 난다 — 영상만 없다.")]
+        [SerializeField] private EndingVideoPlayer endingVideo;
+        [Tooltip("엔딩 뒤에 타이틀로 돌아간다. 끄면 지도로 돌아간다(엔딩 뒤 이어서 놀게 하고 싶을 때).")]
+        [SerializeField] private bool endingReturnsToTitle = true;
 
         private void Awake()
         {
@@ -73,7 +79,28 @@ namespace ChainRiposte.Game.UI
             restartButton.gameObject.SetActive(false);
             mapButton.gameObject.SetActive(false);
             panelRoot.SetActive(true);
-            StartCoroutine(GoToMapAfterDelay());
+
+            // 마지막 고리를 끊었으면 지도가 아니라 엔딩으로 간다. '무엇이 마지막인가'는
+            // 지도가 알려 준 것을 GameManager가 들고 있다 — 여기서 스테이지 이름을 알 필요가 없다.
+            StartCoroutine(gameManager.IsFinalLink ? EndingRoutine() : GoToMapAfterDelay());
+        }
+
+        /// <summary>
+        /// 엔딩. 영상이 있으면 틀고, 없으면 결과 문구만 잠깐 보여 준 뒤 넘어간다 —
+        /// <b>영상이 없다고 엔딩 자체가 없어지면 안 된다.</b>
+        /// </summary>
+        private IEnumerator EndingRoutine()
+        {
+            yield return new WaitForSecondsRealtime(victoryToMapDelay);
+
+            if (endingVideo != null)
+                yield return endingVideo.Play(EndingVideoPlayer.ResolveClip());
+
+            Time.timeScale = 1f;
+            if (endingReturnsToTitle)
+                Flow.SceneRouter.GoTitle();
+            else
+                GoToMap();
         }
 
         private void ShowDefeat()

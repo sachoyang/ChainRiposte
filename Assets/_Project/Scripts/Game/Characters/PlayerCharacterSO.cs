@@ -35,6 +35,12 @@ namespace ChainRiposte.Game.Characters
         [Tooltip("월드맵에서 걸어다니는 그림. 비우면 전투 그림을 대신 쓴다.")]
         [SerializeField] private Sprite mapSprite;
 
+        [Header("엔딩")]
+        [Tooltip("마지막 고리를 끊었을 때 이 캐릭터에게 나오는 영상. 비워 두면 영상 없이 넘어간다 — " +
+                 "한 캐릭터의 영상이 아직 없다고 그 캐릭터로는 게임을 못 끝내면 안 된다.\n\n" +
+                 "안드로이드는 H.264 mp4 만 확실히 재생된다. 스킵할 수 있고, 캐릭터당 수십 MB 이내로.")]
+        [SerializeField] private UnityEngine.Video.VideoClip endingVideo;
+
         [Header("특화 — 공용 밸런스에 더해지는 '아주 조금'")]
         [Tooltip("최대 체력 가산")]
         [SerializeField] private int bonusMaxHp;
@@ -62,6 +68,9 @@ namespace ChainRiposte.Game.Characters
 
         /// <summary>월드맵 아바타. 전용 그림이 없으면 전투 그림으로 대신한다.</summary>
         public Sprite MapSprite => mapSprite != null ? mapSprite : combatSprite;
+
+        /// <summary>마지막 고리를 끊었을 때의 엔딩 영상. 없으면 null — 엔딩은 영상 없이도 끝난다.</summary>
+        public UnityEngine.Video.VideoClip EndingVideo => endingVideo;
 
         /// <summary>특화가 하나라도 걸려 있는가 (로그·표시용).</summary>
         public bool HasBonuses =>

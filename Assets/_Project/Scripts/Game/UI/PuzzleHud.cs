@@ -28,6 +28,10 @@ namespace ChainRiposte.Game.UI
         [Header("하단 바 (Add Puzzle Bottom Bar To Main 이 배선)")]
         [Tooltip("체력 게이지 — 전투 화면과 같은 모양. 숫자만 있으면 성난 몬스터에게 맞아도 눈에 안 들어온다.")]
         [SerializeField] private Image playerHpFill;
+        [Tooltip("게이지 이미지를 자동으로 Filled(가로·왼쪽 기준)로 맞춘다. " +
+            "9슬라이스 스프라이트를 꽂으면 Unity가 Image Type 을 Sliced 로 되돌리는데, 그러면 fillAmount 가 " +
+            "아무 효과도 없어 체력 바가 <b>조용히 안 줄어든다</b>. 게이지를 다른 방식으로 그린다면 끌 것.")]
+        [SerializeField] private bool forceFilledGauge = true;
         [Tooltip("게이지 위에 겹치는 숫자. 비워도 게이지만으로 동작한다.")]
         [SerializeField] private TMP_Text playerHpText;
         [Tooltip("보스전까지 남은 시간 — 큰 글씨 전용 자리. 비우면 턴 표시 밑에 작게 붙는다(예전 동작).")]
@@ -46,6 +50,12 @@ namespace ChainRiposte.Game.UI
         private string _bannerKey;
         private string _flashKey;
         private float _flashSeconds;
+
+        private void Awake()
+        {
+            if (forceFilledGauge)
+                UiGauge.EnsureFilled(playerHpFill);
+        }
 
         private void OnDestroy() => Unbind();
 

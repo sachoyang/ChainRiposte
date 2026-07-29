@@ -623,6 +623,7 @@ namespace ChainRiposte.Editor
             Row(builder, "result.defeat", "패배", "DEFEAT");
             Row(builder, "result.restart", "다시 시작", "RESTART");
             Row(builder, "result.map", "지도", "MAP");
+            Row(builder, "ending.skip", "아무 곳이나 눌러 넘기기", "TAP TO SKIP");
 
             // 공통
             Row(builder, "common.yes", "예", "YES");

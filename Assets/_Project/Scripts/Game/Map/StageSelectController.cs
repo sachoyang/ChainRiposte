@@ -505,8 +505,22 @@ namespace ChainRiposte.Game.Map
 
         private void StartStage()
         {
-            StageSelection.Selected = nodes[_currentIndex].Stage;
+            StageSelection.Select(nodes[_currentIndex].Stage, IsLastLink(_currentIndex));
             SceneManager.LoadScene("Main");
+        }
+
+        /// <summary>
+        /// 이 노드가 사슬의 마지막 고리인가 = <b>뒤에 스테이지가 걸린 노드가 더 없는가</b>.
+        /// 노드 개수가 아니라 스테이지가 걸린 노드를 세는 이유는, 지도에 빈 노드를 하나 더 찍어 둔
+        /// 순간 엔딩이 조용히 사라지면 안 되기 때문이다.
+        /// </summary>
+        private bool IsLastLink(int index)
+        {
+            for (int i = index + 1; i < nodes.Length; i++)
+                if (nodes[i] != null && nodes[i].Stage != null)
+                    return false;
+
+            return true;
         }
 
         private static string DisplayName(int index) => $"{index / 3 + 1}-{index % 3 + 1}";

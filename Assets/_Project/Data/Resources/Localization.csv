@@ -57,6 +57,7 @@ result.victory,스테이지 클리어,STAGE CLEAR
 result.defeat,패배,DEFEAT
 result.restart,다시 시작,RESTART
 result.map,지도,MAP
+ending.skip,아무 곳이나 눌러 넘기기,TAP TO SKIP
 common.yes,예,YES
 common.no,아니오,NO
 common.back,뒤로,BACK

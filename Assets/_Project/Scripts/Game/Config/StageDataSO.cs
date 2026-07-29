@@ -70,6 +70,11 @@ namespace ChainRiposte.Game.Config
         [Header("전투 (7단계)")]
         [Tooltip("이 스테이지에 난입하는 보스")]
         [SerializeField] private BossDataSO bossData;
+
+        [Tooltip("이 판이 사슬의 <b>마지막 고리</b>인가 — 클리어하면 엔딩이 나온다. " +
+                 "보통은 비워 둔다: 지도가 '정렬된 마지막 노드'를 알아서 알려 주므로, " +
+                 "여기 켜는 것은 지도 순서와 다르게 끝내고 싶을 때(또는 Main 단독 실행 확인용)뿐이다.")]
+        [SerializeField] private bool isFinalLink;
         // 보스의 캐릭터별 겉모습은 여기 없다 — 보스 에셋(BossDataSO)의 「캐릭터별 겉모습」이 맡는다.
         // 스테이지마다 적으면 같은 그림을 스테이지 수만큼 되풀이하게 되고, 한 곳만 빠뜨려도 보스가 달라진다.
 
@@ -154,6 +159,12 @@ namespace ChainRiposte.Game.Config
 
         /// <summary>월드맵 정보 표시용 — 보스 초상/이름을 읽는다 (Core의 BossConfig에는 스프라이트를 담을 수 없다).</summary>
         public BossDataSO BossData => bossData;
+
+        /// <summary>
+        /// 이 판을 깨면 엔딩인가. <b>대개는 지도가 정한다</b>(<see cref="StageSelection"/>) —
+        /// 이 플래그는 지도 순서를 거스르고 싶을 때만 켜는 덮어쓰기다.
+        /// </summary>
+        public bool IsFinalLink => isFinalLink;
 
         /// <summary>이 스테이지에 켜진 기믹 — 월드맵에서 '어떤 기믹이 나오는지' 표시에 쓴다.</summary>
         public IReadOnlyList<GimmickType> Gimmicks => gimmicks;

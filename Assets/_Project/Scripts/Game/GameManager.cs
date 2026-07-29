@@ -49,11 +49,21 @@ namespace ChainRiposte.Game
         /// <summary>스테이지 데이터 원본 — 순수 C# config에 담을 수 없는 것(보스 스프라이트 등)을 읽을 때 쓴다.</summary>
         public StageDataSO StageData => stageData;
 
+        /// <summary>
+        /// 이 판을 깨면 엔딩인가. <b>지도가 알려 준 것이 우선</b>이고(정렬된 마지막 노드),
+        /// 스테이지 에셋의 플래그는 지도를 안 거친 경우(Main 단독 실행)와 덮어쓰기용이다.
+        /// </summary>
+        public bool IsFinalLink { get; private set; }
+
         private void Awake()
         {
             // 월드맵에서 선택하고 들어왔다면 그 스테이지를 우선한다
-            if (StageSelection.Selected != null)
+            bool fromMap = StageSelection.Selected != null;
+            if (fromMap)
                 stageData = StageSelection.Selected;
+
+            IsFinalLink = (fromMap && StageSelection.SelectedIsFinalLink)
+                || (stageData != null && stageData.IsFinalLink);
 
             if (statsConfig == null || stageData == null)
             {

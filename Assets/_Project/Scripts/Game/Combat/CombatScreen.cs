@@ -166,9 +166,9 @@ namespace ChainRiposte.Game.Combat
 
             if (forceFilledGauges)
             {
-                EnsureFilled(bossHpFill);
-                EnsureFilled(postureFill);
-                EnsureFilled(playerHpFill);
+                UI.UiGauge.EnsureFilled(bossHpFill);
+                UI.UiGauge.EnsureFilled(postureFill);
+                UI.UiGauge.EnsureFilled(playerHpFill);
             }
 
             parryButton.onClick.AddListener(() => input.PressParry());
@@ -184,20 +184,6 @@ namespace ChainRiposte.Game.Combat
             }
 
             root.gameObject.SetActive(false);
-        }
-
-        /// <summary>
-        /// 게이지 이미지가 <c>fillAmount</c>에 반응하도록 보장한다. 스프라이트 교체 한 번으로
-        /// 세 게이지가 통째로 멈추는 사고를 씬 상태에 기대지 않고 막는다.
-        /// </summary>
-        private static void EnsureFilled(Image image)
-        {
-            if (image == null || image.type == Image.Type.Filled)
-                return;
-
-            image.type = Image.Type.Filled;
-            image.fillMethod = Image.FillMethod.Horizontal;
-            image.fillOrigin = (int)Image.OriginHorizontal.Left;
         }
 
         private void OnDestroy() => Unbind();
