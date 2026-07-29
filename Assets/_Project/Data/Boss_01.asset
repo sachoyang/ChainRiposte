@@ -15,8 +15,6 @@ MonoBehaviour:
   bossId: 
   nameKey: 
   displayName: Mushroom King
-  portrait: {fileID: 357749872346554099, guid: f2316670ef79ad34d9d26cbe7bff1cf8, type: 3}
-  battleSprite: {fileID: 357749872346554099, guid: f2316670ef79ad34d9d26cbe7bff1cf8, type: 3}
   characterVisuals:
   - character: {fileID: 11400000, guid: dddc9d8434eef9747a421ffefbafc0df, type: 2}
     battleSprite: {fileID: 4329424280674337, guid: 967e76409f35c4443812d7f30e145105, type: 3}
