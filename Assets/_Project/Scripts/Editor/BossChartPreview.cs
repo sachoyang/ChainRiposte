@@ -151,8 +151,8 @@ namespace ChainRiposte.Editor
 
             AdvanceAudio(timing);
 
-            float ringRatio = ResolveRingInnerRatio();
-            DrawBand(center, unit, ringRatio);
+            float thickness = ResolveRingThickness();
+            DrawBand(center, unit, thickness);
 
             // 원은 먼 것부터 그려야 임박한 원이 위에 온다
             for (int i = timing.Notes.Length - 1; i >= 0; i--)
@@ -161,14 +161,19 @@ namespace ChainRiposte.Editor
                 if (untilHit < 0f || untilHit > timing.Notes[i].TelegraphSeconds)
                     continue;
 
-                float scale = 1f + untilHit * ApproachSpeed;
-                if (scale > MaxVisibleScale)
+                float inner = 1f + untilHit * ApproachSpeed;
+                if (inner > MaxVisibleScale)
                     continue;
 
-                float nearness = Mathf.InverseLerp(MaxVisibleScale, 1f, scale);
+                float nearness = Mathf.InverseLerp(MaxVisibleScale, 1f, inner);
                 Color color = RingColor;
                 color.a *= Mathf.Lerp(0.2f, 1f, nearness);
-                DrawRing(center, scale * unit, color, ringRatio);
+
+                // 두께가 고정이라 멀리 있어도 선이 굵어지지 않는다. 양자화 오차는 두께로 몰고
+                // 안쪽 테두리를 정확히 노트 위치에 둔다 (전투 화면과 같은 규칙).
+                float ratio = PlaceholderSprite.QuantizeRatio(
+                    Mathf.Clamp(inner / (inner + thickness), 0.05f, 0.99f));
+                DrawRing(center, inner / ratio * unit, color, ratio);
             }
 
             // 플레이어 몸 — 원이 여기 닿으면 타격이다
@@ -182,7 +187,7 @@ namespace ChainRiposte.Editor
         /// 회색 띠 = 패링 판정 구간. 안쪽을 <b>원 두께만큼 밀어 올린다</b> —
         /// 전투 화면의 <c>UpdateParryBand</c>와 같은 계산이라야 여기서 맞춘 채보가 게임에서도 맞는다.
         /// </summary>
-        private void DrawBand(Vector2 center, float unit, float ringInnerRatio)
+        private void DrawBand(Vector2 center, float unit, float ringThickness)
         {
             PlayerStatsConfigSO stats = LoadStats();
             if (stats == null)
@@ -191,24 +196,22 @@ namespace ChainRiposte.Editor
             Core.Stats.PlayerStatsConfig config = stats.ToConfig();
             float outer = 1f + config.BaseParryWindowSeconds * ApproachSpeed;
             float inner = Mathf.Clamp(
-                (1f - config.ParryLateGraceSeconds * ApproachSpeed) / ringInnerRatio, 0.05f, outer - 0.001f);
+                1f - config.ParryLateGraceSeconds * ApproachSpeed + ringThickness, 0.05f, outer - 0.001f);
             DrawRing(center, outer * unit, BandColor, inner / outer);
         }
 
         /// <summary>
-        /// 노트 원의 두께. 전투 화면이 무투자 상태에서 두 원을 정확히 포개려고 역산하는 값과 같은 식이다
-        /// (<c>k = (2 − 유예×속도) ÷ (2 + 기본윈도우×속도)</c>). 판정을 조여도 미리보기가 따라온다.
+        /// 노트 원의 두께 — 반지름과 무관한 고정값. 전투 화면의 <c>ResolveRingThickness</c>와 같은 식이라
+        /// (판정 폭의 절반) 판정을 조여도 미리보기가 따라온다.
         /// </summary>
-        private static float ResolveRingInnerRatio()
+        private static float ResolveRingThickness()
         {
             PlayerStatsConfigSO stats = LoadStats();
             if (stats == null)
-                return 0.88f; // PlaceholderSprite.Ring 의 비율
+                return 0.175f; // 기본 판정(0.13/0.12)에서 나오는 값
 
             Core.Stats.PlayerStatsConfig config = stats.ToConfig();
-            float grace = config.ParryLateGraceSeconds * ApproachSpeed;
-            float window = config.BaseParryWindowSeconds * ApproachSpeed;
-            return PlaceholderSprite.QuantizeRatio(Mathf.Clamp((2f - grace) / (2f + window), 0.05f, 0.99f));
+            return (config.BaseParryWindowSeconds + config.ParryLateGraceSeconds) * ApproachSpeed * 0.5f;
         }
 
         /// <summary>게임이 쓰는 링 생성기를 그대로 쓴다 — 미리보기와 실제가 같은 그림이어야 한다.</summary>

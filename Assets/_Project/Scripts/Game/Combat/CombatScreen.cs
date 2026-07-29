@@ -31,13 +31,14 @@ namespace ChainRiposte.Game.Combat
         [SerializeField] private bool generateBandSprite = true;
         [Tooltip("원이 다가오는 속도 (초당 스케일). 모든 노트가 같은 속도로 와야 회색 띠가 의미를 갖는다.")]
         [SerializeField, Min(0.05f)] private float approachSpeed = 0.9f;
-        [Tooltip("노트 원 그림도 회색 원과 같은 두께로 자동으로 굽는다 — " +
-            "무투자(PARRY 0) 상태에서 두 원이 정확히 포개지는 것이 이 화면의 기준이다. " +
-            "실제 아트를 꽂았다면 끄고 아래 비율을 그 그림에 맞춰 적을 것.")]
+        [Tooltip("노트 원을 판정에 맞춰 매 프레임 굽는다 — 멀리 있든 가깝든 <b>선의 굵기가 일정</b>하고 " +
+            "(리듬게임의 접근 원처럼), 무투자(PARRY 0)에서 흰 원과 회색 원이 정확히 포개진다. " +
+            "실제 아트를 꽂았다면 끄고 아래 비율을 그 그림에 맞춰 적을 것 — 그때는 그림 한 장을 키우므로 " +
+            "멀리 있는 원이 두껍게 보인다.")]
         [SerializeField] private bool matchNoteRingToBand = true;
-        [Tooltip("노트 원 그림의 안쪽 구멍 비율(안쪽 반지름 ÷ 바깥 반지름). " +
-            "이 원의 <b>두께</b>가 곧 판정의 여유분이므로, 실제 아트로 갈아 끼우면 그 그림의 비율을 여기에 적어야 " +
-            "보이는 것과 판정이 계속 맞는다. 기본 원(PlaceholderSprite.Ring)은 0.88.")]
+        [Tooltip("<b>위 옵션을 껐을 때만</b> 쓰인다 — 꽂아 둔 노트 원 그림의 안쪽 구멍 비율" +
+            "(안쪽 반지름 ÷ 바깥 반지름). 보이는 것과 판정을 맞추는 값이라 그림을 바꾸면 같이 고쳐야 한다. " +
+            "기본 원(PlaceholderSprite.Ring)은 0.88.")]
         [SerializeField, Range(0.05f, 0.99f)] private float noteRingInnerRatio = 0.88f;
         [Tooltip("이 스케일보다 멀리 있는 노트는 아직 그리지 않는다")]
         [SerializeField, Min(1.1f)] private float maxVisibleScale = 3.2f;
@@ -140,7 +141,6 @@ namespace ChainRiposte.Game.Combat
         private Vector2 _popupOrigin;
         private bool _popupPlaying;
         private float _bandInnerRatio = -1f;
-        private float _ringInnerRatio = -1f;
 
         /// <summary>
         /// 보스의 '평상시' 스케일. 좌우 반전을 여기 한 곳에만 담아 두고 연출(펀치 등)은 이 값에 곱하기만 한다 —
@@ -413,8 +413,8 @@ namespace ChainRiposte.Game.Combat
                 return;
             }
 
-            float ringRatio = ResolveRingInnerRatio();
-            UpdateParryBand(ringRatio);
+            float thickness = ResolveRingThickness();
+            UpdateParryBand(thickness);
 
             IReadOnlyList<ActiveNote> notes = _combat.ActiveNotes;
             int drawn = 0;
@@ -427,8 +427,7 @@ namespace ChainRiposte.Game.Combat
                     continue; // 아직 멀다 — 화면 밖
 
                 RectTransform ring = GetRing(drawn);
-                // 안쪽 테두리가 그 반지름에 오도록 키운다
-                ring.localScale = Vector3.one * (radius / ringRatio);
+                ApplyRingGeometry(ring, drawn, radius, thickness);
 
                 // 임박할수록 진하게 — 어느 것을 먼저 쳐야 하는지가 한눈에 읽힌다
                 float nearness = Mathf.InverseLerp(maxVisibleScale, 1f, radius);
@@ -443,42 +442,47 @@ namespace ChainRiposte.Game.Combat
         }
 
         /// <summary>
-        /// 노트 원 그림의 안쪽 구멍 비율. <see cref="matchNoteRingToBand"/>가 켜져 있으면
-        /// <b>무투자 상태의 회색 원과 두께가 같아지는 값</b>을 판정 수치에서 역산해 그림까지 다시 굽는다.
+        /// 노트 원의 <b>두께</b>. 반지름과 무관한 <b>고정값</b>이다 — 리듬게임(osu! 등)의 접근 원처럼
+        /// 멀리 있든 가깝든 선의 굵기가 같아야 한다. 원 하나를 통째로 키우면 선까지 같이 굵어져
+        /// 먼 노트가 굵고 임박한 노트가 얇게 보이는데, 이는 <b>중요도와 정반대</b>다.
         ///
-        /// <para>유도: 회색 원 = [(1 − 유예×속도) ÷ k, 1 + 기본윈도우×속도], 흰 원의 두께 = 1/k − 1
-        /// (반지름 1에서). 둘을 같게 놓으면 <c>k = (2 − 유예×속도) ÷ (2 + 기본윈도우×속도)</c>.
-        /// 판정 값을 인스펙터에서 조여도 두 원이 계속 같은 두께로 남는다 —
-        /// 숫자를 코드와 그림 양쪽에 적어 두면 한쪽만 고쳐 어긋난다.</para>
+        /// <para>값은 판정에서 나온다: 판정 구간의 전체 폭은 <c>(윈도우 + 유예) × 속도</c>이고,
+        /// 그것을 흰 원과 회색 원이 <b>반씩</b> 나눠 가지면 무투자 상태에서 두 원이 정확히 포개진다.
+        /// 세션 11에서 정한 "겹치면 패링" 규칙은 그대로다 — 두께를 반지름에 비례시키는 대신
+        /// 상수로 바꾼 것뿐이다.</para>
         /// </summary>
-        private float ResolveRingInnerRatio()
+        private float ResolveRingThickness() =>
+            (_combat.BaseParryWindowSeconds + _combat.ParryLateGraceSeconds) * approachSpeed * 0.5f;
+
+        /// <summary>
+        /// 원 하나를 그 반지름에 맞춰 놓는다. <b>안쪽 테두리가 노트의 위치</b>라는 규칙은 그대로고,
+        /// 바깥은 거기서 두께만큼 떨어진 곳이다.
+        ///
+        /// <para>두께를 고정하려면 반지름마다 <b>구멍 비율이 다른 그림</b>이 필요하다 —
+        /// 같은 그림을 키우면 선도 같이 커지기 때문이다. 비율은 0.01 단위로 뭉뚱그려져
+        /// 실제로는 열 몇 장이면 전부 재사용된다(반지름이 1~3.6 사이라 비율은 좁은 구간에만 있다).</para>
+        ///
+        /// <para><see cref="matchNoteRingToBand"/>를 끄면 예전처럼 그림 한 장을 키운다 —
+        /// 실제 아트를 꽂았을 때의 길이다.</para>
+        /// </summary>
+        private void ApplyRingGeometry(RectTransform ring, int index, float innerRadius, float thickness)
         {
             if (!matchNoteRingToBand)
-                return noteRingInnerRatio;
-
-            float grace = _combat.ParryLateGraceSeconds * approachSpeed;
-            float baseWindow = _combat.BaseParryWindowSeconds * approachSpeed;
-            // 구워 주는 실제 비율(0.01 단위)로 맞춰야 아래 띠 계산과 그림이 어긋나지 않는다.
-            float ratio = PlaceholderSprite.QuantizeRatio(
-                Mathf.Clamp((2f - grace) / (2f + baseWindow), 0.05f, 0.99f));
-
-            if (!Mathf.Approximately(ratio, _ringInnerRatio))
             {
-                _ringInnerRatio = ratio;
-                Sprite sprite = PlaceholderSprite.Annulus(ratio);
-                if (noteRingTemplate != null)
-                {
-                    var templateImage = noteRingTemplate.GetComponent<Image>();
-                    if (templateImage != null)
-                        templateImage.sprite = sprite;
-                }
-
-                for (int i = 0; i < _ringImages.Count; i++)
-                    if (_ringImages[i] != null)
-                        _ringImages[i].sprite = sprite;
+                ring.localScale = Vector3.one * (innerRadius / noteRingInnerRatio);
+                return;
             }
 
-            return ratio;
+            // 구멍 비율은 0.01 단위로 뭉뚱그려지므로 두께가 그만큼 흔들린다. 오차는 <b>두께 쪽으로 몰고</b>
+            // 안쪽 테두리는 정확히 노트 위치에 둔다 — 판정이 걸린 것은 안쪽이지 두께가 아니다.
+            float ratio = PlaceholderSprite.QuantizeRatio(
+                Mathf.Clamp(innerRadius / (innerRadius + thickness), 0.05f, 0.99f));
+            ring.localScale = Vector3.one * (innerRadius / ratio);
+
+            Sprite sprite = PlaceholderSprite.Annulus(ratio);
+            Image image = _ringImages[index];
+            if (image != null && image.sprite != sprite)
+                image.sprite = sprite;
         }
 
         /// <summary>
@@ -487,15 +491,15 @@ namespace ChainRiposte.Game.Combat
         /// <para>판정은 타격 시점 T를 기준으로 <c>[T − 윈도우, T + 유예]</c>에 열린다. 원은
         /// "남은 시간 × 속도"로 다가오므로 그 구간은 그대로 노트 반지름 구간
         /// <c>[1 − 유예×속도, 1 + 윈도우×속도]</c>이 된다. 흰 원은 안쪽 테두리 r 에서
-        /// <c>[r, r/k]</c>를 차지하므로 <b>겹침</b> 조건은 <c>k×안쪽 &lt; r &lt; 바깥</c> —
-        /// 즉 겹침이 곧 판정이 되려면 바깥 = 1 + 윈도우×속도, <b>안쪽 = (1 − 유예×속도) ÷ k</b>다.
+        /// <c>[r, r + 두께]</c>를 차지하므로 <b>겹침</b> 조건은 <c>안쪽 − 두께 &lt; r &lt; 바깥</c> —
+        /// 즉 겹침이 곧 판정이 되려면 바깥 = 1 + 윈도우×속도, <b>안쪽 = (1 − 유예×속도) + 두께</b>다.
         /// 안쪽을 원 두께만큼 밀어 올린 이 한 줄이 "회색 원을 흰 원과 같은 두께로 얇게 그리고,
         /// 대신 조금 겹쳐도 인정"의 전부다.</para>
         ///
         /// <para>PARRY를 올리면 바깥이 커져 <b>회색 원이 실제로 굵어지고</b> 판정이 더 일찍 열린다 —
-        /// 보이는 것과 판정이 같다.</para>
+        /// 보이는 것과 판정이 같다. 흰 원은 기본 판정으로만 두께가 정해지므로 굵기가 그대로다.</para>
         /// </summary>
-        private void UpdateParryBand(float ringInnerRatio)
+        private void UpdateParryBand(float ringThickness)
         {
             if (parryBand == null)
                 return;
@@ -507,8 +511,9 @@ namespace ChainRiposte.Game.Combat
                 return;
 
             float outerScale = 1f + _combat.ParryWindowSeconds * approachSpeed;
+            float lateEdge = 1f - _combat.ParryLateGraceSeconds * approachSpeed;
             float innerScale = Mathf.Clamp(
-                (1f - _combat.ParryLateGraceSeconds * approachSpeed) / ringInnerRatio,
+                matchNoteRingToBand ? lateEdge + ringThickness : lateEdge / noteRingInnerRatio,
                 0.05f, outerScale - 0.001f);
             parryBand.localScale = Vector3.one * outerScale;
 
