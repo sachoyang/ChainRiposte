@@ -83,10 +83,27 @@ namespace ChainRiposte.Game.Combat
             input.SetActive(true);
         }
 
+        /// <summary>
+        /// 승리는 <b>언제나 인살</b>로 끝난다(Core의 유일한 승리 경로). 그래서 결과 화면으로 넘기기 전에
+        /// 처형 컷씬을 돌린다 — 여기서 기다리는 것이 전부이고 Core는 이미 <c>Finished</c>라 아무것도 안 센다.
+        /// 패배는 즉시 넘긴다(보여 줄 처형이 없다).
+        /// </summary>
         private void OnCombatEnded(bool victory)
         {
             input.SetActive(false);
-            gameManager.Session.EndStage(victory);
+            if (!victory)
+            {
+                gameManager.Session.EndStage(false);
+                return;
+            }
+
+            StartCoroutine(VictoryRoutine());
+        }
+
+        private IEnumerator VictoryRoutine()
+        {
+            yield return screen.PlayExecution();
+            gameManager.Session.EndStage(true);
         }
 
         private BossDataSO BossData => gameManager.StageData != null ? gameManager.StageData.BossData : null;
@@ -104,6 +121,10 @@ namespace ChainRiposte.Game.Combat
         private IEnumerator PhaseTransitionRoutine(int nextPhase)
         {
             BossDataSO bossData = BossData;
+
+            // 처형이 먼저다 — 방금 벤 것이 '이 페이즈의 보스'이므로, 모습을 갈아 끼우는 전환 컷씬보다
+            // 앞에 와야 한다. 순서가 뒤바뀌면 다음 페이즈 모습을 처형하는 그림이 된다.
+            yield return screen.PlayExecution();
 
             yield return screen.PlayPhaseTransition(
                 BossVisual.ResolveTransitionSprite(bossData, nextPhase),

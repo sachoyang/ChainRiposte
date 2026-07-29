@@ -122,6 +122,11 @@ namespace ChainRiposte.Game.Combat
         [Tooltip("문구를 읽을 시간. 누르면 즉시 넘어간다.")]
         [SerializeField, Min(0.1f)] private float cutsceneHoldSeconds = 2.5f;
 
+        [Header("처형(인살) 컷씬 (Add Execution Cutscene To Main 이 배선)")]
+        [Tooltip("인살할 때마다 도는 검은 띠 컷씬. 비어 있으면 그냥 건너뛴다 — " +
+            "배선을 덜 했다고 전투가 멈추면 안 된다.")]
+        [SerializeField] private ExecutionCutscene executionCutscene;
+
         private readonly List<RectTransform> _rings = new();
         private readonly List<Image> _ringImages = new();
         private readonly List<Image> _deathblowMarks = new();
@@ -286,12 +291,7 @@ namespace ChainRiposte.Game.Combat
             {
                 playerBody.localScale = Vector3.one;
 
-                // 고른 캐릭터가 있으면 그 그림이 우선. 없으면 인스펙터에 꽂아 둔 것(Main 단독 실행용).
-                Characters.PlayerCharacterSO character = Characters.CharacterService.Current;
-                Sprite body = character != null && character.CombatSprite != null
-                    ? character.CombatSprite
-                    : playerSprite;
-
+                Sprite body = ResolvePlayerSprite();
                 if (body != null)
                 {
                     playerBodyImage.sprite = body;
@@ -305,9 +305,24 @@ namespace ChainRiposte.Game.Combat
             OnPlayerStateChanged(PlayerActionState.Ready);
         }
 
-        /// <summary>스프라이트가 있으면 원색 그대로(흰 틴트), 없으면 색 사각형 플레이스홀더.</summary>
+        /// <summary>
+        /// 고른 캐릭터가 있으면 그 그림이 우선. 없으면 인스펙터에 꽂아 둔 것(Main 단독 실행용).
+        /// 처형 컷씬도 같은 규칙을 써야 전투 화면과 컷씬의 사람이 달라지지 않는다.
+        /// </summary>
+        private Sprite ResolvePlayerSprite()
+        {
+            Characters.PlayerCharacterSO character = Characters.CharacterService.Current;
+            return character != null && character.CombatSprite != null ? character.CombatSprite : playerSprite;
+        }
+
+        /// <summary>
+        /// 스프라이트가 있으면 원색 그대로(흰 틴트), 없으면 색 사각형 플레이스홀더.
+        /// <b>지금 서 있는 보스 그림을 여기 한 곳에서 기억한다</b> — 페이즈가 바뀌어 갈아 끼운 뒤에도
+        /// 처형 컷씬이 '방금 화면에 있던 그 보스'를 그대로 데려갈 수 있어야 한다.
+        /// </summary>
         private void ApplyBossSprite(Sprite sprite)
         {
+            _bossSprite = sprite;
             bool hasSprite = sprite != null;
             if (hasSprite)
             {
@@ -694,6 +709,28 @@ namespace ChainRiposte.Game.Combat
                 yield return null;
             }
             flashOverlay.color = Color.clear;
+        }
+
+        // ── 처형(인살) 컷씬 ──
+
+        /// <summary>
+        /// 인살 한 번 분량의 연출. <b>인살할 때마다</b> 돈다 — 마지막 인살이면 뒤에 승리가 오고,
+        /// 페이즈가 남았으면 뒤에 전환 컷씬이 온다. 순서를 정하는 것은 <see cref="CombatController"/>다.
+        ///
+        /// <para>Core는 이 동안 시간을 세지 않으므로(마지막 인살은 이미 <c>Finished</c>,
+        /// 중간 인살은 <c>AwaitingPhaseTransition</c>) 길이를 여기서 마음대로 정할 수 있다.</para>
+        /// </summary>
+        public IEnumerator PlayExecution()
+        {
+            HideTelegraph();
+            StopExecutePulse();
+            executeText.gameObject.SetActive(false);
+            SetExecuteMarkVisible(false);
+
+            if (executionCutscene == null)
+                yield break;
+
+            yield return executionCutscene.Play(ResolvePlayerSprite(), _bossSprite);
         }
 
         // ── 페이즈 전환 컷씬 ──
