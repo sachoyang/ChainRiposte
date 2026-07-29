@@ -24,9 +24,10 @@ MonoBehaviour:
   - OOOOOOO
   - XOOOOOX
   wallHp: 3
-  turnLimit: 30
+  turnLimit: 0
   comboSoulMultiplierStep: 0.5
   potionHealAmount: 10
+  soulBudget: 0
   spawnWeights:
   - tile: {fileID: 11400000, guid: c009100637f280245b5f700772cfddc1, type: 2}
     weight: 1
@@ -88,10 +89,10 @@ MonoBehaviour:
     m_PreInfinity: 2
     m_PostInfinity: 2
     m_RotationOrder: 4
-  bossCountdownSeconds: 20
-  bossCountdownTurns: 8
-  ambushHpMultiplier: 0.5
+  bossEngageSeconds: 90
+  maxLiveBossTiles: 1
   bossData: {fileID: 11400000, guid: 9c1ca3bd3300cf64d8c7c01685203d6d, type: 2}
+  isFinalLink: 0
   gimmicks: 020000000100000000000000
   gimmickTuning:
     corruptionSeeds: 2
@@ -102,3 +103,9 @@ MonoBehaviour:
     bombDamage: 12
     chainInitialCount: 3
     chainChance: 0.08
+    enrageBeatSeconds: 1.6
+    enrageChance: 0.35
+    enrageChanceRampPerBeat: 0.01
+    enrageBeats: 3
+    enrageDamage: 8
+    maxEnragedTiles: 3

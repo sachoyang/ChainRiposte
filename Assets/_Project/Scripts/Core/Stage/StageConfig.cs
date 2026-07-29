@@ -22,7 +22,19 @@ namespace ChainRiposte.Core.Stage
         public int WallHp = 3;
 
         // ── 퍼즐 규칙 ──
-        public int TurnLimit = 30;
+        /// <summary>
+        /// 스왑 가능 횟수. <b>0이면 무제한</b>(기본).
+        ///
+        /// <para>여느 3매치와 달리 이 게임의 퍼즐 페이즈에는 <b>달성할 목표가 없다</b> —
+        /// 소울을 캐며 보스를 기다리는 준비 구간이고, 판을 끝내는 것은 보스 시계와 보스 타일이다.
+        /// 목표가 없는데 수를 제한하면 "N수 안에 무엇을 해라"가 성립하지 않고 그저
+        /// <b>퍼즐을 열심히 푼 사람이 처벌받는다</b> — 스왑할수록 죽음에 가까워지는데
+        /// 퍼즐은 참여를 유도하고 싶은 구간이다.</para>
+        ///
+        /// <para>파밍 상한은 이미 두 겹이다: 판 시계(<see cref="BossEngageSeconds"/>)와
+        /// 소울 광맥(스테이지 매장량). 턴이 그 일을 또 할 필요가 없다.</para>
+        /// </summary>
+        public int TurnLimit;
 
         /// <summary>콤보(연쇄) 1단계당 영혼석 배수 증가량. 배수 = 1 + 증가량 × (콤보 − 1).</summary>
         public float ComboSoulMultiplierStep = 0.5f;

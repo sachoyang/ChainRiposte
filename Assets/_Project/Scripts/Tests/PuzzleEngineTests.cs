@@ -58,6 +58,30 @@ namespace ChainRiposte.Core.Tests
             Assert.That(engine.Board.GetTile(new GridPos(0, 1)).Definition, Is.SameAs(P));
         }
 
+        /// <summary>
+        /// 턴 제한 0 = 무제한. 이 게임의 퍼즐은 목표 달성형이 아니라 준비 구간이라 이쪽이 기본이고,
+        /// 판을 끝내는 것은 보스 시계다. 수를 아무리 써도 <b>패배로 이어지면 안 된다.</b>
+        /// </summary>
+        [Test]
+        public void 턴_제한이_0이면_아무리_스왑해도_수가_다하지_않는다()
+        {
+            var seq = new System.Collections.Generic.List<TileDefinition>
+            {
+                S, S, R,
+                P, R, S,
+                R, S, P,
+            };
+            var engine = new PuzzleEngine(
+                TestUtils.Config(Plain3x3, turnLimit: 0), new SequenceSpawner(seq));
+
+            Assert.That(engine.HasTurnLimit, Is.False);
+
+            for (int i = 0; i < 50; i++)
+                engine.TrySwap(new GridPos(2, 0), new GridPos(2, 1));
+
+            Assert.That(engine.OutOfTurns, Is.False, "수를 안 세는 판은 수로 지지 않는다");
+        }
+
         [Test]
         public void 인접하지_않은_스왑은_거부된다()
         {

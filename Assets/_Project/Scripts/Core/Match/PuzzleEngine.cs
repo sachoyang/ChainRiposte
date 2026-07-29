@@ -24,8 +24,15 @@ namespace ChainRiposte.Core.Match
         private readonly GimmickContext _gimmickContext;
 
         public BoardGrid Board { get; }
+
+        /// <summary>남은 스왑 수. <see cref="HasTurnLimit"/>가 false면 의미 없는 값이다.</summary>
         public int TurnsRemaining { get; private set; }
-        public bool OutOfTurns => TurnsRemaining <= 0;
+
+        /// <summary>이 판이 수를 세는가 (<c>StageConfig.TurnLimit</c>이 0보다 클 때만).</summary>
+        public bool HasTurnLimit { get; }
+
+        /// <summary>수를 다 썼는가. <b>수를 안 세는 판에서는 영영 false</b>다.</summary>
+        public bool OutOfTurns => HasTurnLimit && TurnsRemaining <= 0;
 
         public event Action<int> TurnsChanged;
         public event Action<SwapResult> SwapResolved;
@@ -38,6 +45,7 @@ namespace ChainRiposte.Core.Match
             _spawner = spawner ?? throw new ArgumentNullException(nameof(spawner));
             _rng = rng ?? new Random();
             _comboMultiplierStep = config.ComboSoulMultiplierStep;
+            HasTurnLimit = config.TurnLimit > 0;
             TurnsRemaining = config.TurnLimit;
             Board = config.CreateBoard();
 
@@ -81,8 +89,12 @@ namespace ChainRiposte.Core.Match
                 return SwapResult.Failed(a, b);
             }
 
-            TurnsRemaining--;
-            TurnsChanged?.Invoke(TurnsRemaining);
+            // 수를 안 세는 판에서도 눈금은 흐른다 — 아래로 흘러 음수가 되게 두지 않고 0에서 멈춘다.
+            if (HasTurnLimit)
+            {
+                TurnsRemaining--;
+                TurnsChanged?.Invoke(TurnsRemaining);
+            }
 
             GimmickPhase gimmickPhase = RunTurnEndGimmicks();
 

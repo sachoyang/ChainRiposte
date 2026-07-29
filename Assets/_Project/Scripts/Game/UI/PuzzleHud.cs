@@ -207,13 +207,22 @@ namespace ChainRiposte.Game.UI
             RefreshStats();
         }
 
+        /// <summary>
+        /// 남은 수. <b>수를 안 세는 판에서는 아무것도 안 적는다</b> — 이 게임의 퍼즐은
+        /// 목표 달성형이 아니라 준비 구간이라 보통 무제한이고, 그때 "남은 수 0"이 떠 있으면
+        /// 곧 죽는다는 잘못된 신호가 된다. 판을 재는 시계는 보스 시계 하나다.
+        /// </summary>
         private void RefreshTurns()
         {
-            string text = Loc.GetText("puzzle.turns", _engine.TurnsRemaining);
+            string text = _engine.HasTurnLimit ? Loc.GetText("puzzle.turns", _engine.TurnsRemaining) : string.Empty;
 
-            // 전용 자리가 없을 때만 턴 밑에 작게 붙인다 — 배선을 덜 했다고 시계가 사라지면 안 된다.
+            // 전용 자리가 없을 때만 여기에 붙인다 — 배선을 덜 했다고 시계가 사라지면 안 된다.
             if (bossTimerText == null && _bossTimerSeconds >= 0f)
-                text += "\n" + Loc.GetText("puzzle.bossTimer", Mathf.CeilToInt(_bossTimerSeconds));
+            {
+                if (text.Length > 0)
+                    text += "\n";
+                text += Loc.GetText("puzzle.bossTimer", Mathf.CeilToInt(_bossTimerSeconds));
+            }
 
             turnsText.text = text;
             RefreshBossTimer();

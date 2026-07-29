@@ -41,7 +41,10 @@ namespace ChainRiposte.Game.Config
         [SerializeField, Min(1)] private int wallHp = 3;
 
         [Header("퍼즐 규칙")]
-        [SerializeField, Min(1)] private int turnLimit = 30;
+        [Tooltip("스왑 가능 횟수. <b>0이면 무제한</b>(기본). " +
+            "이 게임의 퍼즐은 목표 달성형이 아니라 준비 구간이라, 수를 제한하면 " +
+            "퍼즐을 열심히 푼 사람이 처벌받는다. 파밍 상한은 판 시계와 소울 광맥이 이미 맡고 있다.")]
+        [SerializeField, Min(0)] private int turnLimit;
         [Tooltip("콤보(연쇄) 1단계당 영혼석 배수 증가량. 배수 = 1 + 증가량 × (콤보-1)")]
         [SerializeField, Min(0f)] private float comboSoulMultiplierStep = 0.5f;
         [Tooltip("물약 타일 1개 매치당 HP 회복량")]
