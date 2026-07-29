@@ -103,9 +103,19 @@ namespace ChainRiposte.Game.UI
                 GoToMap();
         }
 
+        /// <summary>
+        /// 왜 졌는지 같이 알려 준다. <b>패배 조건이 여럿이라 "패배" 한 줄로는 무엇을 고쳐야 할지 모른다</b> —
+        /// 턴이 모자랐는지 맞아 죽었는지에 따라 다음 판의 플레이가 완전히 달라진다.
+        ///
+        /// <para>사유는 세션에서 따로 들고 오지 않고 <b>상태로 읽는다</b>. 체력이 0이면 맞아 죽은 것이고
+        /// (퍼즐의 잡몹·폭탄이든 전투의 보스든), 아니면 턴이 다한 것뿐이다. 사유를 값으로 들고 다니면
+        /// 새 패배 조건이 생길 때마다 전달 경로를 하나씩 늘려야 한다.</para>
+        /// </summary>
         private void ShowDefeat()
         {
-            titleText.text = Loc.GetText("result.defeat");
+            bool killed = gameManager.Session.Health.Current <= 0;
+            titleText.text = Loc.GetText("result.defeat")
+                + "\n<size=55%>" + Loc.GetText(killed ? "result.defeat.hp" : "result.defeat.turns") + "</size>";
             titleText.color = new Color(0.85f, 0.2f, 0.25f);
             restartButton.gameObject.SetActive(true);
             mapButton.gameObject.SetActive(true);

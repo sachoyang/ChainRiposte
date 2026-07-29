@@ -54,12 +54,16 @@ namespace ChainRiposte.Core.Tests
 
         // ── 성난 몬스터 (상시) ──
 
-        private static GimmickSettings EnrageSettings(float chance, int turns = 2, int damage = 7, int max = 3) =>
+        /// <summary>한 박 = 1초로 두고 잰다 — 테스트가 초를 세지 않아도 되게.</summary>
+        private const float Beat = 1f;
+
+        private static GimmickSettings EnrageSettings(float chance, int beats = 2, int damage = 7, int max = 3) =>
             new()
             {
+                EnrageBeatSeconds = Beat,
                 EnrageChance = chance,
-                EnrageChanceRampPerTurn = 0f,
-                EnrageTurns = turns,
+                EnrageChanceRampPerBeat = 0f,
+                EnrageBeats = beats,
                 EnrageDamage = damage,
                 MaxEnragedTiles = max,
             };
@@ -77,16 +81,16 @@ namespace ChainRiposte.Core.Tests
         }
 
         [Test]
-        public void 성난_몬스터는_한_턴에_하나씩만_늘어난다()
+        public void 성난_몬스터는_한_박에_하나씩만_늘어난다()
         {
             BoardGrid board = FilledBoard(Plain3x3, S);
             GimmickContext context = Context(board, EnrageSettings(chance: 1f));
             var gimmick = new EnragedMonstersGimmick();
 
-            gimmick.OnTurnEnded(context);
-            Assert.That(CountEnraged(board), Is.EqualTo(1), "확률 1이라도 한 턴에 하나");
+            gimmick.OnTimeElapsed(context, Beat);
+            Assert.That(CountEnraged(board), Is.EqualTo(1), "확률 1이라도 한 박에 하나");
 
-            gimmick.OnTurnEnded(context);
+            gimmick.OnTimeElapsed(context, Beat);
             Assert.That(CountEnraged(board), Is.EqualTo(2));
         }
 
@@ -94,11 +98,11 @@ namespace ChainRiposte.Core.Tests
         public void 동시_상한을_넘겨_성나지_않는다()
         {
             BoardGrid board = FilledBoard(Plain3x3, S);
-            GimmickContext context = Context(board, EnrageSettings(chance: 1f, turns: 99, max: 2));
+            GimmickContext context = Context(board, EnrageSettings(chance: 1f, beats: 99, max: 2));
             var gimmick = new EnragedMonstersGimmick();
 
             for (int i = 0; i < 6; i++)
-                gimmick.OnTurnEnded(context);
+                gimmick.OnTimeElapsed(context, Beat);
 
             Assert.That(CountEnraged(board), Is.EqualTo(2), "보드가 통째로 성나지 않는다");
         }
@@ -107,19 +111,19 @@ namespace ChainRiposte.Core.Tests
         public void 카운트가_0이_되면_때리고_재장전한다()
         {
             BoardGrid board = FilledBoard(Plain3x3, S);
-            GimmickContext context = Context(board, EnrageSettings(chance: 1f, turns: 2, damage: 7, max: 1));
+            GimmickContext context = Context(board, EnrageSettings(chance: 1f, beats: 2, damage: 7, max: 1));
             var gimmick = new EnragedMonstersGimmick();
 
             context.BeginTurn();
-            gimmick.OnTurnEnded(context); // 성남 (남은 2) — 갓 성난 턴에는 안 줄어든다
+            gimmick.OnTimeElapsed(context, Beat); // 성남 (남은 2) — 갓 성난 박에는 안 줄어든다
             Assert.That(context.PlayerDamage, Is.EqualTo(0));
 
             context.BeginTurn();
-            gimmick.OnTurnEnded(context); // 남은 1
+            gimmick.OnTimeElapsed(context, Beat); // 남은 1
             Assert.That(context.PlayerDamage, Is.EqualTo(0));
 
             context.BeginTurn();
-            gimmick.OnTurnEnded(context); // 0 → 공격
+            gimmick.OnTimeElapsed(context, Beat); // 0 → 공격
             Assert.That(context.PlayerDamage, Is.EqualTo(7), "플레이어 HP를 직접 깎는다");
             Assert.That(CountEnraged(board), Is.EqualTo(1), "때린 뒤에도 사라지지 않고 재장전한다");
         }
@@ -129,13 +133,13 @@ namespace ChainRiposte.Core.Tests
         {
             var brute = new TileDefinition("Brute", TileCategory.Monster, baseSouls: 10, maxHp: 0, attackDamage: 25);
             BoardGrid board = FilledBoard(Plain3x3, brute);
-            GimmickContext context = Context(board, EnrageSettings(chance: 1f, turns: 1, damage: 7, max: 1));
+            GimmickContext context = Context(board, EnrageSettings(chance: 1f, beats: 1, damage: 7, max: 1));
             var gimmick = new EnragedMonstersGimmick();
 
             context.BeginTurn();
-            gimmick.OnTurnEnded(context); // 성남 (남은 1)
+            gimmick.OnTimeElapsed(context, Beat); // 성남 (남은 1)
             context.BeginTurn();
-            gimmick.OnTurnEnded(context); // 0 → 공격
+            gimmick.OnTimeElapsed(context, Beat); // 0 → 공격
 
             Assert.That(context.PlayerDamage, Is.EqualTo(25));
         }
@@ -148,7 +152,7 @@ namespace ChainRiposte.Core.Tests
             var gimmick = new EnragedMonstersGimmick();
 
             for (int i = 0; i < 10; i++)
-                gimmick.OnTurnEnded(context);
+                gimmick.OnTimeElapsed(context, Beat);
 
             Assert.That(CountEnraged(board), Is.EqualTo(0));
             Assert.That(context.PlayerDamage, Is.EqualTo(0));

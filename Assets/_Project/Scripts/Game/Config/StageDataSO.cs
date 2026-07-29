@@ -118,13 +118,16 @@ namespace ChainRiposte.Game.Config
             [Range(0f, 1f)] public float chainChance = 0.08f;
 
             [Header("성난 몬스터 (상시 — 위 목록과 무관하게 항상 켜짐)")]
-            [Tooltip("매 턴 몬스터 하나가 새로 성날 확률. 0이면 잡몹 공격이 꺼진다. " +
-                "한 턴에 최대 하나만 성나므로 갑자기 도배되지 않는다.")]
+            [Tooltip("잡몹 시계가 한 칸 도는 주기(초). 턴이 아니라 시간으로 돈다 — " +
+                "턴으로 세면 가만히 있는 것이 가장 안전한 수가 되어 버린다.")]
+            [Min(0.1f)] public float enrageBeatSeconds = 1.6f;
+            [Tooltip("한 박마다 몬스터 하나가 새로 성날 확률. 0이면 잡몹 공격이 꺼진다. " +
+                "한 박에 최대 하나만 성나므로 갑자기 도배되지 않는다.")]
             [Range(0f, 1f)] public float enrageChance = 0.35f;
-            [Tooltip("턴이 지날수록 성날 확률에 더해지는 양. 0이면 처음부터 끝까지 같은 압박")]
-            [Range(0f, 0.1f)] public float enrageChanceRampPerTurn = 0.01f;
-            [Tooltip("성난 뒤 때리기까지의 턴 수. 이 안에 매치로 없애면 취소된다")]
-            [Min(1)] public int enrageTurns = 3;
+            [Tooltip("박이 지날수록 성날 확률에 더해지는 양. 0이면 처음부터 끝까지 같은 압박")]
+            [Range(0f, 0.1f)] public float enrageChanceRampPerBeat = 0.01f;
+            [Tooltip("성난 뒤 때리기까지의 박 수. 이 안에 매치로 없애면 취소된다")]
+            [Min(1)] public int enrageBeats = 3;
             [Tooltip("성난 몬스터가 때리는 기본 피해. 타일 종류가 자기 공격력을 적었으면 그쪽이 이긴다")]
             [Min(0)] public int enrageDamage = 8;
             [Tooltip("동시에 성날 수 있는 최대 수 — 보드가 통째로 성나 손쓸 수 없게 되는 것을 막는다")]
@@ -140,9 +143,10 @@ namespace ChainRiposte.Game.Config
                 BombDamage = bombDamage,
                 ChainInitialCount = chainInitialCount,
                 ChainChance = chainChance,
+                EnrageBeatSeconds = enrageBeatSeconds,
                 EnrageChance = enrageChance,
-                EnrageChanceRampPerTurn = enrageChanceRampPerTurn,
-                EnrageTurns = enrageTurns,
+                EnrageChanceRampPerBeat = enrageChanceRampPerBeat,
+                EnrageBeats = enrageBeats,
                 EnrageDamage = enrageDamage,
                 MaxEnragedTiles = maxEnragedTiles,
             };

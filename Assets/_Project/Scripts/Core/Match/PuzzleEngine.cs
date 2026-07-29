@@ -174,6 +174,25 @@ namespace ChainRiposte.Core.Match
             return (souls, potions);
         }
 
+        /// <summary>
+        /// 턴과 무관하게 흐르는 시간을 기믹에게 알린다 — <b>플레이어가 아무것도 안 해도</b>
+        /// 자라는 위협(성난 몬스터)이 여기서 돈다. 일어난 일이 없으면 <see cref="GimmickPhase.Empty"/>.
+        ///
+        /// <para>부르는 쪽(Game)은 연출이 도는 동안에는 부르지 않는다 — 애니메이션 중에 보드가 바뀌면
+        /// 화면과 모델이 어긋난다. 그래서 흐른 시간을 <b>엔진이 아니라 부르는 쪽이</b> 정한다.</para>
+        /// </summary>
+        public GimmickPhase TickTime(float deltaSeconds)
+        {
+            if (_gimmicks.Count == 0 || deltaSeconds <= 0f)
+                return GimmickPhase.Empty;
+
+            _gimmickContext.BeginTurn(); // 이번 호출의 기록만 담기게 비운다
+            foreach (IStageGimmick gimmick in _gimmicks)
+                gimmick.OnTimeElapsed(_gimmickContext, deltaSeconds);
+
+            return CollectGimmickPhase();
+        }
+
         /// <summary>턴 종료 기믹(확산·폭발)을 돌리고, 그 여파(낙하·새 연쇄)까지 해석한다.</summary>
         private GimmickPhase RunTurnEndGimmicks()
         {
@@ -183,6 +202,12 @@ namespace ChainRiposte.Core.Match
             foreach (IStageGimmick gimmick in _gimmicks)
                 gimmick.OnTurnEnded(_gimmickContext);
 
+            return CollectGimmickPhase();
+        }
+
+        /// <summary>기믹이 기록한 것을 걷고, 보드를 건드렸다면 그 여파(낙하·새 연쇄)까지 해석한다.</summary>
+        private GimmickPhase CollectGimmickPhase()
+        {
             IReadOnlyList<GimmickEvent> events = _gimmickContext.TakeEvents();
             int damage = _gimmickContext.PlayerDamage;
 

@@ -207,7 +207,7 @@ namespace ChainRiposte.Game.Puzzle
         /// <summary>
         /// 턴 종료 기믹(확산·폭발)의 연출 — 사건 → 낙하 → 그 여파로 터진 연쇄 순 (GDD §3.6).
         /// </summary>
-        private IEnumerator PlayGimmickPhase(GimmickPhase phase)
+        public IEnumerator PlayGimmickPhase(GimmickPhase phase)
         {
             var anims = new List<IEnumerator>();
 
@@ -264,11 +264,11 @@ namespace ChainRiposte.Game.Puzzle
                     break;
                 case GimmickEventType.EnrageStarted:
                 case GimmickEventType.EnrageTicked:
-                    view.SetEnrageTurns(gimmickEvent.Value, enrageTint);
+                    view.SetEnrageCountdown(gimmickEvent.Value, enrageTint);
                     break;
                 case GimmickEventType.EnrageAttacked:
                     // 때린 뒤에도 사라지지 않는다 — 재장전된 카운트를 그대로 다시 보여주고 한 번 튄다.
-                    view.SetEnrageTurns(gimmickEvent.Tile.Status.EnrageTurnsRemaining, enrageTint);
+                    view.SetEnrageCountdown(gimmickEvent.Tile.Status.EnrageCountdown, enrageTint);
                     StartCoroutine(view.PunchOnce());
                     break;
             }

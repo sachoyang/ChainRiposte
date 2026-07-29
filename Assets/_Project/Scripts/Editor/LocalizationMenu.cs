@@ -621,6 +621,8 @@ namespace ChainRiposte.Editor
             // 결과
             Row(builder, "result.victory", "스테이지 클리어", "STAGE CLEAR");
             Row(builder, "result.defeat", "패배", "DEFEAT");
+            Row(builder, "result.defeat.hp", "체력이 다했다", "YOU RAN OUT OF HEALTH");
+            Row(builder, "result.defeat.turns", "턴이 다했다", "YOU RAN OUT OF MOVES");
             Row(builder, "result.restart", "다시 시작", "RESTART");
             Row(builder, "result.map", "지도", "MAP");
             Row(builder, "ending.skip", "아무 곳이나 눌러 넘기기", "TAP TO SKIP");

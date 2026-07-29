@@ -55,6 +55,8 @@ combat.intro,보스 전투,BOSS BATTLE
 combat.popup.parry,패링!,PARRY!
 result.victory,스테이지 클리어,STAGE CLEAR
 result.defeat,패배,DEFEAT
+result.defeat.hp,체력이 다했다,YOU RAN OUT OF HEALTH
+result.defeat.turns,턴이 다했다,YOU RAN OUT OF MOVES
 result.restart,다시 시작,RESTART
 result.map,지도,MAP
 ending.skip,아무 곳이나 눌러 넘기기,TAP TO SKIP

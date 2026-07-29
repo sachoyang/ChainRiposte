@@ -26,6 +26,12 @@ namespace ChainRiposte.Core.Stage.Gimmicks
 
         /// <summary>턴이 소모된 뒤 — 확산/카운트다운. 보드를 바꾸면 엔진이 다시 정착시킨다.</summary>
         void OnTurnEnded(GimmickContext context);
+
+        /// <summary>
+        /// 실시간이 흐른 만큼 — <b>플레이어가 아무것도 안 해도</b> 도는 위협이 여기서 자란다.
+        /// 턴 훅만 있으면 손을 놓고 있는 것이 가장 안전한 수가 되므로, 압박을 맡은 기믹은 이쪽을 쓴다.
+        /// </summary>
+        void OnTimeElapsed(GimmickContext context, float deltaSeconds);
     }
 
     /// <summary>필요한 훅만 재정의하도록 하는 기본 구현.</summary>
@@ -40,5 +46,7 @@ namespace ChainRiposte.Core.Stage.Gimmicks
         public virtual void OnMatchesResolving(GimmickContext context, HashSet<GridPos> cleared) { }
 
         public virtual void OnTurnEnded(GimmickContext context) { }
+
+        public virtual void OnTimeElapsed(GimmickContext context, float deltaSeconds) { }
     }
 }

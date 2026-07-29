@@ -35,16 +35,23 @@ namespace ChainRiposte.Core.Stage
 
         // ── 성난 몬스터 (상시) ──
         /// <summary>
-        /// 매 턴 몬스터 하나가 새로 성날 확률 (0~1). <b>0이면 잡몹 공격이 꺼진다.</b>
-        /// 한 턴에 최대 하나만 성나므로 갑자기 도배되지 않는다.
+        /// 잡몹의 시계가 한 칸 도는 주기(초). <b>턴이 아니라 시간으로 도는 것이 핵심이다</b> —
+        /// 턴으로 세면 손을 놓고 있는 동안 아무 일도 안 일어나서, 가만히 기다리는 것이
+        /// 가장 안전한 수가 되어 버린다(보스 시계는 그동안에도 흐르므로 공짜로 보스전에 갈 수 있다).
+        /// </summary>
+        public float EnrageBeatSeconds = 1.6f;
+
+        /// <summary>
+        /// 한 박마다 몬스터 하나가 새로 성날 확률 (0~1). <b>0이면 잡몹 공격이 꺼진다.</b>
+        /// 한 박에 최대 하나만 성나므로 갑자기 도배되지 않는다.
         /// </summary>
         public float EnrageChance = 0.35f;
 
-        /// <summary>턴이 지날수록 성날 확률에 더해지는 양. 0이면 처음부터 끝까지 같은 압박.</summary>
-        public float EnrageChanceRampPerTurn = 0.01f;
+        /// <summary>박이 지날수록 성날 확률에 더해지는 양. 0이면 처음부터 끝까지 같은 압박.</summary>
+        public float EnrageChanceRampPerBeat = 0.01f;
 
-        /// <summary>성난 뒤 때리기까지의 턴 수. 이 안에 매치로 없애면 취소된다.</summary>
-        public int EnrageTurns = 3;
+        /// <summary>성난 뒤 때리기까지의 박 수. 이 안에 매치로 없애면 취소된다.</summary>
+        public int EnrageBeats = 3;
 
         /// <summary>성난 몬스터가 때리는 기본 피해. 타일 종류가 자기 공격력을 적었으면 그쪽이 이긴다.</summary>
         public int EnrageDamage = 8;

@@ -125,7 +125,7 @@ namespace ChainRiposte.Game.Puzzle
         {
             SetChained(tile.Status.Chained, chainSprite);
             SetBombTurns(tile.Status.BombTurnsRemaining);
-            SetEnrageTurns(tile.Status.EnrageTurnsRemaining, enrageTint);
+            SetEnrageCountdown(tile.Status.EnrageCountdown, enrageTint);
         }
 
         /// <summary>시한폭탄 남은 턴 표시. 0 이하면 표시를 지운다 (해체/폭발).</summary>
@@ -151,7 +151,7 @@ namespace ChainRiposte.Game.Puzzle
         /// <b>틴트까지 거는 이유</b>: 숫자만으로는 보드를 훑을 때 안 읽힌다. 색이 있어야
         /// "저놈부터 없앤다"는 판단이 한눈에 선다.
         /// </summary>
-        public void SetEnrageTurns(int turns, Color enrageTint)
+        public void SetEnrageCountdown(int turns, Color enrageTint)
         {
             bool enraged = turns > 0;
             if (_enraged != enraged)

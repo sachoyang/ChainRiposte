@@ -61,9 +61,64 @@ namespace ChainRiposte.Game.Puzzle
 
         private void Update()
         {
+            if (gameManager.Session.Phase != GamePhase.Puzzle)
+                return;
+
             // 듀얼 카운트다운의 실시간 축은 퍼즐 페이즈 동안 항상 흐른다 (연출 중 포함)
-            if (_intrusion != null && gameManager.Session.Phase == GamePhase.Puzzle)
-                _intrusion.Tick(Time.deltaTime);
+            _intrusion?.Tick(Time.deltaTime);
+
+            // 잡몹 위협은 <b>연출 중에는 멈춘다</b> — 애니메이션이 도는 동안 보드가 바뀌면
+            // 화면과 모델이 어긋난다. 대신 그만큼의 시간은 아예 안 흐른 것으로 친다.
+            if (!_replaying)
+                TickGimmickTime(Time.deltaTime);
+        }
+
+        /// <summary>
+        /// 턴과 무관하게 도는 위협(성난 몬스터). <b>손을 놓고 있어도 자란다</b> —
+        /// 이것이 없으면 가만히 기다리는 것이 가장 안전한 수가 되고, 보스 시계만 흘러
+        /// 만피로 보스전에 갈 수 있다.
+        /// </summary>
+        private void TickGimmickTime(float deltaSeconds)
+        {
+            if (_engine == null)
+                return;
+
+            GimmickPhase phase = _engine.TickTime(deltaSeconds);
+            if (phase.IsEmpty && phase.PlayerDamage <= 0)
+                return;
+
+            StartCoroutine(ReplayGimmickPhase(phase));
+        }
+
+        /// <summary>
+        /// 시간이 만든 사건의 연출과 피해 적용.
+        ///
+        /// <para>보드가 안 바뀌는 사건(카운트 감소·피격)은 <b>입력을 막지 않는다</b> —
+        /// 1.6초마다 손이 묶이면 퍼즐을 풀 수가 없다. 낙하·연쇄가 실제로 생긴 경우에만 잠근다.</para>
+        /// </summary>
+        private IEnumerator ReplayGimmickPhase(GimmickPhase phase)
+        {
+            bool boardMoves = phase.FallPhases.Count > 0 || phase.Cascades.Count > 0;
+            if (boardMoves)
+            {
+                _replaying = true;
+                input.SetActive(false);
+            }
+
+            yield return boardView.PlayGimmickPhase(phase);
+
+            if (boardMoves)
+                _replaying = false;
+
+            if (phase.PlayerDamage > 0 && gameManager.Session.Health.ApplyDamage(phase.PlayerDamage))
+            {
+                gameManager.Session.EndStage(victory: false);
+                yield break;
+            }
+
+            // 그 사이에 스왑이 시작됐다면 그쪽이 입력의 주인이다 — 여기서 켜면 연출 중에 손이 풀린다.
+            if (!_replaying && gameManager.Session.Phase == GamePhase.Puzzle)
+                input.SetActive(true);
         }
 
         private void BeginPuzzle()
