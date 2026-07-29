@@ -1,3 +1,4 @@
+using System;
 using ChainRiposte.Game.Config;
 using UnityEditor;
 using UnityEngine;
@@ -31,6 +32,24 @@ namespace ChainRiposte.Editor
         private int _snapIndex = 2;
         private int _selectedPattern = -1;
         private int _selectedNote = -1;
+        private BossChartPreview _preview;
+
+        private void OnEnable()
+        {
+            _preview = new BossChartPreview(Repaint);
+            EditorApplication.update += _preview.Tick;
+        }
+
+        private void OnDisable()
+        {
+            if (_preview == null)
+                return;
+
+            // 인스펙터를 떠나도 소리가 계속 나면 안 된다 — 다른 에셋을 고르는 순간 멈춘다.
+            EditorApplication.update -= _preview.Tick;
+            _preview.Stop();
+            _preview = null;
+        }
 
         public override void OnInspectorGUI()
         {
@@ -114,11 +133,41 @@ namespace ChainRiposte.Editor
                 $"→ 한 박 {secondsPerBeat:0.###}초 · 패턴 전체 {lengthBeats.floatValue * secondsPerBeat:0.##}초 · 노트 {notes.arraySize}개",
                 EditorStyles.miniLabel);
 
-            DrawTimeline(index, lengthBeats.floatValue, notes);
+            DrawTimeline(index, lengthBeats.floatValue, notes, secondsPerBeat);
+
+            BossChartPreview.PatternTiming timing = BuildTiming(notes, secondsPerBeat, lengthBeats.floatValue);
+            _preview.DrawTransport(index, timing);
+            _preview.DrawStage(index, timing);
+
             DrawSelectedNote(index, notes);
         }
 
-        private void DrawTimeline(int patternIndex, float lengthBeats, SerializedProperty notes)
+        /// <summary>
+        /// 인스펙터의 박 단위 값을 초로 옮긴다. 노트의 개별 배율은 <b>예비동작만</b> 줄인다 —
+        /// 타격 시점은 패턴의 박이 정하고 배율은 "얼마나 일찍 보이나"만 바꾸는 것이 채보의 규칙이다.
+        /// </summary>
+        private static BossChartPreview.PatternTiming BuildTiming(
+            SerializedProperty notes, float secondsPerBeat, float lengthBeats)
+        {
+            var built = new BossChartPreview.PatternTiming.Note[notes.arraySize];
+            for (int i = 0; i < notes.arraySize; i++)
+            {
+                SerializedProperty note = notes.GetArrayElementAtIndex(i);
+                float beat = note.FindPropertyRelative("beat").floatValue;
+                float telegraphBeats = note.FindPropertyRelative("telegraphBeats").floatValue
+                                       / Mathf.Max(0.01f, note.FindPropertyRelative("speedMultiplier").floatValue);
+
+                built[i] = new BossChartPreview.PatternTiming.Note(
+                    beat * secondsPerBeat, telegraphBeats * secondsPerBeat);
+            }
+
+            // 미리보기는 노트를 시간 순으로 훑는다 — 인스펙터에서 찍은 순서는 뒤죽박죽일 수 있다.
+            Array.Sort(built, (a, b) => a.HitSeconds.CompareTo(b.HitSeconds));
+            return new BossChartPreview.PatternTiming(built, secondsPerBeat, lengthBeats);
+        }
+
+        private void DrawTimeline(
+            int patternIndex, float lengthBeats, SerializedProperty notes, float secondsPerBeat)
         {
             Rect rect = EditorGUILayout.GetControlRect(false, TimelineHeight);
             EditorGUI.DrawRect(rect, TrackColor);
@@ -160,6 +209,8 @@ namespace ChainRiposte.Editor
                     new Rect(hitX - NoteHitWidth * 0.5f, rect.y + 14f, NoteHitWidth, 36f),
                     selected ? SelectedColor : NoteColor);
             }
+
+            _preview.DrawPlayhead(patternIndex, rect, lengthBeats, secondsPerBeat);
 
             HandleTimelineInput(rect, patternIndex, lengthBeats, perBeat, snap, notes);
         }
