@@ -51,6 +51,17 @@ namespace ChainRiposte.Game.Progress
             _current = new StageProgress();
         }
 
+        /// <summary>
+        /// 다음 회차(NG+)로 — 클리어 기록만 지우고 <b>진입 기록은 남긴다</b>
+        /// (규칙은 <see cref="StageProgress.BeginNewGamePlus"/>).
+        /// </summary>
+        public static void BeginNewGamePlus()
+        {
+            Current.BeginNewGamePlus();
+            Save();
+            Debug.Log("[Progress] 다음 회차 — 클리어 기록을 지웠습니다(보스·기믹 공개는 유지).");
+        }
+
         /// <summary>주어진 스테이지들을 전부 클리어 처리 (디버그용).</summary>
         public static void UnlockAll(params string[] stageIds)
         {

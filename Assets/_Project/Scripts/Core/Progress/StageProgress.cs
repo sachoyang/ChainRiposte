@@ -58,6 +58,17 @@ namespace ChainRiposte.Core.Progress
         /// <summary>처음 진입했으면 true (저장이 필요한지 판단용).</summary>
         public bool MarkAttempted(string stageId) => Add(_attempted, stageId);
 
+        /// <summary>
+        /// 다음 회차(NG+)로 — <b>클리어 기록만 지우고 진입 기록은 남긴다.</b>
+        ///
+        /// <para>클리어를 지우는 이유: 사슬을 처음부터 다시 올라야 회차가 의미를 갖는다.
+        /// 안 지우면 2회차가 곧바로 최종 고리로 건너뛸 수 있어서 회차 배수가 마지막 판에만 걸린다.</para>
+        ///
+        /// <para>진입 기록을 남기는 이유: 이미 본 보스를 <b>다시 ??? 로 가리는 것은 정보가 아니라 불편</b>이다.
+        /// 지도의 정보 패널은 진입 기록으로 공개 여부를 판단한다(<see cref="IsRevealed"/>).</para>
+        /// </summary>
+        public void BeginNewGamePlus() => _cleared.Clear();
+
         /// <summary>첫 스테이지는 항상 열려 있고, 그 뒤는 <b>직전 스테이지를 클리어해야</b> 열린다.</summary>
         public bool IsUnlocked(IReadOnlyList<string> orderedStageIds, int index)
         {

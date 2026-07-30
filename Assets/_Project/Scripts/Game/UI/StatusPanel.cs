@@ -148,7 +148,13 @@ namespace ChainRiposte.Game.UI
             }
 
             if (chainText != null)
-                chainText.text = Loc.GetText("status.chain", run.ChainStep);
+            {
+                // 회차는 0일 때 아무 말도 안 한다 — 1회차에 "1회차"라고 적으면 없는 개념을 설명하는 셈이다.
+                chainText.text = run.NewGamePlusCount > 0
+                    ? Loc.GetText("status.chain", run.ChainStep) + "   "
+                      + Loc.GetText("status.newgameplus", run.NewGamePlusCount + 1)
+                    : Loc.GetText("status.chain", run.ChainStep);
+            }
 
             DrawMemories(run);
         }

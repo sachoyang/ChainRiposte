@@ -82,6 +82,28 @@ namespace ChainRiposte.Core.Tests
         }
 
         [Test]
+        public void 다음_회차는_빌드를_들고_가고_사슬과_광맥만_되돌린다()
+        {
+            PlayerStats grown = new(Config());
+            grown.AddSouls(500);
+            grown.Allocate(StatType.Attack);
+
+            RunState run = new(grown.Capture(), new[] { "memory_a" }, chainStep: 4);
+            run.Harvest("Stage_1_1", 120);
+
+            int level = run.Stats.Level;
+            run.EnterNewGamePlus();
+
+            Assert.That(run.NewGamePlusCount, Is.EqualTo(1));
+            Assert.That(run.Stats.Level, Is.EqualTo(level), "빌드는 그대로 — 뺏으면 회차가 처벌이 된다");
+            Assert.That(run.Stats.StatLevels[(int)StatType.Attack], Is.EqualTo(1));
+            Assert.That(run.AcquiredMemoryIds, Is.EquivalentTo(new[] { "memory_a" }), "기억도 유지");
+            Assert.That(run.ChainStep, Is.Zero, "새 등반이므로 연속 기록은 0부터");
+            Assert.That(run.GetHarvested("Stage_1_1"), Is.Zero,
+                "광맥이 다시 찬다 — 안 비우면 2회차는 소울을 한 톨도 못 캔다");
+        }
+
+        [Test]
         public void 기억은_중복으로_삼켜지지_않는다()
         {
             RunState run = new();

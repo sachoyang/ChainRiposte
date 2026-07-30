@@ -121,8 +121,27 @@ namespace ChainRiposte.Core.Progress
         /// <summary>죽음 — 사슬 배수만 끊는다(빌드·기억은 유지).</summary>
         public void BreakChain() => ChainStep = 0;
 
-        /// <summary>엔딩 후 다음 회차로. 기억 유지 여부는 상위(RunStateService)가 정한다(§8 열린 결정).</summary>
-        public void EnterNewGamePlus() => NewGamePlusCount++;
+        /// <summary>
+        /// 엔딩 후 다음 회차로 (NG+). <b>빌드는 그대로 들고 간다</b> — 스탯·소울 은행·기억 모두 유지된다.
+        /// 첫 회차에 모은 것을 뺏으면 회차가 보상이 아니라 처벌이 된다.
+        ///
+        /// <para>대신 두 가지를 되돌린다:</para>
+        /// <list type="bullet">
+        ///   <item><b>사슬</b> — 새 등반이 시작되므로 연속 기록은 0부터. (죽었을 때와 같은 규칙)</item>
+        ///   <item><b>소울 매장량</b> — 땅이 다시 찬다. 안 비우면 2회차는 <b>소울을 한 톨도 못 캔다</b>
+        ///     (1회차에 이미 다 거둬 갔으므로) — 성장이 통째로 멈춘다.</item>
+        /// </list>
+        ///
+        /// <para>기억을 유지할지는 <c>Docs/PROGRESSION.md</c> §8의 열린 결정이었다. 유지로 정한 이유:
+        /// 어차피 같은 보스라 <see cref="AddMemory"/>가 두 번째를 무시하므로, 지우면 2회차에 다시 모으는 것이
+        /// 아니라 <b>1회차에 모은 것이 없던 일</b>이 된다.</para>
+        /// </summary>
+        public void EnterNewGamePlus()
+        {
+            NewGamePlusCount++;
+            ChainStep = 0;
+            _harvested.Clear();
+        }
 
         /// <summary>형식: <c>v3|레벨;소울;포인트;S0;S1;S2|기억;기억|사슬;회차|스테이지=캔양;스테이지=캔양</c>.
         /// <para>기억 칸은 v3에 이미 있던 자리다 — 이름만 바꿨으므로 <b>옛 세이브가 그대로 읽힌다</b>.</para></summary>

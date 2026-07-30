@@ -132,6 +132,21 @@ namespace ChainRiposte.Core.Tests
         }
 
         [Test]
+        public void 다음_회차는_클리어만_지우고_공개는_남긴다()
+        {
+            var progress = new StageProgress(new[] { "Stage_1_1", "Stage_1_2" });
+            progress.MarkAttempted("Stage_1_3");
+
+            progress.BeginNewGamePlus();
+
+            Assert.That(progress.ClearedStageIds.Count, Is.Zero, "사슬을 처음부터 다시 오른다");
+            Assert.That(progress.IsUnlocked(Stages, 1), Is.False, "1-2는 다시 잠긴다");
+            Assert.That(progress.IsUnlocked(Stages, 0), Is.True, "첫 판은 언제나 열려 있다");
+            Assert.That(progress.IsRevealed("Stage_1_1"), Is.True, "이미 본 보스를 다시 ??? 로 가리지 않는다");
+            Assert.That(progress.IsRevealed("Stage_1_3"), Is.True);
+        }
+
+        [Test]
         public void 빈_id는_무시한다()
         {
             // 노드에 스테이지가 비어 있으면 빈 문자열이 들어온다 → 클리어로 취급하면 안 된다

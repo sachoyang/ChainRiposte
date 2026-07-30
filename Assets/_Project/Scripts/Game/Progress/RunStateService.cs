@@ -52,6 +52,23 @@ namespace ChainRiposte.Game.Progress
             Debug.Log($"[Run] '{_loadedFor}' 새 런 시작.");
         }
 
+        /// <summary>
+        /// 엔딩을 봤다 — 이 캐릭터의 런을 <b>다음 회차</b>로 넘긴다.
+        /// 빌드(스탯·소울·기억)는 그대로 들고 가고 사슬·매장량만 되돌린다
+        /// (규칙은 <see cref="RunState.EnterNewGamePlus"/>).
+        ///
+        /// <para>진행도(클리어 기록)는 <see cref="ProgressService.BeginNewGamePlus"/>가 따로 맡는다 —
+        /// 저장 매체가 둘로 나뉘어 있으므로 <b>부르는 쪽이 둘 다 부른다</b>
+        /// (<c>GameManager.CompleteRun</c> 한 곳뿐이다).</para>
+        /// </summary>
+        public static void EnterNewGamePlus()
+        {
+            Current.EnterNewGamePlus();
+            Save();
+            Debug.Log($"[Run] '{_loadedFor}' → NG+{Current.NewGamePlusCount} 회차 시작 " +
+                      "(빌드 유지 · 사슬 0 · 소울 광맥 회복).");
+        }
+
         /// <summary>현재 캐릭터의 런 세이브 삭제 (디버그 — Tools ▸ ChainRiposte ▸ Progress).</summary>
         public static void ResetCurrent()
         {

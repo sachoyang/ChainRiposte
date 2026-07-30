@@ -648,6 +648,8 @@ namespace ChainRiposte.Editor
             Row(builder, "status.chain", "사슬 {0}연속", "CHAIN {0} IN A ROW");
             Row(builder, "status.memories", "삼킨 기억 {0}", "MEMORIES {0}");
             Row(builder, "status.memories.none", "아직 삼킨 기억이 없다", "NO MEMORIES YET");
+            // 1회차에는 안 띄운다 — 없는 개념을 설명하게 된다.
+            Row(builder, "status.newgameplus", "{0}회차", "NG+{0}");
             Row(builder, "ending.skip", "아무 곳이나 눌러 넘기기", "TAP TO SKIP");
 
             // 공통

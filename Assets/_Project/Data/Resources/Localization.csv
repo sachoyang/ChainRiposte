@@ -101,3 +101,4 @@ status.memories,삼킨 기억 {0},MEMORIES {0}
 status.memories.none,아직 삼킨 기억이 없다,NO MEMORIES YET
 pause.quit.title,타이틀로 나가기,QUIT TO TITLE
 pause.quit.title.confirm,타이틀로 나갈까요?,Quit to title?
+status.newgameplus,{0}회차,NG+{0}

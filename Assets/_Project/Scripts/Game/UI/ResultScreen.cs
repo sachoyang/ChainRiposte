@@ -118,6 +118,10 @@ namespace ChainRiposte.Game.UI
 
             // 영상이 다 끝난 뒤에야 스테이지 클리어
             panelRoot.SetActive(true);
+
+            // 여기가 이 런의 끝 — 다음 회차(NG+)로 넘긴다. 빌드는 남고 사슬·광맥·클리어 기록이 되돌아간다.
+            gameManager.CompleteRun();
+
             yield return new WaitForSecondsRealtime(victoryToMapDelay);
 
             if (endingReturnsToTitle)

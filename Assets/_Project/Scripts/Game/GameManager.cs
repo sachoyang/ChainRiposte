@@ -250,6 +250,21 @@ namespace ChainRiposte.Game
         }
 
         /// <summary>
+        /// <b>엔딩까지 다 봤다 — 이 런을 다음 회차로 넘긴다</b> (<c>Docs/PROGRESSION.md</c> §2.6).
+        /// 엔딩 연출이 끝나는 자리(<c>ResultScreen</c>)에서 딱 한 번 부른다.
+        ///
+        /// <para>빌드(스탯·소울 은행·기억)는 들고 가고, <b>사슬·소울 매장량·클리어 기록</b>이 되돌아간다 —
+        /// 그래야 사슬을 처음부터 다시 오르면서 회차 배수(<c>DifficultyCurve</c>의 NG+ 몫)를
+        /// 첫 판부터 받는다. 저장이 런과 진행도 둘로 나뉘어 있으므로 <b>여기서 둘 다</b> 넘긴다 —
+        /// 한쪽만 넘기면 "회차는 2인데 지도는 다 깨져 있는" 상태가 된다.</para>
+        /// </summary>
+        public void CompleteRun()
+        {
+            RunStateService.EnterNewGamePlus();
+            ProgressService.BeginNewGamePlus();
+        }
+
+        /// <summary>
         /// 벤 보스의 기억을 삼킨다 (<c>Docs/PROGRESSION.md</c> §2.2).
         ///
         /// <para><b>클리어할 때만</b> 부른다 — 성장·채굴량과 같은 규칙이다. 인살한 순간에 저장해 버리면
