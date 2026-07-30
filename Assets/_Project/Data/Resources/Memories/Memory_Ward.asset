@@ -1,0 +1,21 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6ae695b6b6448f64f909b4b0f3a98872, type: 3}
+  m_Name: Memory_Ward
+  m_EditorClassIdentifier: ChainRiposte.Game::ChainRiposte.Game.Config.BossMemorySO
+  memoryId: memory_ward
+  nameKey: memory.ward.name
+  descriptionKey: memory.ward.desc
+  icon: {fileID: 0}
+  bonusParryPostureGain: 0
+  whiffLockMultiplier: 1
+  perfectStreakGuard: 3

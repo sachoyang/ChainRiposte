@@ -19,19 +19,43 @@ MonoBehaviour:
   - character: {fileID: 11400000, guid: dddc9d8434eef9747a421ffefbafc0df, type: 2}
     battleSprite: {fileID: -1114432692226576877, guid: b82ce1263be26a64e965698fc92ad3b6, type: 3}
     nameKey: boss.irithyll.02
-    phaseVisuals: []
+    phaseVisuals:
+    - sprite: {fileID: -1114432692226576877, guid: b82ce1263be26a64e965698fc92ad3b6, type: 3}
+      transitionSprite: {fileID: 0}
+    - sprite: {fileID: -8044830404018582729, guid: b82ce1263be26a64e965698fc92ad3b6, type: 3}
+      transitionSprite: {fileID: 904629041377454138, guid: b82ce1263be26a64e965698fc92ad3b6, type: 3}
   - character: {fileID: 11400000, guid: b80d3be4312e8354fb1decd3396ecc64, type: 2}
     battleSprite: {fileID: 6486014346560288319, guid: 3ae1fa3d4672ed14a968fcc19ca245ea, type: 3}
     nameKey: boss.ashina.02
-    phaseVisuals: []
+    phaseVisuals:
+    - sprite: {fileID: 6486014346560288319, guid: 3ae1fa3d4672ed14a968fcc19ca245ea, type: 3}
+      transitionSprite: {fileID: 0}
+    - sprite: {fileID: -4547091980528819496, guid: 3ae1fa3d4672ed14a968fcc19ca245ea, type: 3}
+      transitionSprite: {fileID: -3605114421481357373, guid: 3ae1fa3d4672ed14a968fcc19ca245ea, type: 3}
   maxHp: 160
   maxPosture: 120
   parryPostureGain: 25
   attackPostureFactor: 0.5
   postureDecayPerSecond: 6
+  whiffPostureRecovery: 8
   scaleDecayWithHp: 1
   firstAttackDelaySeconds: 1.5
   patternGapSeconds: 0.6
   patterns: []
   phases: []
-  battlePhases: []
+  memory: {fileID: 11400000, guid: d6e493311500b4348aa22971a676763b, type: 2}
+  battlePhases:
+  - label: Phase 1
+    sprite: {fileID: 0}
+    transitionSprite: {fileID: 0}
+    transitionTextKey: 
+    maxHp: 0
+    maxPosture: 0
+    hpPhases: []
+  - label: Phase 2
+    sprite: {fileID: 0}
+    transitionSprite: {fileID: 0}
+    transitionTextKey: boss.phase.transition
+    maxHp: 200
+    maxPosture: 250
+    hpPhases: []

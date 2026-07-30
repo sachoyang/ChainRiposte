@@ -11,7 +11,7 @@ namespace ChainRiposte.Core.Progress
     ///
     /// <list type="bullet">
     ///   <item><see cref="Stats"/> — 레벨·소울 은행·미분배 포인트·스탯 레벨 (<see cref="PlayerStats"/>의 씨앗).</item>
-    ///   <item><see cref="AcquiredRelicIds"/> — 인살로 흡수한 넋(영구 패시브)들.</item>
+    ///   <item><see cref="AcquiredMemoryIds"/> — 인살로 삼킨 <b>보스의 기억</b>(영구 패시브)들.</item>
     ///   <item><see cref="ChainStep"/> — 죽지 않고 연속 클리어한 수. <b>죽으면 0</b>(빌드는 유지, 배수만 끊김).</item>
     ///   <item><see cref="NewGamePlusCount"/> — 엔딩 후 회차. 난이도 곡선의 입력.</item>
     ///   <item>스테이지별 <b>채굴량</b>(<see cref="GetHarvested"/>) — 그 땅에서 이미 캐 간 소울. 광맥이 마르면 재방문해도 안 나온다.</item>
@@ -33,7 +33,7 @@ namespace ChainRiposte.Core.Progress
         /// <summary>플레이어 성장 스냅샷 — 다음 판의 <see cref="PlayerStats"/>에 씨앗으로 들어간다.</summary>
         public PlayerStatsSnapshot Stats { get; }
 
-        private readonly List<string> _relicIds;
+        private readonly List<string> _memoryIds;
 
         /// <summary>스테이지 id → 이 런에서 이미 캐 간 소울. 없는 키는 0(아직 손 안 댄 땅).</summary>
         private readonly Dictionary<string, int> _harvested = new();
@@ -46,38 +46,43 @@ namespace ChainRiposte.Core.Progress
 
         public RunState(
             PlayerStatsSnapshot stats = null,
-            IEnumerable<string> relicIds = null,
+            IEnumerable<string> memoryIds = null,
             int chainStep = 0,
             int newGamePlusCount = 0,
             IEnumerable<KeyValuePair<string, int>> harvested = null)
         {
             Stats = stats ?? new PlayerStatsSnapshot();
-            _relicIds = new List<string>();
-            foreach (string id in relicIds ?? Array.Empty<string>())
-                AddRelic(id);
+            _memoryIds = new List<string>();
+            foreach (string id in memoryIds ?? Array.Empty<string>())
+                AddMemory(id);
             ChainStep = Math.Max(0, chainStep);
             NewGamePlusCount = Math.Max(0, newGamePlusCount);
             foreach (KeyValuePair<string, int> entry in harvested ?? Array.Empty<KeyValuePair<string, int>>())
                 Harvest(entry.Key, entry.Value);
         }
 
-        public IReadOnlyList<string> AcquiredRelicIds => _relicIds;
+        /// <summary>삼킨 기억의 id들 — <b>먹은 순서</b>대로. 아이콘 줄이 이 순서로 그려진다.</summary>
+        public IReadOnlyList<string> AcquiredMemoryIds => _memoryIds;
 
-        public bool HasRelic(string relicId) =>
-            !string.IsNullOrEmpty(relicId) && _relicIds.Contains(Sanitize(relicId));
+        public bool HasMemory(string memoryId) =>
+            !string.IsNullOrEmpty(memoryId) && _memoryIds.Contains(Sanitize(memoryId));
 
-        /// <summary>넋을 추가한다. 이미 가진 것이면 무시하고 false. (같은 넋을 두 번 흡수하지 않는다)</summary>
-        public bool AddRelic(string relicId)
+        /// <summary>
+        /// 기억을 추가한다. 이미 가진 것이면 무시하고 false.
+        /// <para>같은 보스를 다시 베도 기억은 하나다 — 기억은 보스 하나에 딸린 것이고,
+        /// 두 번 삼켰다고 효과가 두 배가 되면 같은 판을 반복하는 것이 최적 전략이 된다.</para>
+        /// </summary>
+        public bool AddMemory(string memoryId)
         {
-            string clean = Sanitize(relicId);
-            if (string.IsNullOrEmpty(clean) || _relicIds.Contains(clean))
+            string clean = Sanitize(memoryId);
+            if (string.IsNullOrEmpty(clean) || _memoryIds.Contains(clean))
                 return false;
-            _relicIds.Add(clean);
+            _memoryIds.Add(clean);
             return true;
         }
 
         /// <summary>
-        /// 스테이지 클리어 시 최신 성장으로 스냅샷을 갱신한다 — 넋·사슬·회차는 건드리지 않는다.
+        /// 스테이지 클리어 시 최신 성장으로 스냅샷을 갱신한다 — 기억·사슬·회차는 건드리지 않는다.
         /// (성장만 이어지고 나머지 런 상태는 각자의 규칙으로 움직인다)
         /// </summary>
         public void UpdateStats(PlayerStatsSnapshot snapshot)
@@ -113,13 +118,14 @@ namespace ChainRiposte.Core.Progress
         /// <summary>무사망 클리어 — 사슬을 한 칸 잇는다.</summary>
         public void AdvanceChain() => ChainStep++;
 
-        /// <summary>죽음 — 사슬 배수만 끊는다(빌드·넋은 유지).</summary>
+        /// <summary>죽음 — 사슬 배수만 끊는다(빌드·기억은 유지).</summary>
         public void BreakChain() => ChainStep = 0;
 
-        /// <summary>엔딩 후 다음 회차로. 넋 유지 여부는 상위(RunStateService)가 정한다(§8 열린 결정).</summary>
+        /// <summary>엔딩 후 다음 회차로. 기억 유지 여부는 상위(RunStateService)가 정한다(§8 열린 결정).</summary>
         public void EnterNewGamePlus() => NewGamePlusCount++;
 
-        /// <summary>형식: <c>v3|레벨;소울;포인트;S0;S1;S2|넋;넋|사슬;회차|스테이지=캔양;스테이지=캔양</c>.</summary>
+        /// <summary>형식: <c>v3|레벨;소울;포인트;S0;S1;S2|기억;기억|사슬;회차|스테이지=캔양;스테이지=캔양</c>.
+        /// <para>기억 칸은 v3에 이미 있던 자리다 — 이름만 바꿨으므로 <b>옛 세이브가 그대로 읽힌다</b>.</para></summary>
         public string Serialize()
         {
             string statsSection = string.Join(ItemSeparator.ToString(),
@@ -133,7 +139,7 @@ namespace ChainRiposte.Core.Progress
             return string.Join(SectionSeparator.ToString(),
                 Version,
                 statsSection,
-                string.Join(ItemSeparator.ToString(), _relicIds),
+                string.Join(ItemSeparator.ToString(), _memoryIds),
                 string.Join(ItemSeparator.ToString(), ChainStep, NewGamePlusCount),
                 string.Join(ItemSeparator.ToString(), harvestParts));
         }

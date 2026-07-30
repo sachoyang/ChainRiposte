@@ -197,7 +197,7 @@ namespace ChainRiposte.Game.UI
             string text = Loc.GetText(
                 "puzzle.souls", stats.Level, stats.Souls, stats.SoulsToNextLevel, stats.PendingPoints);
 
-            // 광맥이 있는 스테이지만 한 줄 덧붙인다 — 매장량을 안 정한 판에서 "남은 넋 ∞"를 띄우면 소음이다.
+            // 광맥이 있는 스테이지만 한 줄 덧붙인다 — 매장량을 안 정한 판에서 "남은 소울 ∞"를 띄우면 소음이다.
             if (_game != null && _game.HasSoulBudget)
                 text += "\n" + (_game.StageSoulsDepleted
                     ? Loc.GetText("puzzle.vein.depleted")

@@ -88,3 +88,9 @@ pause.resume,계속하기,RESUME
 pause.quit,지도로 나가기,QUIT TO MAP
 pause.quit.confirm,지도로 나갈까요?\n진행 중인 판은 사라집니다.,Quit to map?\nThis run will be lost.
 boss.phase.transition,그러나 아직 쓰러지지 않았다,BUT IT IS NOT OVER
+combat.popup.memoryguard,기억이 막았다,MEMORY SHIELDED
+result.memory.gained,새 기억 — {0},NEW MEMORY — {0}
+memory.edge.name,칼끝의 기억,MEMORY OF THE EDGE
+memory.edge.desc,패링이 체간을 더 깎는다,Parries break posture faster
+memory.ward.name,버티는 기억,MEMORY OF THE WARD
+memory.ward.desc,연속 패링 3회마다 다음 피격을 한 번 무효로 만든다,Every 3 parries in a row nullify the next hit

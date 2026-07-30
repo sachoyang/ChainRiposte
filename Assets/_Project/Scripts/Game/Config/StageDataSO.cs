@@ -74,6 +74,11 @@ namespace ChainRiposte.Game.Config
         [Tooltip("이 스테이지에 난입하는 보스")]
         [SerializeField] private BossDataSO bossData;
 
+        [Tooltip("이 판에서 싸울 인살 페이즈 수. <b>0이면 보스 에셋에 적힌 만큼 전부.</b>\n" +
+                 "같은 보스를 앞 판에서는 1페이즈로, 뒤 판에서는 2페이즈로 쓰기 위한 손잡이다 " +
+                 "— 페이즈 수만 다른 보스 에셋을 복제하면 그 보스의 채보·수치를 두 곳에 똑같이 적어야 한다.")]
+        [SerializeField, Min(0)] private int battlePhaseLimit;
+
         [Tooltip("이 판이 사슬의 <b>마지막 고리</b>인가 — 클리어하면 엔딩이 나온다. " +
                  "보통은 비워 둔다: 지도가 '정렬된 마지막 노드'를 알아서 알려 주므로, " +
                  "여기 켜는 것은 지도 순서와 다르게 끝내고 싶을 때(또는 Main 단독 실행 확인용)뿐이다.")]
@@ -168,6 +173,13 @@ namespace ChainRiposte.Game.Config
         public BossDataSO BossData => bossData;
 
         /// <summary>
+        /// 이 판에서 싸울 인살 페이즈 수. 0이면 보스 에셋에 적힌 만큼 전부.
+        /// <para>"2페이즈로 싸울지"는 보스가 아니라 <b>판</b>이 정한다 — 그래서 2-1·2-2·2-3이
+        /// 보스 에셋 하나를 공유하면서도 2-3만 인살 두 번이 된다.</para>
+        /// </summary>
+        public int BattlePhaseLimit => battlePhaseLimit;
+
+        /// <summary>
         /// 이 판을 깨면 엔딩인가. <b>대개는 지도가 정한다</b>(<see cref="StageSelection"/>) —
         /// 이 플래그는 지도 순서를 거스르고 싶을 때만 켜는 덮어쓰기다.
         /// </summary>
@@ -201,7 +213,8 @@ namespace ChainRiposte.Game.Config
                 BossChanceBySeconds = bossChanceBySeconds.Evaluate,
                 BossEngageSeconds = bossEngageSeconds,
                 MaxLiveBossTiles = maxLiveBossTiles,
-                Boss = bossData != null ? bossData.ToConfig() : null,
+                // 페이즈 수는 보스가 아니라 이 판이 정한다 — 같은 보스 에셋을 1페이즈·2페이즈로 나눠 쓴다.
+                Boss = bossData != null ? bossData.ToConfig(battlePhaseLimit) : null,
                 Gimmicks = (GimmickType[])gimmicks.Clone(),
                 // 이 필드가 없던 시절의 에셋도 열 수 있게 방어 (순수 C# 클래스라 ?? 사용 가능)
                 GimmickSettings = (gimmickTuning ?? new GimmickTuning()).ToSettings(),

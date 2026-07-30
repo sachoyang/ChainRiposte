@@ -30,7 +30,7 @@ namespace ChainRiposte.Game
 
         /// <summary>
         /// 이 스테이지에 아직 남아 있는 소울(광맥 잔량). 무제한이면 <see cref="int.MaxValue"/>.
-        /// HUD가 "이 땅의 넋을 다 거뒀다"를 띄우는 근거다.
+        /// HUD가 "이 땅의 소울은 모두 거뒀다"를 띄우는 근거다.
         /// </summary>
         public int RemainingStageSouls => Mathf.Max(0, _remainingSoulsAtEntry - _harvestedThisRun);
 
@@ -70,6 +70,25 @@ namespace ChainRiposte.Game
         public Core.Combat.DifficultyConfig Difficulty { get; private set; } =
             Core.Combat.DifficultyConfig.Identity;
 
+        /// <summary>
+        /// 이 판에 들어온 시점에 <b>이미 삼킨</b> 기억 id들 (먹은 순서). 아이콘 줄이 이걸 그린다.
+        ///
+        /// <para>진입 시점의 사본이다 — <b>이 판의 보스 기억은 여기 없다.</b> 지금 상대하는 보스의 기억을
+        /// 그 보스와 싸우는 동안 쓸 수는 없다.</para>
+        /// </summary>
+        public System.Collections.Generic.IReadOnlyList<string> MemoriesAtEntry { get; private set; } =
+            System.Array.Empty<string>();
+
+        /// <summary>삼킨 기억들이 이 전투에 주는 효과의 합. 전투가 이 한 벌만 읽는다.</summary>
+        public Core.Combat.BossMemoryConfig MemoryEffects { get; private set; } =
+            Core.Combat.BossMemoryConfig.None;
+
+        /// <summary>이 판에서 <b>새로</b> 삼킨 기억. 없거나(이미 가진 보스) 아직 안 이겼으면 null.</summary>
+        public BossMemorySO GainedMemory { get; private set; }
+
+        /// <summary>새 기억을 삼킨 순간 — 결과 화면이 그것만 강조하는 근거.</summary>
+        public event System.Action<BossMemorySO> MemoryGained;
+
         private void Awake()
         {
             // 월드맵에서 선택하고 들어왔다면 그 스테이지를 우선한다
@@ -96,6 +115,10 @@ namespace ChainRiposte.Game
             // 저장된 런의 성장을 씨앗으로 이어받는다 — 성장 캐리 (Docs/PROGRESSION.md)
             Session = new GameSession(BuildStatsConfig(), RunStateService.Current.Stats);
             Session.PhaseChanged += OnPhaseChanged;
+
+            // 기억은 세이브에 id로만 남으므로 여기서 에셋으로 되돌려 효과 한 벌로 합친다 (§2.2).
+            MemoriesAtEntry = new System.Collections.Generic.List<string>(RunStateService.Current.AcquiredMemoryIds);
+            MemoryEffects = Memories.MemoryLibrary.CombinedConfig(MemoriesAtEntry);
 
             _economy = economyConfig != null ? economyConfig.ToConfig() : new RunEconomyConfig();
             _chainStepAtEntry = RunStateService.Current.ChainStep;
@@ -208,6 +231,7 @@ namespace ChainRiposte.Game
                 run.UpdateStats(Session.Stats.Capture());
                 run.Harvest(stageData.StageId, _harvestedThisRun);
                 run.AdvanceChain();
+                SwallowBossMemory(run);
             }
             else
             {
@@ -215,6 +239,26 @@ namespace ChainRiposte.Game
             }
 
             RunStateService.Save();
+        }
+
+        /// <summary>
+        /// 벤 보스의 기억을 삼킨다 (<c>Docs/PROGRESSION.md</c> §2.2).
+        ///
+        /// <para><b>클리어할 때만</b> 부른다 — 성장·채굴량과 같은 규칙이다. 인살한 순간에 저장해 버리면
+        /// 2페이즈 보스의 1페이즈만 인살하고 죽어도 기억이 남아, 죽어서 기억만 모으는 길이 열린다.</para>
+        ///
+        /// <para>같은 보스를 쓰는 두 번째 판은 <see cref="RunState.AddMemory"/>가 false를 돌려주므로
+        /// 조용히 넘어간다 — 결과 화면도 그때는 기억을 강조하지 않는다.</para>
+        /// </summary>
+        private void SwallowBossMemory(RunState run)
+        {
+            BossMemorySO memory = stageData.BossData != null ? stageData.BossData.Memory : null;
+            if (memory == null || !run.AddMemory(memory.MemoryId))
+                return;
+
+            GainedMemory = memory;
+            Debug.Log($"[Memory] '{memory.MemoryId}' 를 삼켰다.");
+            MemoryGained?.Invoke(memory);
         }
     }
 }

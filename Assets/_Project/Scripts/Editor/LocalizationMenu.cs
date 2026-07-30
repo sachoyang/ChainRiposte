@@ -617,6 +617,17 @@ namespace ChainRiposte.Editor
             Row(builder, "combat.execute", "인살!!", "EXECUTE!!");
             Row(builder, "combat.intro", "보스 전투", "BOSS BATTLE");
             Row(builder, "combat.popup.parry", "패링!", "PARRY!");
+            Row(builder, "combat.popup.memoryguard", "기억이 막았다", "MEMORY SHIELDED");
+
+            // 보스의 기억 (Docs/PROGRESSION.md §2.2) — 기억 1개 = 보스 1개.
+            // 이름은 보스 이름을 안 쓴다: 보스 이름은 고른 캐릭터에 따라 갈리는데(위 boss.* 참조)
+            // 기억은 캐릭터와 무관하게 하나뿐이라, 보스 이름을 넣으면 남의 이름이 뜰 수 있다.
+            Row(builder, "memory.edge.name", "칼끝의 기억", "MEMORY OF THE EDGE");
+            Row(builder, "memory.edge.desc", "패링이 체간을 더 깎는다", "Parries break posture faster");
+            Row(builder, "memory.ward.name", "버티는 기억", "MEMORY OF THE WARD");
+            Row(builder, "memory.ward.desc",
+                "연속 패링 3회마다 다음 피격을 한 번 무효로 만든다",
+                "Every 3 parries in a row nullify the next hit");
 
             // 결과
             Row(builder, "result.victory", "스테이지 클리어", "STAGE CLEAR");
@@ -625,6 +636,7 @@ namespace ChainRiposte.Editor
             Row(builder, "result.defeat.turns", "턴이 다했다", "YOU RAN OUT OF MOVES");
             Row(builder, "result.restart", "다시 시작", "RESTART");
             Row(builder, "result.map", "지도", "MAP");
+            Row(builder, "result.memory.gained", "새 기억 — {0}", "NEW MEMORY — {0}");
             Row(builder, "ending.skip", "아무 곳이나 눌러 넘기기", "TAP TO SKIP");
 
             // 공통

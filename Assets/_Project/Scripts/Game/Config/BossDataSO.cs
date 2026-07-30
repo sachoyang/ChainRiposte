@@ -56,6 +56,11 @@ namespace ChainRiposte.Game.Config
         [Tooltip("HP 구간별 패턴 풀. 비우면 모든 패턴을 균등하게 쓰는 단일 페이즈로 동작한다.")]
         [SerializeField] private PhaseEntry[] phases = Array.Empty<PhaseEntry>();
 
+        [Header("기억 — 이 보스를 벤 자가 삼키는 것")]
+        [Tooltip("인살로 삼키는 보스의 기억(Docs/PROGRESSION.md §2.2). 비우면 이 보스는 소울만 준다.\n" +
+                 "기억 1개 = 보스 1개다 — 같은 보스를 쓰는 스테이지가 여럿이라 두 번째 판부터는 소울만 번다.")]
+        [SerializeField] private BossMemorySO memory;
+
         [Header("인살 페이즈 — 비우면 인살 한 번으로 끝나는 보통 보스")]
         [Tooltip("인살 몇 번으로 눕는 보스인가. 두 줄이면 인살 마크가 ◆◆ 로 뜨고, " +
                  "1페이즈를 인살하면 컷씬을 거쳐 HP·체간이 만땅으로 새로 시작한다. " +
@@ -166,6 +171,9 @@ namespace ChainRiposte.Game.Config
         /// <summary>인살 몇 번으로 눕는 보스인가. 인살 페이즈를 안 짰으면 1.</summary>
         public int BattlePhaseCount => battlePhases != null && battlePhases.Length > 0 ? battlePhases.Length : 1;
 
+        /// <summary>이 보스를 벤 자가 삼키는 기억. 없으면 null(소울만 주는 보스).</summary>
+        public BossMemorySO Memory => memory;
+
         /// <summary>
         /// 이 캐릭터로 만났을 때 <paramref name="phaseIndex"/> 페이즈의 그림. 아무 데도 없으면 null.
         ///
@@ -271,14 +279,19 @@ namespace ChainRiposte.Game.Config
 
         public string DisplayName => displayName;
 
-        public BossConfig ToConfig()
+        /// <param name="battlePhaseLimit">
+        /// 이 판에서 싸울 인살 페이즈 수 (0 = 전부). <b>같은 보스를 1페이즈로도 2페이즈로도 쓰기 위한 것</b> —
+        /// 스테이지가 정한다(<c>StageDataSO.BattlePhaseLimit</c>). 이 손잡이가 없으면 페이즈 수만 다른
+        /// 보스 에셋을 복제해야 하고, 그러면 그 보스의 채보·수치를 두 곳에 똑같이 적게 된다.
+        /// </param>
+        public BossConfig ToConfig(int battlePhaseLimit = 0)
         {
             List<BossPatternConfig> built = BuildPatterns();
             List<BossPhaseConfig> sharedHpPhases = BuildSharedHpPhases(built);
 
             return new BossConfig
             {
-                BattlePhases = BuildBattlePhases(built, sharedHpPhases),
+                BattlePhases = LimitPhases(BuildBattlePhases(built, sharedHpPhases), battlePhaseLimit),
                 Name = displayName,
                 MaxHp = maxHp,
                 MaxPosture = maxPosture,
@@ -402,13 +415,25 @@ namespace ChainRiposte.Game.Config
 
             // 한 줄짜리는 안 적은 것과 결과가 같다 — 2페이즈로 만들려다 한 줄만 넣고 끝낸 경우를 잡는다.
             // 조용히 넘어가면 "인살했는데 그냥 죽는다"로만 보여서 원인을 못 찾는다.
+            // (판이 1페이즈로 자르는 것은 정상이므로 자르기 전에 센다 — LimitPhases 참조.)
             if (result.Count == 1)
                 Debug.LogWarning(
                     $"{name}: 인살 페이즈가 한 줄뿐이라 보통 보스(인살 1회)와 같습니다. " +
                     "2페이즈 보스로 만들려면 줄을 하나 더 늘리세요 — " +
-                    "Tools ▸ ChainRiposte ▸ Create Two-Phase Boss (2-3) 가 모자란 줄을 채워 줍니다.", this);
+                    "Tools ▸ ChainRiposte ▸ Setup Two-Phase Boss (2-3) 가 모자란 줄을 채워 줍니다.", this);
 
             return result;
         }
+
+        /// <summary>
+        /// 스테이지가 정한 만큼만 남긴다 — <b>앞에서부터</b>. 뒤 페이즈를 버리는 것이라
+        /// 1페이즈로 자른 보스는 예전에 1페이즈 에셋으로 싸웠던 것과 완전히 같은 값이 된다.
+        ///
+        /// <para>자르기는 <see cref="BuildBattlePhases"/>가 <b>경고를 다 찍은 뒤</b>에 한다 —
+        /// 자른 결과를 보고 경고하면 "2-1은 1페이즈로 싸운다"는 정상 설정에서 매번
+        /// "페이즈가 한 줄뿐입니다"가 뜬다.</para>
+        /// </summary>
+        private static List<BossBattlePhase> LimitPhases(List<BossBattlePhase> phases, int limit) =>
+            limit <= 0 || phases == null || phases.Count <= limit ? phases : phases.GetRange(0, limit);
     }
 }

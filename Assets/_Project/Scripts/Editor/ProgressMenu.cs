@@ -28,7 +28,7 @@ namespace ChainRiposte.Editor
         private static void ResetRun()
         {
             RunStateService.ResetCurrent();
-            Debug.Log("[Run] 현재 캐릭터의 런(스탯·소울·넋·사슬)을 초기화했습니다.");
+            Debug.Log("[Run] 현재 캐릭터의 런(스탯·소울·기억·사슬)을 초기화했습니다.");
         }
 
         [MenuItem("Tools/ChainRiposte/Progress/Log Run (현재 런 출력)")]
@@ -38,7 +38,7 @@ namespace ChainRiposte.Editor
             Debug.Log(
                 $"[Run] Lv {run.Stats.Level} · 소울 {run.Stats.Souls} · 미분배 {run.Stats.PendingPoints}P · " +
                 $"ATK{run.Stats.StatLevels[0]}/DEF{run.Stats.StatLevels[1]}/PARRY{run.Stats.StatLevels[2]} · " +
-                $"넋 {run.AcquiredRelicIds.Count} · 사슬 {run.ChainStep} · NG+{run.NewGamePlusCount}");
+                $"기억 {run.AcquiredMemoryIds.Count} · 사슬 {run.ChainStep} · NG+{run.NewGamePlusCount}");
         }
 
         [MenuItem("Tools/ChainRiposte/Progress/Unlock All Stages (전부 해금)")]

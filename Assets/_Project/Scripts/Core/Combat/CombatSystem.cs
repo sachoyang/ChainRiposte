@@ -35,6 +35,7 @@ namespace ChainRiposte.Core.Combat
         private readonly BossConfig _config;
         private readonly PlayerStats _stats;
         private readonly PlayerHealth _health;
+        private readonly BossMemoryConfig _memories;
         private readonly Random _rng;
 
         private readonly List<RuntimeNote> _notes = new();
@@ -44,6 +45,9 @@ namespace ChainRiposte.Core.Combat
         private BossBattlePhase _battle;
         private int _battleIndex;
         private int _deathblowsDone;
+
+        private int _parryStreak;     // 연속 패링 수 — 피격·헛침에 끊긴다 (기억: 연속 패링 보호막)
+        private bool _guardCharged;   // 보호막이 차서 다음 피격 1회를 무효로 만들 수 있는 상태
 
         private BossPatternConfig _pattern;
         private float _patternTime;   // 현재 패턴의 경과 시간(초). 리드인 동안은 음수.
@@ -58,6 +62,15 @@ namespace ChainRiposte.Core.Combat
 
         /// <summary>체간 게이지 — MaxPosture 도달 시 인살 가능.</summary>
         public float Posture { get; private set; }
+
+        /// <summary>지금까지 연속으로 성공한 패링 수. 피격·헛침에 0으로 끊긴다.</summary>
+        public int ParryStreak => _parryStreak;
+
+        /// <summary>기억의 보호막이 차 있다 — 다음 피격 1회가 무효가 된다.</summary>
+        public bool MemoryGuardReady => _guardCharged;
+
+        /// <summary>보호막을 채우는 데 필요한 연속 패링 수. 0이면 그 효과를 가진 기억이 없다.</summary>
+        public int MemoryGuardStreakRequired => _memories.PerfectStreakGuard;
         public float MaxPosture => _battle.MaxPosture;
 
         /// <summary>지금 몇 번째 인살 페이즈인가 (0부터). 겉모습·채보가 여기에 딸려 간다.</summary>
@@ -132,6 +145,16 @@ namespace ChainRiposte.Core.Combat
         public event Action ExecutionPerformed;
 
         /// <summary>
+        /// (막아 낸 노트) — 기억의 보호막이 피격 1회를 <b>무효</b>로 만들었다. 피해도 체간 변화도 없다.
+        /// 패링과 다른 사건이므로 이벤트를 따로 둔다 — 화면이 "막았다"와 "기억이 대신 맞았다"를 구분해야
+        /// 플레이어가 보호막이 소모된 것을 알 수 있다.
+        /// </summary>
+        public event Action<BossNoteConfig> HitNullifiedByMemory;
+
+        /// <summary>(연속 패링 수, 보호막 충전 여부) — 기억을 가진 판에서만 움직인다. HUD용.</summary>
+        public event Action<int, bool> ParryStreakChanged;
+
+        /// <summary>
         /// (방금 끝낸 페이즈 번호) — 인살했지만 <b>다음 페이즈가 남아 있다</b>. 전환 컷씬을 재생할 훅.
         /// 이 뒤로 시간이 멈추므로, 연출이 끝나면 반드시 <see cref="BeginNextPhase"/>를 불러야 전투가 재개된다.
         /// </summary>
@@ -146,11 +169,18 @@ namespace ChainRiposte.Core.Combat
         /// <summary>(승리 여부) — 세션 페이즈 전환은 Game 레이어가 이 이벤트로 수행한다.</summary>
         public event Action<bool> Ended;
 
-        public CombatSystem(BossConfig config, PlayerStats stats, PlayerHealth health, Random rng = null)
+        /// <param name="memories">삼킨 보스의 기억들의 합. null이면 <see cref="BossMemoryConfig.None"/>(기본 규칙).</param>
+        public CombatSystem(
+            BossConfig config,
+            PlayerStats stats,
+            PlayerHealth health,
+            Random rng = null,
+            BossMemoryConfig memories = null)
         {
             _config = config ?? throw new ArgumentNullException(nameof(config));
             _stats = stats ?? throw new ArgumentNullException(nameof(stats));
             _health = health ?? throw new ArgumentNullException(nameof(health));
+            _memories = memories ?? BossMemoryConfig.None;
             _rng = rng ?? new Random();
 
             if (config.MaxHp <= 0f || config.MaxPosture <= 0f)
@@ -183,6 +213,10 @@ namespace ChainRiposte.Core.Combat
             _notes.Clear();
             _activeNotes.Clear();
             _gapTimer = Math.Max(0f, _config.FirstAttackDelaySeconds);
+
+            // 연속 패링은 여기서 끊는다(패턴이 통째로 비었으니 이어 셀 근거가 없다).
+            // 다만 이미 충전된 보호막은 남긴다 — 앞 페이즈에서 받아 낸 보상이다.
+            BreakParryStreak();
 
             BossHp = _battle.MaxHp;
             Posture = 0f;
@@ -273,8 +307,9 @@ namespace ChainRiposte.Core.Combat
         private void Whiff()
         {
             SetPlayerState(PlayerActionState.ParryRecovering);
-            _playerTimer = _stats.ParryWhiffLockSeconds;
+            _playerTimer = _stats.ParryWhiffLockSeconds * _memories.WhiffLockMultiplier;
             RecoverPosture(_config.WhiffPostureRecovery);
+            BreakParryStreak();
         }
 
         /// <summary>
@@ -608,8 +643,42 @@ namespace ChainRiposte.Core.Combat
             // 막은 공격은 그 자리에서 목록에서 빠진다 — 뷰의 흰 원이 다음 Tick을 기다리지 않고 사라진다.
             RebuildActiveNotes();
             AttackParried?.Invoke(runtime.Note);
-            AddPosture(_config.ParryPostureGain);
+
+            // 기억은 "잘 눌렀을 때 더 받는" 쪽으로만 붙는다 (Docs/PROGRESSION.md §2.2).
+            AddPosture(_config.ParryPostureGain + _memories.BonusParryPostureGain);
+            AdvanceParryStreak();
             RefreshBossState();
+        }
+
+        /// <summary>
+        /// 패링 성공 — 연속 수를 세고, 목표를 채우면 보호막을 채운다.
+        /// <para>채운 순간 연속 수를 0으로 되돌린다 — 그러지 않으면 한 번 채운 뒤로는 패링마다 보호막이
+        /// 다시 차서 사실상 무적이 된다. 보호막은 <b>다시 N번 쌓아야</b> 또 생긴다.</para>
+        /// </summary>
+        private void AdvanceParryStreak()
+        {
+            int required = _memories.PerfectStreakGuard;
+            if (required <= 0)
+                return; // 그 효과를 가진 기억이 없으면 셀 이유도 없다
+
+            _parryStreak++;
+            if (_parryStreak >= required && !_guardCharged)
+            {
+                _guardCharged = true;
+                _parryStreak = 0;
+            }
+
+            ParryStreakChanged?.Invoke(_parryStreak, _guardCharged);
+        }
+
+        /// <summary>피격·헛침으로 연속이 끊겼다. 이미 <b>충전된 보호막은 안 뺏는다</b>(그건 이미 받은 보상이다).</summary>
+        private void BreakParryStreak()
+        {
+            if (_memories.PerfectStreakGuard <= 0 || _parryStreak == 0)
+                return;
+
+            _parryStreak = 0;
+            ParryStreakChanged?.Invoke(_parryStreak, _guardCharged);
         }
 
         /// <summary>유예까지 지나 확정된 피격.</summary>
@@ -618,9 +687,22 @@ namespace ChainRiposte.Core.Combat
             runtime.Resolved = true;
             runtime.InGrace = false;
 
+            // 기억의 보호막이 차 있으면 이 한 대를 통째로 지운다 — 피해도, 체간 변화도 없다.
+            // 패링과 달리 체간을 올려 주지 않는다: 안 눌러서 넘긴 공격이 보상까지 주면
+            // 보호막이 찬 동안 손을 놓는 것이 이득이 된다.
+            if (_guardCharged)
+            {
+                _guardCharged = false;
+                HitNullifiedByMemory?.Invoke(runtime.Note);
+                ParryStreakChanged?.Invoke(_parryStreak, _guardCharged);
+                RefreshBossState();
+                return;
+            }
+
             // DEF로 완전 무효화는 불가 — 최소 1 피해로 압박을 유지한다
             int damage = Math.Max(1, (int)Math.Round(runtime.Note.Damage - _stats.DamageReduction));
             PlayerHit?.Invoke(runtime.Note, damage);
+            BreakParryStreak();
 
             if (_health.ApplyDamage(damage))
             {

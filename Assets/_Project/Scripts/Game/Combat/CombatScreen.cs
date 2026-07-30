@@ -219,6 +219,7 @@ namespace ChainRiposte.Game.Combat
 
             combat.AttackParried += OnAttackParried;
             combat.PlayerHit += OnPlayerHit;
+            combat.HitNullifiedByMemory += OnHitNullifiedByMemory;
             combat.PlayerAttackLanded += OnPlayerAttackLanded;
             combat.BossHpChanged += OnBossHpChanged;
             combat.PostureChanged += OnPostureChanged;
@@ -238,6 +239,7 @@ namespace ChainRiposte.Game.Combat
             {
                 _combat.AttackParried -= OnAttackParried;
                 _combat.PlayerHit -= OnPlayerHit;
+                _combat.HitNullifiedByMemory -= OnHitNullifiedByMemory;
                 _combat.PlayerAttackLanded -= OnPlayerAttackLanded;
                 _combat.BossHpChanged -= OnBossHpChanged;
                 _combat.PostureChanged -= OnPostureChanged;
@@ -575,6 +577,18 @@ namespace ChainRiposte.Game.Combat
             StartCoroutine(Flash(new Color(0.8f, 0.05f, 0.05f, 0.45f)));
             if (playerBody != null)
                 StartCoroutine(Punch(playerBody, 1.3f));
+        }
+
+        /// <summary>
+        /// 기억의 보호막이 한 대를 지웠다. <b>패링과 다르게 보여야 한다</b> — 같은 노란 번쩍임을 쓰면
+        /// 플레이어는 자기가 막은 줄 알고, 보호막이 소모된 것을 모른 채 다음 대에 그냥 맞는다.
+        /// 그래서 색을 달리하고(청백) 플레이어는 튀지 않는다(자기가 한 일이 아니다).
+        /// </summary>
+        private void OnHitNullifiedByMemory(BossNoteConfig note)
+        {
+            HideTelegraph();
+            ShowPopup(Loc.GetText("combat.popup.memoryguard"), new Color(0.6f, 0.85f, 1f));
+            StartCoroutine(Flash(new Color(0.6f, 0.8f, 1f, 0.35f)));
         }
 
         private void OnPlayerAttackLanded(float damage)

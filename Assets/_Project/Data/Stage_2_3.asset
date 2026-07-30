@@ -91,7 +91,8 @@ MonoBehaviour:
     m_RotationOrder: 4
   bossEngageSeconds: 90
   maxLiveBossTiles: 1
-  bossData: {fileID: 11400000, guid: 9c1ca3bd3300cf64d8c7c01685203d6d, type: 2}
+  bossData: {fileID: 11400000, guid: 736ae02691519a14da1aead03eb8f6e2, type: 2}
+  battlePhaseLimit: 0
   isFinalLink: 0
   gimmicks: 020000000100000000000000
   gimmickTuning:

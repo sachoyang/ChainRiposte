@@ -59,7 +59,7 @@ namespace ChainRiposte.Core.Tests
             grown.Allocate(StatType.Defense);
             grown.Allocate(StatType.Parry);
 
-            RunState original = new(grown.Capture(), new[] { "relic_a", "relic_b" }, chainStep: 3, newGamePlusCount: 1);
+            RunState original = new(grown.Capture(), new[] { "memory_a", "memory_b" }, chainStep: 3, newGamePlusCount: 1);
 
             RunState round = RunState.Deserialize(original.Serialize());
 
@@ -67,7 +67,7 @@ namespace ChainRiposte.Core.Tests
             Assert.That(round.Stats.Souls, Is.EqualTo(original.Stats.Souls));
             Assert.That(round.Stats.PendingPoints, Is.EqualTo(original.Stats.PendingPoints));
             Assert.That(round.Stats.StatLevels, Is.EqualTo(original.Stats.StatLevels));
-            Assert.That(round.AcquiredRelicIds, Is.EquivalentTo(new[] { "relic_a", "relic_b" }));
+            Assert.That(round.AcquiredMemoryIds, Is.EqualTo(new[] { "memory_a", "memory_b" }), "먹은 순서까지 보존");
             Assert.That(round.ChainStep, Is.EqualTo(3));
             Assert.That(round.NewGamePlusCount, Is.EqualTo(1));
         }
@@ -77,32 +77,32 @@ namespace ChainRiposte.Core.Tests
         {
             Assert.That(RunState.Deserialize(null).Stats.Level, Is.EqualTo(1));
             Assert.That(RunState.Deserialize("").ChainStep, Is.EqualTo(0));
-            Assert.That(RunState.Deserialize("쓰레기값").AcquiredRelicIds, Is.Empty);
+            Assert.That(RunState.Deserialize("쓰레기값").AcquiredMemoryIds, Is.Empty);
             Assert.That(RunState.Deserialize("v1|불완전").Stats.Level, Is.EqualTo(1), "섹션이 모자라면 기본값");
         }
 
         [Test]
-        public void 넋은_중복으로_흡수되지_않는다()
+        public void 기억은_중복으로_삼켜지지_않는다()
         {
             RunState run = new();
 
-            Assert.That(run.AddRelic("relic_a"), Is.True);
-            Assert.That(run.AddRelic("relic_a"), Is.False, "같은 넋 재흡수 무시");
-            Assert.That(run.HasRelic("relic_a"), Is.True);
-            Assert.That(run.AcquiredRelicIds.Count, Is.EqualTo(1));
+            Assert.That(run.AddMemory("memory_a"), Is.True);
+            Assert.That(run.AddMemory("memory_a"), Is.False, "같은 보스의 기억 재흡수 무시");
+            Assert.That(run.HasMemory("memory_a"), Is.True);
+            Assert.That(run.AcquiredMemoryIds.Count, Is.EqualTo(1));
         }
 
         [Test]
-        public void 스탯_갱신은_넋과_사슬을_건드리지_않는다()
+        public void 스탯_갱신은_기억과_사슬을_건드리지_않는다()
         {
-            RunState run = new(relicIds: new[] { "relic_a" }, chainStep: 2);
+            RunState run = new(memoryIds: new[] { "memory_a" }, chainStep: 2);
 
             PlayerStats grown = new(Config());
             grown.AddSouls(200);
             run.UpdateStats(grown.Capture());
 
             Assert.That(run.Stats.Level, Is.EqualTo(grown.Level), "성장은 이어진다");
-            Assert.That(run.AcquiredRelicIds, Is.EquivalentTo(new[] { "relic_a" }), "넋은 유지");
+            Assert.That(run.AcquiredMemoryIds, Is.EquivalentTo(new[] { "memory_a" }), "기억은 유지");
             Assert.That(run.ChainStep, Is.EqualTo(2), "사슬은 유지");
         }
 

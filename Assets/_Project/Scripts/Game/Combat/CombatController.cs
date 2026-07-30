@@ -64,7 +64,10 @@ namespace ChainRiposte.Game.Combat
                 return;
             }
 
-            _combat = new CombatSystem(boss, gameManager.Session.Stats, gameManager.Session.Health);
+            // 삼킨 기억은 합산된 수치 한 벌로만 들어간다 — 전투는 기억이 몇 개인지 모른다 (§2.2).
+            _combat = new CombatSystem(
+                boss, gameManager.Session.Stats, gameManager.Session.Health,
+                memories: gameManager.MemoryEffects);
             _combat.Ended += OnCombatEnded;
             _combat.PhaseCleared += OnPhaseCleared;
             _combat.PhaseStarted += OnPhaseStarted;
