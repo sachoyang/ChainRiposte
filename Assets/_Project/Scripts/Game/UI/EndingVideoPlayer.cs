@@ -31,6 +31,8 @@ namespace ChainRiposte.Game.UI
         [SerializeField] private RawImage screen;
         [Tooltip("영상 비율을 지키는 장치. 비율은 클립마다 다르므로 재생할 때 여기에 실어 준다.")]
         [SerializeField] private AspectRatioFitter screenFitter;
+        [Tooltip("영상을 잘라 낼 마스크 그림. 비워도 동작한다(그때는 사각형 그대로).")]
+        [SerializeField] private Image screenMask;
         [SerializeField] private VideoPlayer video;
         [SerializeField] private AudioSource audioOut;
         [Tooltip("아무 데나 눌러 넘기기 위한 전체 화면 버튼")]
@@ -39,6 +41,10 @@ namespace ChainRiposte.Game.UI
         [SerializeField] private CanvasGroup group;
 
         [Header("연출")]
+        [Tooltip("왼쪽 위·오른쪽 아래 모서리를 대각선으로 잘라 내는 길이 — <b>가로의 몇 할</b>인가. " +
+                 "0이면 안 자른다. 세로로도 같은 픽셀만큼 자르므로 가로·세로 화면에서 기울기가 같다.\n\n" +
+                 "연출이면서 동시에 오른쪽 아래에 박힌 워터마크를 잘라 내는 장치다.")]
+        [SerializeField, Range(0f, 0.5f)] private float cornerCutRatio = 0.2f;
         [SerializeField, Min(0f)] private float fadeInSeconds = 0.6f;
         [SerializeField, Min(0f)] private float fadeOutSeconds = 0.8f;
         [Tooltip("영상을 못 여는 경우(파일 손상·플랫폼 미지원)에도 이 시간이 지나면 넘어간다. " +
@@ -47,6 +53,9 @@ namespace ChainRiposte.Game.UI
 
         private bool _skipped;
         private RenderTexture _target;
+        private Sprite _maskSprite;
+        private float _maskAspect;
+        private float _maskCut = -1f;
 
         private void Awake()
         {
@@ -131,8 +140,41 @@ namespace ChainRiposte.Game.UI
             video.targetTexture = _target;
             if (screen != null)
                 screen.texture = _target;
+
+            float aspect = (float)width / height;
             if (screenFitter != null)
-                screenFitter.aspectRatio = (float)width / height;
+                screenFitter.aspectRatio = aspect;
+
+            ApplyCornerCut(aspect);
+        }
+
+        /// <summary>
+        /// 모서리를 잘라 내는 마스크를 이 클립 비율에 맞춰 굽는다.
+        ///
+        /// <para>비율이 클립마다 다르므로 <b>씬에 굳혀 둘 수 없다</b> — 한 장을 늘려 쓰면 잘린 각도까지
+        /// 같이 늘어나 기울기가 클립마다 달라진다. 같은 비율·같은 잘림이면 다시 굽지 않는다.</para>
+        /// </summary>
+        private void ApplyCornerCut(float aspect)
+        {
+            if (screenMask == null)
+                return;
+
+            if (cornerCutRatio <= 0f)
+            {
+                // 안 자를 때는 마스크가 사각형이어야 한다 — 비워 두면 Mask가 아무것도 안 보여 준다.
+                screenMask.sprite = PlaceholderSprite.Square;
+                return;
+            }
+
+            if (_maskSprite == null || !Mathf.Approximately(_maskAspect, aspect)
+                || !Mathf.Approximately(_maskCut, cornerCutRatio))
+            {
+                _maskSprite = PlaceholderSprite.SlantedScreen(aspect, cornerCutRatio);
+                _maskAspect = aspect;
+                _maskCut = cornerCutRatio;
+            }
+
+            screenMask.sprite = _maskSprite;
         }
 
         private void ReleaseTarget()

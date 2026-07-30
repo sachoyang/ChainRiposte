@@ -140,6 +140,55 @@ namespace ChainRiposte.Game
             return Sprite.Create(texture, new Rect(0f, 0f, size, size), new Vector2(0.5f, 0.5f), size);
         }
 
+        /// <summary>
+        /// <b>왼쪽 위·오른쪽 아래 모서리를 대각선으로 잘라 낸</b> 평행사변형 — 엔딩 영상의 마스크다.
+        /// 화면을 비스듬히 가로지르는 유리 조각처럼 보이게 하는 것이 목적이고, 덤으로
+        /// <b>오른쪽 아래에 박힌 워터마크가 잘려 나간다.</b>
+        ///
+        /// <para>자르는 길이는 <paramref name="cutRatio"/> × <b>가로</b>이고, 세로로도 <b>같은 픽셀</b>만큼
+        /// 자른다 — 그래야 가로·세로 화면에서 기울기(45°)가 같아 보인다. 비율로 자르면 세로 화면에서
+        /// 훨씬 눕고 가로에서 훨씬 서서, 같은 연출이 다른 모양이 된다.</para>
+        ///
+        /// <para>마스크로 쓰는 그림이라 <b>비율(aspect)마다 다른 텍스처</b>가 필요하다 — 늘려 쓰면
+        /// 잘린 각도까지 같이 늘어난다.</para>
+        /// </summary>
+        /// <param name="aspect">가로 ÷ 세로. 영상 클립의 비율을 그대로 넣는다.</param>
+        /// <param name="cutRatio">가로의 몇 할을 자를지(0.2 = 20%). 0이면 그냥 사각형.</param>
+        public static Sprite SlantedScreen(float aspect, float cutRatio)
+        {
+            const int width = 512;
+            int height = Mathf.Clamp(Mathf.RoundToInt(width / Mathf.Max(0.05f, aspect)), 16, 2048);
+
+            // 자를 길이는 가로 기준. 양쪽 잘림이 서로 만나면 도형이 끊기므로 가로·세로의 절반으로 묶는다.
+            float cut = Mathf.Min(width * Mathf.Clamp01(cutRatio), width * 0.5f, height * 0.5f);
+
+            var texture = new Texture2D(width, height, TextureFormat.RGBA32, mipChain: false)
+            {
+                filterMode = FilterMode.Bilinear,
+                wrapMode = TextureWrapMode.Clamp,
+            };
+
+            var pixels = new Color32[width * height];
+            for (int y = 0; y < height; y++)
+            {
+                for (int x = 0; x < width; x++)
+                {
+                    // 왼쪽 위 잘림: x + (높이−y) 가 작을수록 모서리에 가깝다. 오른쪽 아래는 그 반대.
+                    float topLeft = x + (height - 1 - y) - cut;
+                    float bottomRight = (width - 1 - x) + y - cut;
+
+                    // 경계를 1픽셀로 부드럽게 — 대각선은 계단이 가장 잘 보이는 모양이다
+                    float alpha = Mathf.Clamp01(topLeft) * Mathf.Clamp01(bottomRight);
+                    pixels[y * width + x] = new Color32(255, 255, 255, (byte)(alpha * 255f));
+                }
+            }
+
+            texture.SetPixels32(pixels);
+            texture.Apply(updateMipmaps: false);
+
+            return Sprite.Create(texture, new Rect(0f, 0f, width, height), new Vector2(0.5f, 0.5f), width);
+        }
+
         public static Sprite Square
         {
             get

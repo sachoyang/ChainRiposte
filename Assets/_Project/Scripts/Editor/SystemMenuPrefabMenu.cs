@@ -1,10 +1,13 @@
+using System.Collections.Generic;
 using System.IO;
 using ChainRiposte.Game.Localization;
 using ChainRiposte.Game.Map;
 using ChainRiposte.Game.UI;
+using TMPro;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
+using UnityEngine.UI;
 
 namespace ChainRiposte.Editor
 {
@@ -28,6 +31,9 @@ namespace ChainRiposte.Editor
 
         /// <summary>설정 패널 원본. 타이틀·전투 씬이 <b>같은 이것</b>의 인스턴스를 쓴다.</summary>
         internal const string OptionsPanelPrefabPath = PrefabFolder + "/OptionsPanel.prefab";
+
+        /// <summary>예/아니오 확인 대화창 원본. 새 게임·지도로 나가기·진행도 초기화가 <b>같은 이것</b>을 쓴다.</summary>
+        internal const string ConfirmPanelPrefabPath = PrefabFolder + "/ConfirmPanel.prefab";
 
         [MenuItem("Tools/ChainRiposte/System Menu/Extract Prefab From Open Scene")]
         private static void Extract()
@@ -270,6 +276,314 @@ namespace ChainRiposte.Editor
             instance.name = OptionsPanelName;
             instance.SetActive(false);
             return instance;
+        }
+
+        // ── 예/아니오 확인 대화창 (새 게임 · 나가기 · 진행도 초기화 공용) ──
+
+        /// <summary>확인 대화창의 네 부분. 호스트(컨트롤러)가 참조하는 것이 이 넷이다.</summary>
+        private struct ConfirmRefs
+        {
+            public GameObject Panel;
+            public TMP_Text Text;
+            public Button Yes;
+            public Button No;
+
+            public bool IsComplete => Panel != null && Text != null && Yes != null && No != null;
+        }
+
+        /// <summary>
+        /// 확인 대화창을 프리팹으로 뽑는다. 원본은 <b>시스템 메뉴의 나가기 확인</b>(테두리 박스가 있는 쪽)이다 —
+        /// 코드로 만든 다른 두 개(타이틀의 새 게임 확인, 설정의 초기화 확인)는 테두리가 없는 납작한 모양이라
+        /// 셋이 서로 다르게 보였다. <b>가장 잘 생긴 하나를 원본으로 삼는다.</b>
+        /// </summary>
+        [MenuItem("Tools/ChainRiposte/System Menu/Extract Confirm Panel Prefab")]
+        private static void ExtractConfirmPanel()
+        {
+            if (AssetDatabase.LoadAssetAtPath<GameObject>(ConfirmPanelPrefabPath) != null)
+            {
+                Debug.Log($"[SystemMenu] {ConfirmPanelPrefabPath} 가 이미 있습니다 — 아무것도 안 했습니다.");
+                return;
+            }
+
+            GameObject root = PrefabUtility.LoadPrefabContents(PrefabPath);
+            Transform source = FindChild(root.transform, "QuitConfirmPanel");
+            if (source == null)
+            {
+                PrefabUtility.UnloadPrefabContents(root);
+                EditorUtility.DisplayDialog("확인 대화창 프리팹", $"{PrefabPath} 안에 QuitConfirmPanel 이 없습니다.", "확인");
+                return;
+            }
+
+            GameObject saved = PrefabUtility.SaveAsPrefabAssetAndConnect(
+                source.gameObject, ConfirmPanelPrefabPath, InteractionMode.AutomatedAction);
+            PrefabUtility.SaveAsPrefabAsset(root, PrefabPath);
+            PrefabUtility.UnloadPrefabContents(root);
+
+            Debug.Log($"[SystemMenu] {ConfirmPanelPrefabPath} 로 뽑았습니다. " +
+                      "이제 Replace Confirm Panels 로 나머지 사본을 이 프리팹의 인스턴스로 갈아 끼우세요.", saved);
+        }
+
+        /// <summary>
+        /// 코드로 만들어진 확인 대화창 사본을 프리팹 인스턴스로 교체한다 —
+        /// <b>설정 패널 프리팹 안</b>과 <b>열려 있는 씬</b> 양쪽.
+        ///
+        /// <para>대화창을 찾는 기준은 이름이 아니라 <b>모양</b>이다(자식에 YesButton·NoButton이 있는 것).
+        /// 이름은 자리마다 다르고(ConfirmPanel / OptionsConfirmPanel / QuitConfirmPanel) 앞으로도 늘어난다.</para>
+        /// </summary>
+        [MenuItem("Tools/ChainRiposte/System Menu/Replace Confirm Panels (Prefabs + Open Scene)")]
+        private static void ReplaceConfirmPanels()
+        {
+            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(ConfirmPanelPrefabPath);
+            if (prefab == null)
+            {
+                EditorUtility.DisplayDialog("확인 대화창 교체",
+                    $"{ConfirmPanelPrefabPath} 가 없습니다. 먼저 Extract Confirm Panel Prefab 을 실행하세요.", "확인");
+                return;
+            }
+
+            int replaced = ReplaceConfirmPanelsInPrefab(OptionsPanelPrefabPath, prefab);
+            replaced += ReplaceConfirmPanelsInOpenScene(prefab);
+
+            Debug.Log($"[SystemMenu] 확인 대화창 {replaced}개를 프리팹 인스턴스로 교체했습니다. " +
+                      "이제 대화창 모양은 ConfirmPanel.prefab 한 곳에서만 고칩니다.");
+        }
+
+        private static int ReplaceConfirmPanelsInPrefab(string prefabPath, GameObject prefab)
+        {
+            GameObject root = PrefabUtility.LoadPrefabContents(prefabPath);
+            int replaced = 0;
+
+            foreach (Transform candidate in FindConfirmPanels(root.transform))
+            {
+                ConfirmRefs old = Resolve(candidate.gameObject);
+                if (!old.IsComplete)
+                    continue;
+
+                var instance = (GameObject)PrefabUtility.InstantiatePrefab(prefab, candidate.parent);
+                instance.name = candidate.name;
+                instance.transform.SetSiblingIndex(candidate.GetSiblingIndex());
+                CopyRect(candidate as RectTransform, instance.transform as RectTransform);
+                instance.SetActive(false);
+
+                Rewire(root.GetComponentsInChildren<MonoBehaviour>(true), old, Resolve(instance));
+                Object.DestroyImmediate(candidate.gameObject);
+                replaced++;
+            }
+
+            if (replaced > 0)
+                PrefabUtility.SaveAsPrefabAsset(root, prefabPath);
+
+            PrefabUtility.UnloadPrefabContents(root);
+            return replaced;
+        }
+
+        private static int ReplaceConfirmPanelsInOpenScene(GameObject prefab)
+        {
+            int replaced = 0;
+            foreach (Transform candidate in FindConfirmPanels(null))
+            {
+                if (PrefabUtility.IsPartOfPrefabInstance(candidate))
+                    continue; // 이미 프리팹이 관리한다
+
+                ConfirmRefs old = Resolve(candidate.gameObject);
+                if (!old.IsComplete)
+                    continue;
+
+                var instance = (GameObject)PrefabUtility.InstantiatePrefab(prefab, candidate.parent);
+                Undo.RegisterCreatedObjectUndo(instance, "Replace Confirm Panel");
+                instance.name = candidate.name;
+                instance.transform.SetSiblingIndex(candidate.GetSiblingIndex());
+                CopyRect(candidate as RectTransform, instance.transform as RectTransform);
+                instance.SetActive(false);
+
+                Rewire(
+                    Object.FindObjectsByType<MonoBehaviour>(FindObjectsInactive.Include, FindObjectsSortMode.None),
+                    old, Resolve(instance));
+
+                Undo.DestroyObjectImmediate(candidate.gameObject);
+                EditorSceneManager.MarkSceneDirty(instance.scene);
+                replaced++;
+            }
+
+            return replaced;
+        }
+
+        /// <summary>
+        /// 확인 대화창처럼 생긴 것들 — 자손에 <c>YesButton</c>과 <c>NoButton</c>이 있는 오브젝트.
+        /// <paramref name="root"/>가 null이면 열려 있는 씬 전체에서 찾는다.
+        ///
+        /// <para><b>조상은 버린다.</b> 조건만 보면 대화창을 품은 패널·캔버스까지 다 걸리므로
+        /// (설정 패널이 확인 대화창을 품고 있다) <b>다른 후보를 품지 않은 것</b>만 남긴다 —
+        /// 이 걸러내기를 빼먹으면 설정 패널 전체가 대화창으로 교체되는 사고가 난다.</para>
+        /// </summary>
+        private static List<Transform> FindConfirmPanels(Transform root)
+        {
+            IEnumerable<Transform> all = root != null
+                ? root.GetComponentsInChildren<Transform>(true)
+                : Object.FindObjectsByType<Transform>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+
+            var matches = new List<Transform>();
+            foreach (Transform candidate in all)
+            {
+                if (candidate == root)
+                    continue; // 프리팹 루트 자체는 절대 교체 대상이 아니다
+
+                // 이미 공용 프리팹으로 만들어진 것은 건너뛴다 — 안 그러면 <b>두 번 돌릴 때마다</b>
+                // 그 안의 Box를 또 대화창으로 갈아 끼워 껍데기가 한 겹씩 늘어난다(실제로 그렇게 됐다).
+                if (IsSharedConfirmPanel(candidate))
+                    continue;
+
+                if (FindChild(candidate, "YesButton") != null && FindChild(candidate, "NoButton") != null)
+                    matches.Add(candidate);
+            }
+
+            var innermost = new List<Transform>();
+            foreach (Transform candidate in matches)
+            {
+                bool containsAnother = false;
+                foreach (Transform other in matches)
+                {
+                    if (other != candidate && other.IsChildOf(candidate))
+                    {
+                        containsAnother = true;
+                        break;
+                    }
+                }
+
+                if (!containsAnother)
+                    innermost.Add(candidate);
+            }
+
+            return innermost;
+        }
+
+        /// <summary>
+        /// 이 오브젝트(또는 조상)가 이미 공용 확인 대화창 프리팹의 인스턴스인가 —
+        /// <b>두 번 실행해도 아무 일도 안 일어나게</b> 하는 안전장치다.
+        /// </summary>
+        private static bool IsSharedConfirmPanel(Transform candidate)
+        {
+            for (Transform t = candidate; t != null; t = t.parent)
+            {
+                Object source = PrefabUtility.GetCorrespondingObjectFromSource(t.gameObject);
+                if (source != null && AssetDatabase.GetAssetPath(source) == ConfirmPanelPrefabPath)
+                    return true;
+            }
+
+            return false;
+        }
+
+        /// <summary>대화창의 네 부분을 <b>이름이 아니라 역할</b>로 찾는다 — 자리마다 이름이 다르다.</summary>
+        private static ConfirmRefs Resolve(GameObject panel)
+        {
+            var refs = new ConfirmRefs { Panel = panel };
+            Transform yes = FindChild(panel.transform, "YesButton");
+            Transform no = FindChild(panel.transform, "NoButton");
+            refs.Yes = yes != null ? yes.GetComponent<Button>() : null;
+            refs.No = no != null ? no.GetComponent<Button>() : null;
+
+            // 문구는 '버튼에 딸리지 않은' 글씨다 — 버튼 라벨과 구분하는 기준이 이름보다 튼튼하다.
+            foreach (TMP_Text text in panel.GetComponentsInChildren<TMP_Text>(true))
+            {
+                if (text.GetComponentInParent<Button>() != null)
+                    continue;
+
+                refs.Text = text;
+                break;
+            }
+
+            return refs;
+        }
+
+        /// <summary>옛 대화창을 가리키던 참조를 새 인스턴스의 같은 역할로 옮긴다.</summary>
+        private static int Rewire(IEnumerable<MonoBehaviour> hosts, ConfirmRefs old, ConfirmRefs replacement)
+        {
+            if (!replacement.IsComplete)
+                return 0;
+
+            int count = 0;
+            foreach (MonoBehaviour host in hosts)
+            {
+                if (host == null || host.transform.IsChildOf(old.Panel.transform))
+                    continue;
+
+                var so = new SerializedObject(host);
+                SerializedProperty property = so.GetIterator();
+                bool changed = false;
+                while (property.NextVisible(enterChildren: true))
+                {
+                    if (property.propertyType != SerializedPropertyType.ObjectReference)
+                        continue;
+
+                    Object value = property.objectReferenceValue;
+                    if (value == null)
+                        continue;
+
+                    if (value == old.Panel)
+                        property.objectReferenceValue = replacement.Panel;
+                    else if (value == (Object)old.Text)
+                        property.objectReferenceValue = replacement.Text;
+                    else if (value == (Object)old.Yes)
+                        property.objectReferenceValue = replacement.Yes;
+                    else if (value == (Object)old.No)
+                        property.objectReferenceValue = replacement.No;
+                    else
+                        continue;
+
+                    changed = true;
+                }
+
+                if (!changed)
+                    continue;
+
+                so.ApplyModifiedPropertiesWithoutUndo();
+                EditorUtility.SetDirty(host);
+                count++;
+            }
+
+            return count;
+        }
+
+        /// <summary>자리(앵커·크기)는 옛것을 그대로 물려받는다 — 대화창이 있던 위치가 화면마다 다르다.</summary>
+        private static void CopyRect(RectTransform from, RectTransform to)
+        {
+            if (from == null || to == null)
+                return;
+
+            to.anchorMin = from.anchorMin;
+            to.anchorMax = from.anchorMax;
+            to.pivot = from.pivot;
+            to.anchoredPosition = from.anchoredPosition;
+            to.sizeDelta = from.sizeDelta;
+            to.localScale = from.localScale;
+        }
+
+        /// <summary>빌더가 부른다 — 프리팹이 있으면 인스턴스를 만들어 네 부분을 돌려준다.</summary>
+        internal static bool TryInstantiateConfirmPanel(
+            Transform parent, string name, out GameObject panel, out TMP_Text text, out Button yes, out Button no)
+        {
+            panel = null;
+            text = null;
+            yes = null;
+            no = null;
+
+            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(ConfirmPanelPrefabPath);
+            if (prefab == null)
+                return false;
+
+            var instance = (GameObject)PrefabUtility.InstantiatePrefab(prefab, parent);
+            instance.name = name;
+            instance.SetActive(false);
+
+            ConfirmRefs refs = Resolve(instance);
+            if (!refs.IsComplete)
+                return false;
+
+            panel = refs.Panel;
+            text = refs.Text;
+            yes = refs.Yes;
+            no = refs.No;
+            return true;
         }
 
         private static Transform FindChild(Transform root, string name)

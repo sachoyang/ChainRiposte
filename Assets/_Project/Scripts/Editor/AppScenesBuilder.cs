@@ -369,9 +369,18 @@ namespace ChainRiposte.Editor
             return button;
         }
 
+        /// <summary>
+        /// 예/아니오 확인 대화창. <b>프리팹이 있으면 그것을 꽂는다</b>
+        /// (<see cref="SystemMenuPrefabMenu.ConfirmPanelPrefabPath"/>) — 코드로 새로 짜면 자리마다
+        /// 사본이 생겨서 한쪽만 고쳐지고, 실제로 셋이 서로 다르게 생겨 있었다.
+        /// 아래 코드 경로는 프리팹이 아직 없을 때의 최초 부팅용이다.
+        /// </summary>
         private static void BuildConfirmPanel(
             Transform canvas, string name, out GameObject panel, out TMP_Text text, out Button yes, out Button no)
         {
+            if (SystemMenuPrefabMenu.TryInstantiateConfirmPanel(canvas, name, out panel, out text, out yes, out no))
+                return;
+
             Image backdrop = EditorUiFactory.Stretch(canvas, name, new Color(0f, 0f, 0f, 0.88f), raycast: true);
             panel = backdrop.gameObject;
 

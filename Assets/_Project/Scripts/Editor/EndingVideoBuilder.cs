@@ -1,3 +1,4 @@
+using ChainRiposte.Game;
 using ChainRiposte.Game.UI;
 using TMPro;
 using UnityEditor;
@@ -75,16 +76,30 @@ namespace ChainRiposte.Editor
             // 영상 뒤는 완전한 검정 — 비율이 안 맞아 생기는 여백이 게임 화면이면 몰입이 깨진다
             EditorUiFactory.Stretch(root, "Backdrop", Color.black, raycast: true);
 
+            // 영상 자리 = 비율을 지키는 틀 + 그 틀을 잘라 내는 마스크.
+            // 마스크를 부모에 두는 이유: Unity UI 의 Mask 는 <b>자식</b>을 자른다 — 자기 자신은 못 자른다.
             RectTransform screenRect = EditorUiFactory.NewRect("Screen", root);
             screenRect.anchorMin = Vector2.zero;
             screenRect.anchorMax = Vector2.one;
             screenRect.offsetMin = screenRect.offsetMax = Vector2.zero;
-            var screen = screenRect.gameObject.AddComponent<RawImage>();
-            screen.raycastTarget = false;
             // 영상 비율을 지킨다 — 화면비가 제각각인 모바일에서 늘어나 보이면 안 된다
             var fitter = screenRect.gameObject.AddComponent<AspectRatioFitter>();
             fitter.aspectMode = AspectRatioFitter.AspectMode.FitInParent;
             fitter.aspectRatio = 16f / 9f;
+
+            // 모서리를 자르는 그림. 실제 모양은 EndingVideoPlayer 가 클립 비율에 맞춰 런타임에 굽는다.
+            var screenMask = screenRect.gameObject.AddComponent<Image>();
+            screenMask.sprite = PlaceholderSprite.Square;
+            screenMask.raycastTarget = false;
+            var mask = screenRect.gameObject.AddComponent<Mask>();
+            mask.showMaskGraphic = false; // 마스크 그림 자체는 안 보인다 — 자르는 데만 쓴다
+
+            RectTransform videoRect = EditorUiFactory.NewRect("Video", screenRect);
+            videoRect.anchorMin = Vector2.zero;
+            videoRect.anchorMax = Vector2.one;
+            videoRect.offsetMin = videoRect.offsetMax = Vector2.zero;
+            var screen = videoRect.gameObject.AddComponent<RawImage>();
+            screen.raycastTarget = false;
 
             // 넘기기: 투명한 전체 화면 버튼이라 모바일 탭도 그대로 먹는다
             Button skip = EditorUiFactory.Button(
@@ -114,6 +129,7 @@ namespace ChainRiposte.Editor
             so.FindProperty("root").objectReferenceValue = root;
             so.FindProperty("screen").objectReferenceValue = screen;
             so.FindProperty("screenFitter").objectReferenceValue = fitter;
+            so.FindProperty("screenMask").objectReferenceValue = screenMask;
             so.FindProperty("video").objectReferenceValue = video;
             so.FindProperty("audioOut").objectReferenceValue = audioOut;
             so.FindProperty("skipButton").objectReferenceValue = skip;

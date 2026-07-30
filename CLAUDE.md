@@ -166,6 +166,27 @@
   같은 것을 코드에 적어 두지 않으므로 앞으로 어느 컴포넌트가 들고 있어도 따라온다).
 - 메뉴: `System Menu ▸ Extract Options Panel Prefab` · `Replace Options Panel In Open Scene`.
 
+**⑭ 확인 대화창도 프리팹 하나로 (사용자 승인)**
+- 같은 함정이 하나 더 있었다: `BuildConfirmPanel`도 부를 때마다 코드로 짜서 **사본이 셋**이었고
+  (타이틀 새 게임 / 설정 초기화 / 지도로 나가기) **모양이 서로 달랐다** — 나가기 확인만 테두리 박스가 있었다.
+- **`Prefabs/ConfirmPanel.prefab`** = 그 박스 있는 쪽(가장 잘 생긴 것)을 원본으로. 나머지 둘을 인스턴스로 교체.
+  `BuildConfirmPanel`도 프리팹 우선으로 바꿨다.
+- 찾는 기준은 이름이 아니라 **모양**(자손에 `YesButton`·`NoButton`) — 이름이 자리마다 다르고 앞으로도 늘어난다.
+  참조도 이름이 아니라 **역할**로 옮긴다(문구 = 버튼에 딸리지 않은 글씨).
+- ⚠ **두 번 돌려서 껍데기가 한 겹 늘어난 사고를 냈다** — 조상까지 후보에 걸려 `Box`를 또 대화창으로
+  갈아 끼웠다. 지금은 ①조상(다른 후보를 품은 것) 제외 ②이미 공용 프리팹 인스턴스면 건너뛰기
+  두 겹으로 막았고, **재실행이 무해함을 확인**했다.
+
+**⑮ 엔딩 영상 모서리 자르기 (사용자 요청)**
+- 왼쪽 위·오른쪽 아래를 대각선으로 잘라 **비스듬한 유리 조각**처럼 보이게 한다. 연출이면서
+  동시에 **오른쪽 아래 AI 워터마크를 잘라 낸다.**
+- `PlaceholderSprite.SlantedScreen(aspect, cutRatio)` — 자르는 길이는 `가로 × 0.2`이고
+  **세로로도 같은 픽셀**만큼 자른다(45°). 비율로 자르면 가로·세로 화면에서 기울기가 달라져
+  같은 연출이 다른 모양이 된다. 마스크 그림은 **비율마다 다시 굽는다**(늘려 쓰면 각도까지 늘어난다).
+- 구조: `Screen`(AspectRatioFitter + Image + **Mask**) → 자식 `Video`(RawImage).
+  Unity UI의 Mask는 **자식**을 자르므로 마스크가 부모여야 한다.
+- 다이얼은 `EndingVideoPlayer ▸ cornerCutRatio`(0 = 안 자름). `Add Ending Video To Main` 재실행 완료.
+
 **⑫ 버튼 눌림 표현 전면 배선 (사용자 요청)**
 - 규칙은 **이름 하나**: 그림이 `btn_wide` 면 같은 시트의 `btn_wide_pressed` 를 찾아 Sprite Swap.
   아이콘도 같다(`icon_pause/play/settings/back/sound_*` 전부 `_pressed` 가 시트에 있다).
