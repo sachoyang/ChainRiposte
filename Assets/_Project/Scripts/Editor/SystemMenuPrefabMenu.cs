@@ -24,6 +24,11 @@ namespace ChainRiposte.Editor
         private const string PrefabFolder = "Assets/_Project/Prefabs";
         private const string PrefabPath = PrefabFolder + "/SystemMenuCanvas.prefab";
 
+        private const string OptionsPanelName = "OptionsPanel";
+
+        /// <summary>설정 패널 원본. 타이틀·전투 씬이 <b>같은 이것</b>의 인스턴스를 쓴다.</summary>
+        internal const string OptionsPanelPrefabPath = PrefabFolder + "/OptionsPanel.prefab";
+
         [MenuItem("Tools/ChainRiposte/System Menu/Extract Prefab From Open Scene")]
         private static void Extract()
         {
@@ -104,6 +109,178 @@ namespace ChainRiposte.Editor
             EditorSceneManager.MarkSceneDirty(map.gameObject.scene);
             Debug.Log("[SystemMenu] 지도에 시스템 메뉴를 얹었습니다(나가기 = 타이틀). " +
                       "버튼 배치를 지도에 맞게 옮겼으면 그 인스턴스에만 남고 프리팹은 안 바뀝니다.", instance);
+        }
+
+        // ── 설정 패널 (타이틀·전투 씬 공용) ──
+
+        /// <summary>
+        /// 시스템 메뉴 프리팹 안의 <c>OptionsPanel</c>을 <b>별도 프리팹으로</b> 뽑는다(중첩 프리팹).
+        ///
+        /// <para>왜: 설정 패널은 <b>타이틀에도</b> 있는데 예전에는 빌더가 씬마다 코드로 새로 짜서
+        /// <b>사본이 둘</b>이었다. 그래서 시스템 메뉴 쪽 패널을 고쳐도 타이틀은 안 바뀌었다.
+        /// 이제 원본은 하나이고 두 씬이 그 인스턴스를 쓴다.</para>
+        /// </summary>
+        [MenuItem("Tools/ChainRiposte/System Menu/Extract Options Panel Prefab")]
+        private static void ExtractOptionsPanel()
+        {
+            var menu = AssetDatabase.LoadAssetAtPath<GameObject>(PrefabPath);
+            if (menu == null)
+            {
+                EditorUtility.DisplayDialog("설정 패널 프리팹",
+                    $"{PrefabPath} 가 없습니다. 먼저 Main 씬에서 Extract Prefab From Open Scene 을 실행하세요.", "확인");
+                return;
+            }
+
+            if (AssetDatabase.LoadAssetAtPath<GameObject>(OptionsPanelPrefabPath) != null)
+            {
+                Debug.Log($"[SystemMenu] {OptionsPanelPrefabPath} 가 이미 있습니다 — 아무것도 안 했습니다.");
+                return;
+            }
+
+            // 프리팹 내용물을 열어 그 안의 패널을 프리팹으로 저장하면 <b>중첩 프리팹</b>이 된다.
+            GameObject root = PrefabUtility.LoadPrefabContents(PrefabPath);
+            Transform panel = FindChild(root.transform, OptionsPanelName);
+            if (panel == null)
+            {
+                PrefabUtility.UnloadPrefabContents(root);
+                EditorUtility.DisplayDialog("설정 패널 프리팹", $"{PrefabPath} 안에 {OptionsPanelName} 이 없습니다.", "확인");
+                return;
+            }
+
+            GameObject saved = PrefabUtility.SaveAsPrefabAssetAndConnect(
+                panel.gameObject, OptionsPanelPrefabPath, InteractionMode.AutomatedAction);
+            PrefabUtility.SaveAsPrefabAsset(root, PrefabPath);
+            PrefabUtility.UnloadPrefabContents(root);
+
+            Debug.Log($"[SystemMenu] {OptionsPanelPrefabPath} 로 뽑았습니다(시스템 메뉴 안에서는 중첩 인스턴스). " +
+                      "이제 설정 항목은 이 프리팹에서만 고치면 타이틀·전투 씬에 같이 반영됩니다.", saved);
+        }
+
+        /// <summary>
+        /// 열려 있는 씬의 <c>OptionsPanel</c>을 <b>프리팹 인스턴스로 교체</b>하고, 그것을 가리키던
+        /// 컴포넌트 참조(<c>TitleController.optionsPanel</c> 등)를 새 것으로 옮긴다.
+        /// </summary>
+        [MenuItem("Tools/ChainRiposte/System Menu/Replace Options Panel In Open Scene")]
+        private static void ReplaceOptionsPanel()
+        {
+            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(OptionsPanelPrefabPath);
+            if (prefab == null)
+            {
+                EditorUtility.DisplayDialog("설정 패널 교체",
+                    $"{OptionsPanelPrefabPath} 가 없습니다. 먼저 Extract Options Panel Prefab 을 실행하세요.", "확인");
+                return;
+            }
+
+            OptionsPanel[] existing = Object.FindObjectsByType<OptionsPanel>(
+                FindObjectsInactive.Include, FindObjectsSortMode.None);
+            GameObject old = null;
+            foreach (OptionsPanel candidate in existing)
+            {
+                // 이미 프리팹 인스턴스면 건드릴 이유가 없다(그쪽은 원본을 따라간다).
+                if (PrefabUtility.IsPartOfPrefabInstance(candidate))
+                    continue;
+
+                old = candidate.gameObject;
+                break;
+            }
+
+            if (old == null)
+            {
+                Debug.Log("[SystemMenu] 이 씬에는 코드로 만들어진 설정 패널이 없습니다 — 아무것도 안 했습니다.");
+                return;
+            }
+
+            Transform parent = old.transform.parent;
+            int siblingIndex = old.transform.GetSiblingIndex();
+
+            var instance = (GameObject)PrefabUtility.InstantiatePrefab(prefab, parent);
+            Undo.RegisterCreatedObjectUndo(instance, "Replace Options Panel");
+            instance.name = OptionsPanelName;
+            instance.transform.SetSiblingIndex(siblingIndex);
+            instance.SetActive(false); // 평소엔 닫혀 있다 — 열고 닫는 것은 각 화면의 컨트롤러가 한다
+
+            int rewired = Rewire(old, instance);
+            Undo.DestroyObjectImmediate(old);
+
+            EditorSceneManager.MarkSceneDirty(instance.scene);
+            Debug.Log($"[SystemMenu] 설정 패널을 프리팹 인스턴스로 교체했습니다 (참조 {rewired}곳 갱신). " +
+                      "이제 이 씬도 프리팹을 고치면 같이 바뀝니다.", instance);
+        }
+
+        /// <summary>
+        /// 씬 안에서 옛 패널을 가리키던 참조를 새 인스턴스로 옮긴다. 필드 이름을 코드에 적지 않고
+        /// <b>가리키는 대상으로</b> 찾으므로, 앞으로 어느 컴포넌트가 설정 패널을 들고 있어도 따라온다.
+        /// </summary>
+        private static int Rewire(GameObject old, GameObject replacement)
+        {
+            int count = 0;
+            foreach (MonoBehaviour behaviour in Object.FindObjectsByType<MonoBehaviour>(
+                         FindObjectsInactive.Include, FindObjectsSortMode.None))
+            {
+                if (behaviour == null || behaviour.gameObject == old)
+                    continue;
+
+                var so = new SerializedObject(behaviour);
+                SerializedProperty property = so.GetIterator();
+                bool changed = false;
+                while (property.NextVisible(enterChildren: true))
+                {
+                    if (property.propertyType != SerializedPropertyType.ObjectReference
+                        || property.objectReferenceValue == null)
+                        continue;
+
+                    if (property.objectReferenceValue == old)
+                    {
+                        property.objectReferenceValue = replacement;
+                        changed = true;
+                    }
+                    else if (property.objectReferenceValue is Component component && component.gameObject == old)
+                    {
+                        // Button 같은 컴포넌트 참조도 같은 이름의 것으로 옮겨 준다
+                        Component moved = replacement.GetComponent(component.GetType());
+                        if (moved != null)
+                        {
+                            property.objectReferenceValue = moved;
+                            changed = true;
+                        }
+                    }
+                }
+
+                if (!changed)
+                    continue;
+
+                so.ApplyModifiedPropertiesWithoutUndo();
+                EditorUtility.SetDirty(behaviour);
+                count++;
+            }
+
+            return count;
+        }
+
+        /// <summary>
+        /// 빌더가 부른다 — 프리팹이 있으면 그 인스턴스를 만들어 주고, 없으면 null(그때는 빌더가 코드로 짠다).
+        /// </summary>
+        internal static GameObject InstantiateOptionsPanel(Transform parent)
+        {
+            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(OptionsPanelPrefabPath);
+            if (prefab == null)
+                return null;
+
+            var instance = (GameObject)PrefabUtility.InstantiatePrefab(prefab, parent);
+            instance.name = OptionsPanelName;
+            instance.SetActive(false);
+            return instance;
+        }
+
+        private static Transform FindChild(Transform root, string name)
+        {
+            foreach (Transform child in root.GetComponentsInChildren<Transform>(true))
+            {
+                if (child.name == name)
+                    return child;
+            }
+
+            return null;
         }
 
         /// <summary>

@@ -154,6 +154,18 @@
 - `StageSelectController ▸ revealedTint`(기본 흰색 알파 **0.45**). 공개 전 실루엣은 그대로다.
   초상은 분위기이고 읽어야 하는 것은 보스 이름·기믹·광맥 줄이다.
 
+**⑬ 설정 패널이 타이틀에만 따로 있던 문제 (사용자 발견: "프리팹 고쳤는데 타이틀은 안 바뀜")**
+- 원인: `AppScenesBuilder.BuildOptionsPanel`이 **부를 때마다 코드로 새로 짰다.** 그래서 타이틀과
+  전투 씬에 **사본이 둘**이었고, 한쪽을 고쳐도 다른 쪽은 그대로였다.
+- **`Prefabs/OptionsPanel.prefab` 신규** — `SystemMenuCanvas` 안의 패널을 뽑아 **중첩 프리팹**으로 만들고,
+  타이틀의 코드 사본을 그 인스턴스로 교체했다. 이제 원본 하나를 Main·StageSelect(시스템 메뉴 경유)·Title이 공유한다.
+  (사용자가 이미 시스템 메뉴 쪽 패널에 해 둔 수정이 그대로 원본이 됐으므로 타이틀에도 반영된다.)
+- **`BuildOptionsPanel`은 이제 프리팹이 있으면 그것을 꽂는다.** 코드 경로는 프리팹이 없을 때의
+  최초 부팅용으로만 남는다 — 안 그러면 빌더를 돌릴 때마다 사본이 다시 생긴다.
+- 교체 메뉴는 참조를 **필드 이름이 아니라 가리키는 대상으로** 찾아 옮긴다(`TitleController.optionsPanel`
+  같은 것을 코드에 적어 두지 않으므로 앞으로 어느 컴포넌트가 들고 있어도 따라온다).
+- 메뉴: `System Menu ▸ Extract Options Panel Prefab` · `Replace Options Panel In Open Scene`.
+
 **⑫ 버튼 눌림 표현 전면 배선 (사용자 요청)**
 - 규칙은 **이름 하나**: 그림이 `btn_wide` 면 같은 시트의 `btn_wide_pressed` 를 찾아 Sprite Swap.
   아이콘도 같다(`icon_pause/play/settings/back/sound_*` 전부 `_pressed` 가 시트에 있다).

@@ -203,9 +203,25 @@ namespace ChainRiposte.Editor
             return select;
         }
 
-        /// <summary>옵션 패널. 항목은 위에서부터 볼륨 2개 → 화면 방향 → 언어 → 진행도 초기화 순.</summary>
-        /// <summary>설정 패널. 타이틀·전투 씬 모두 같은 것을 쓴다(내부 공용).</summary>
+        /// <summary>
+        /// 설정 패널. <b>프리팹이 있으면 그것을 꽂는다</b>(<see cref="SystemMenuPrefabMenu.OptionsPanelPrefabPath"/>) —
+        /// 코드로 새로 짜면 씬마다 <b>다른 사본</b>이 생겨서, 프리팹을 고쳐도 그 씬만 안 바뀐다
+        /// (실제로 타이틀이 그렇게 혼자 남아 있었다).
+        ///
+        /// <para>아래 코드 경로는 <b>프리팹이 아직 없을 때의 최초 부팅용</b>이다. 한 번 뽑아 두면
+        /// 그 뒤로는 이 코드가 안 돌고, 항목·색·아트는 프리팹에서만 고친다.</para>
+        /// </summary>
         internal static GameObject BuildOptionsPanel(Transform canvas)
+        {
+            GameObject fromPrefab = SystemMenuPrefabMenu.InstantiateOptionsPanel(canvas);
+            if (fromPrefab != null)
+                return fromPrefab;
+
+            return BuildOptionsPanelFromCode(canvas);
+        }
+
+        /// <summary>옵션 패널을 코드로 짠다. 항목은 위에서부터 볼륨 2개 → 화면 방향 → 언어 → 진행도 초기화 순.</summary>
+        private static GameObject BuildOptionsPanelFromCode(Transform canvas)
         {
             Image backdrop = EditorUiFactory.Stretch(canvas, "OptionsPanel", new Color(0.05f, 0.04f, 0.07f, 0.96f), raycast: true);
             GameObject panel = backdrop.gameObject;
