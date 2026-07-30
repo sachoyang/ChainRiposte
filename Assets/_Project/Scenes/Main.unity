@@ -3193,7 +3193,7 @@ MonoBehaviour:
   m_fontMaterials: []
   m_fontColor32:
     serializedVersion: 2
-    rgba: 4294967295
+    rgba: 2360920012
   m_fontColor: {r: 0.8, g: 0.78, b: 0.72, a: 0.55}
   m_enableVertexGradient: 0
   m_colorMode: 3
@@ -3206,7 +3206,7 @@ MonoBehaviour:
   m_spriteAsset: {fileID: 0}
   m_tintAllSprites: 0
   m_StyleSheet: {fileID: 0}
-  m_TextStyleHashCode: 0
+  m_TextStyleHashCode: -1183493901
   m_overrideHtmlColors: 0
   m_faceColor:
     serializedVersion: 2
@@ -3721,7 +3721,7 @@ Canvas:
   m_OverridePixelPerfect: 0
   m_SortingBucketNormalizedSize: 0
   m_VertexColorAlwaysGammaSpace: 0
-  m_AdditionalShaderChannelsFlag: 0
+  m_AdditionalShaderChannelsFlag: 25
   m_UpdateRectTransformForStandalone: 0
   m_SortingLayerID: 0
   m_SortingOrder: 21
@@ -4679,8 +4679,12 @@ MonoBehaviour:
   - {fileID: -2277764938230213456, guid: a41a600958723a84880d7bf2bce2009b, type: 3}
   bossSprite: {fileID: -4273023745370305303, guid: d2639096d2858da468b38ea594cf4441, type: 3}
   cellSprite: {fileID: 0}
-  corruptionSprite: {fileID: 0}
-  chainSprite: {fileID: 0}
+  corruptionSprite: {fileID: 1405966533707720353, guid: a01ab223863dd024ebfdc9b2a3f9cfdc, type: 3}
+  chainSprite: {fileID: 1244476889673583485, guid: 12cf0d6c73fc5b94ab545bb081c17d1a, type: 3}
+  bombSprite: {fileID: -2613247888821195678, guid: aafe684b85421ac4a89511a55784b1c9, type: 3}
+  enrageSprite: {fileID: -9082789242079819192, guid: 655bbf9189434174b9688f6b47cb579f, type: 3}
+  badgeSize: 0.42
+  chainSize: 1
   enrageTint: {r: 1, g: 0.42, b: 0.35, a: 1}
   enrageCountMaxScale: 1.9
   enrageCountPopScale: 1.5
@@ -10453,6 +10457,7 @@ MonoBehaviour:
   mapButton: {fileID: 137567238}
   victoryToMapDelay: 1.6
   endingVideo: {fileID: 644233342}
+  endingVideoDelay: 0.8
   endingReturnsToTitle: 1
 --- !u!224 &1561278089
 RectTransform:
@@ -12382,9 +12387,9 @@ RectTransform:
   - {fileID: 1977088848}
   m_Father: {fileID: 609920747}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 1}
-  m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 24, y: -150}
+  m_AnchorMin: {x: 0.5, y: 0}
+  m_AnchorMax: {x: 0.5, y: 0}
+  m_AnchoredPosition: {x: -280, y: 84}
   m_SizeDelta: {x: 560, y: 84}
   m_Pivot: {x: 0, y: 1}
 --- !u!114 &1954667044

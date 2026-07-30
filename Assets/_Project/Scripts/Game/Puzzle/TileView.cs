@@ -10,6 +10,10 @@ namespace ChainRiposte.Game.Puzzle
         private SpriteRenderer _renderer;
         private TextMesh _countdownText;
         private SpriteRenderer _chainOverlay;
+        private SpriteRenderer _bombBadge;
+        private SpriteRenderer _enrageBadge;
+        // 뱃지 그림 한 벌. 낙하·매치 중에 상태만 갱신되는 경로(SetBombTurns 등)에서도 쓰려고 들고 있는다.
+        private StatusArt _art;
         private Color _baseColor;
         private Sprite[] _wallStages;
         private int _maxHp;
@@ -47,6 +51,40 @@ namespace ChainRiposte.Game.Puzzle
                 Tint = tint;
                 MaxCountScale = Mathf.Max(1f, maxCountScale);
                 PopScale = Mathf.Max(1f, popScale);
+            }
+        }
+
+        /// <summary>
+        /// 기믹 상태를 알리는 그림 한 벌 (사슬 · 폭탄 · 성남). 값은 <see cref="BoardView"/> 인스펙터가 정한다.
+        ///
+        /// <para>묶어 두는 이유는 <see cref="Visual"/>과 같다 — 기믹이 늘 때마다 호출부의 인자를 고치지 않기 위해서다.
+        /// 비어 있는 칸은 <b>그리지 않는다</b>: 폭탄·성남은 숫자와 틴트만으로도 읽히므로,
+        /// 그림이 없다고 표시가 사라지면 안 된다.</para>
+        /// </summary>
+        public readonly struct StatusArt
+        {
+            /// <summary>타일 위를 덮는 사슬. 밑그림이 비쳐야 하므로 가운데가 뚫린 그림을 쓴다.</summary>
+            public readonly Sprite Chain;
+
+            /// <summary>시한폭탄 뱃지 — 오른쪽 위 모서리.</summary>
+            public readonly Sprite Bomb;
+
+            /// <summary>성난 몬스터 뱃지 — 왼쪽 위 모서리(폭탄과 겹치지 않게 반대쪽).</summary>
+            public readonly Sprite Enrage;
+
+            /// <summary>뱃지가 차지할 월드 크기(셀 = 1).</summary>
+            public readonly float BadgeSize;
+
+            /// <summary>사슬이 차지할 월드 크기. 그림의 픽셀 크기와 무관하게 여기에 맞춘다.</summary>
+            public readonly float ChainSize;
+
+            public StatusArt(Sprite chain, Sprite bomb, Sprite enrage, float badgeSize, float chainSize)
+            {
+                Chain = chain;
+                Bomb = bomb;
+                Enrage = enrage;
+                BadgeSize = badgeSize > 0f ? badgeSize : 0.42f;
+                ChainSize = chainSize > 0f ? chainSize : 1f;
             }
         }
 
@@ -150,9 +188,10 @@ namespace ChainRiposte.Game.Puzzle
         }
 
         /// <summary>기믹 상태(사슬/폭탄/성남)를 타일에 반영한다 (GDD §3.6).</summary>
-        public void ApplyStatus(Tile tile, Sprite chainSprite, EnrageStyle enrage)
+        public void ApplyStatus(Tile tile, StatusArt art, EnrageStyle enrage)
         {
-            SetChained(tile.Status.Chained, chainSprite);
+            _art = art;
+            SetChained(tile.Status.Chained, art.Chain);
             SetBombTurns(tile.Status.BombTurnsRemaining);
             SetEnrageCountdown(tile.Status.EnrageCountdown, enrage);
         }
@@ -161,6 +200,7 @@ namespace ChainRiposte.Game.Puzzle
         public void SetBombTurns(int turns)
         {
             _hasBombText = turns > 0;
+            ShowBadge(ref _bombBadge, "BombBadge", _art.Bomb, turns > 0, new Vector2(1f, 1f));
             if (turns <= 0)
             {
                 if (_countdownText != null)
@@ -185,6 +225,8 @@ namespace ChainRiposte.Game.Puzzle
         /// </summary>
         public void SetEnrageCountdown(int count, EnrageStyle style)
         {
+            ShowBadge(ref _enrageBadge, "EnrageBadge", _art.Enrage, count > 0, new Vector2(-1f, 1f));
+
             bool enraged = count > 0;
             if (_enraged != enraged)
             {
@@ -333,12 +375,45 @@ namespace ChainRiposte.Game.Puzzle
             _chainOverlay.gameObject.SetActive(true);
         }
 
+        /// <summary>
+        /// 모서리 뱃지(폭탄·성남)를 켜고 끈다. <b>그림이 없으면 아무것도 안 만든다</b> —
+        /// 뱃지는 덤이고, 진짜 정보는 숫자와 틴트다(그림을 안 꽂아도 게임은 읽힌다).
+        ///
+        /// <para><paramref name="corner"/>는 셀 안에서의 방향(±1, ±1)이다. 폭탄과 성남을 반대 모서리에
+        /// 두는 이유는 <b>한 타일에 둘 다 걸릴 수 있기 때문</b>이다 — 같은 자리면 하나가 다른 하나를 가린다.</para>
+        /// </summary>
+        private void ShowBadge(ref SpriteRenderer badge, string name, Sprite sprite, bool on, Vector2 corner)
+        {
+            if (!on || sprite == null)
+            {
+                if (badge != null)
+                    badge.gameObject.SetActive(false);
+                return;
+            }
+
+            if (badge == null)
+            {
+                var go = new GameObject(name);
+                go.transform.SetParent(transform, false);
+                // 셀 모서리 쪽으로 밀되 살짝 안쪽에 — 완전히 모서리에 붙이면 옆 타일과 붙어 보인다.
+                go.transform.localPosition = new Vector3(corner.x * 0.3f, corner.y * 0.3f, 0f);
+                go.transform.localScale = Vector3.one * ScaleToFit(sprite, _art.BadgeSize);
+
+                badge = go.AddComponent<SpriteRenderer>();
+                badge.sprite = sprite;
+                badge.sortingOrder = 6; // 사슬(5) 위, 숫자(10) 아래
+            }
+
+            badge.gameObject.SetActive(true);
+        }
+
         private SpriteRenderer CreateChainOverlay(Sprite chainSprite)
         {
             var go = new GameObject("Chain");
             go.transform.SetParent(transform, false);
+            // 그림 크기·PPU가 제각각이라 스케일을 그림에서 역산한다 — 타일 아이콘과 같은 규칙.
             go.transform.localScale = chainSprite != null
-                ? Vector3.one
+                ? Vector3.one * ScaleToFit(chainSprite, _art.ChainSize)
                 : new Vector3(1.15f, 0.3f, 1f); // 플레이스홀더: 가운데를 가로지르는 띠
 
             var renderer = go.AddComponent<SpriteRenderer>();

@@ -36,6 +36,14 @@ namespace ChainRiposte.Game.Puzzle
         [SerializeField] private Sprite corruptionSprite;
         [Tooltip("사슬 결박 오버레이 아트 (비우면 회색 띠)")]
         [SerializeField] private Sprite chainSprite;
+        [Tooltip("시한폭탄 뱃지 — 타일 오른쪽 위. 비우면 숫자만 뜬다(그림 없이도 읽힌다).")]
+        [SerializeField] private Sprite bombSprite;
+        [Tooltip("성난 몬스터 뱃지 — 타일 왼쪽 위(폭탄과 겹치지 않게 반대쪽). 비우면 틴트+숫자만.")]
+        [SerializeField] private Sprite enrageSprite;
+        [Tooltip("뱃지가 차지할 크기 (셀 = 1)")]
+        [SerializeField, Range(0.1f, 0.8f)] private float badgeSize = 0.42f;
+        [Tooltip("사슬이 차지할 크기 (셀 = 1). 그림의 픽셀 크기와 무관하게 여기에 맞춘다.")]
+        [SerializeField, Range(0.5f, 1.4f)] private float chainSize = 1f;
         [Tooltip("성난 몬스터의 틴트 — 공격 예고 중인 잡몹이 한눈에 보여야 '저놈부터 없앤다'가 성립한다.")]
         [SerializeField] private Color enrageTint = new(1f, 0.42f, 0.35f);
 
@@ -294,6 +302,10 @@ namespace ChainRiposte.Game.Puzzle
         private TileView.EnrageStyle Enrage =>
             new(enrageTint, enrageCountMaxScale, enrageCountPopScale);
 
+        /// <summary>기믹 상태 그림 한 벌 (사슬·폭탄·성남). 인스펙터 값을 타일에 그대로 넘긴다.</summary>
+        private TileView.StatusArt Status =>
+            new(chainSprite, bombSprite, enrageSprite, badgeSize, chainSize);
+
         /// <summary>
         /// 몬스터가 달려들 목표를 <b>월드 좌표</b>로 바꾼다. 체력 바는 UI(화면 좌표)에 있고
         /// 타일은 월드에 있으므로 한 번 건너와야 한다.
@@ -494,7 +506,7 @@ namespace ChainRiposte.Game.Puzzle
             if (tile.Category == TileCategory.Wall && wallDamageSprites.Length > 0)
                 view.SetWallStages(wallDamageSprites);
             view.transform.localPosition = GridToLocal(pos);
-            view.ApplyStatus(tile, chainSprite, Enrage); // 사슬/폭탄/성남 뱃지 (GDD §3.6)
+            view.ApplyStatus(tile, Status, Enrage); // 사슬/폭탄/성남 뱃지 (GDD §3.6)
             _views[pos] = view;
             return view;
         }
