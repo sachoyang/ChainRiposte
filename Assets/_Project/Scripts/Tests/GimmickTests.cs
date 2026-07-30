@@ -145,10 +145,10 @@ namespace ChainRiposte.Core.Tests
         }
 
         [Test]
-        public void 타일_종류가_적은_공격까지_초수가_공용값을_이긴다()
+        public void 타일_종류가_적은_공격_박수가_공용값을_이긴다()
         {
-            // 박 길이 1초 · 공용 박 수 2 → 이 놈만 3초(=3박)로 느리게 때린다.
-            var slow = new TileDefinition("Slow", TileCategory.Monster, attackDamage: 5, attackSeconds: 3f);
+            // 공용은 2박인데 이 놈만 3박 — 느리게 때린다.
+            var slow = new TileDefinition("Slow", TileCategory.Monster, attackDamage: 5, attackBeats: 3);
             BoardGrid board = FilledBoard(Plain3x3, slow);
             GimmickContext context = Context(board, EnrageSettings(chance: 1f, beats: 2, damage: 7, max: 1));
             var gimmick = new EnragedMonstersGimmick();
@@ -168,11 +168,11 @@ namespace ChainRiposte.Core.Tests
         }
 
         [Test]
-        public void 공격까지_초수는_박으로_반올림되고_최소_한_박이다()
+        public void 한_박짜리_몬스터도_성난_그_박에는_때리지_않는다()
         {
-            // 박 길이 1초에 0.1초를 적어도 성난 그 순간에 때리지는 않는다 — 예고가 사라지면 안 된다.
-            var instant = new TileDefinition("Instant", TileCategory.Monster, attackDamage: 5, attackSeconds: 0.1f);
-            BoardGrid board = FilledBoard(Plain3x3, instant);
+            // 가장 빠른 놈(1박)이라도 예고 한 박은 준다 — 예고가 없으면 대응할 방법이 없다.
+            var quick = new TileDefinition("Quick", TileCategory.Monster, attackDamage: 5, attackBeats: 1);
+            BoardGrid board = FilledBoard(Plain3x3, quick);
             GimmickContext context = Context(board, EnrageSettings(chance: 1f, beats: 5, damage: 7, max: 1));
             var gimmick = new EnragedMonstersGimmick();
 

@@ -24,21 +24,21 @@ namespace ChainRiposte.Core.Board
         public int AttackDamage { get; }
 
         /// <summary>
-        /// 성난 뒤 <b>때리기까지의 시간(초)</b>. 0이면 기믹 설정의 공용값(박 수 × 박 길이)을 쓴다.
+        /// 성난 뒤 때리기까지의 <b>박 수</b>. 0이면 기믹 설정의 공용값(<c>GimmickSettings.EnrageBeats</c>)을 쓴다.
         ///
-        /// <para>실제 카운트다운은 <b>박 단위</b>로 돈다(모든 몬스터가 같은 맥박에 맞춰 숫자를 줄인다).
-        /// 그래서 이 값은 성날 때 <c>반올림(초 ÷ 박 길이)</c>로 박 수가 되고, 최소 1박이다 —
-        /// 예고 없이 때리는 몬스터는 만들 수 없다.</para>
+        /// <para>초가 아니라 박으로 세는 이유: 모든 몬스터가 <b>같은 맥박</b>(박 길이 1.6초)에 맞춰
+        /// 숫자를 줄여야 보드에 뜨는 카운트가 정수로 읽히고 "다음 박에 저놈이 때린다"를 셀 수 있다.
+        /// 몬스터마다 제 속도로 흐르면 그 셈이 불가능해진다.</para>
         /// </summary>
-        public float AttackSeconds { get; }
+        public int AttackBeats { get; }
 
         public TileDefinition(
             string id, TileCategory category, int baseSouls = 0, int maxHp = 0,
-            int attackDamage = 0, float attackSeconds = 0f)
+            int attackDamage = 0, int attackBeats = 0)
         {
             if (string.IsNullOrWhiteSpace(id))
                 throw new ArgumentException("타일 Id는 비어 있을 수 없습니다.", nameof(id));
-            if (baseSouls < 0 || maxHp < 0 || attackDamage < 0 || attackSeconds < 0f)
+            if (baseSouls < 0 || maxHp < 0 || attackDamage < 0 || attackBeats < 0)
                 throw new ArgumentOutOfRangeException(nameof(id), $"타일 '{id}': 음수 값은 허용되지 않습니다.");
 
             Id = id;
@@ -46,7 +46,7 @@ namespace ChainRiposte.Core.Board
             BaseSouls = baseSouls;
             MaxHp = maxHp;
             AttackDamage = attackDamage;
-            AttackSeconds = attackSeconds;
+            AttackBeats = attackBeats;
         }
 
         public override string ToString() => $"{Id}({Category})";

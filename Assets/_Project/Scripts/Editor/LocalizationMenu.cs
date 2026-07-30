@@ -637,6 +637,14 @@ namespace ChainRiposte.Editor
             Row(builder, "result.restart", "다시 시작", "RESTART");
             Row(builder, "result.map", "지도", "MAP");
             Row(builder, "result.memory.gained", "새 기억 — {0}", "NEW MEMORY — {0}");
+
+            // 현재 상태 창(월드맵 얼굴 버튼). Lv·소울·수치 줄은 퍼즐 HUD 키를 그대로 재활용한다
+            // — 같은 값을 두 문장으로 적으면 한쪽만 고쳐진다.
+            Row(builder, "status.title", "현재 상태", "STATUS");
+            Row(builder, "status.hp", "최대 체력 {0}", "MAX HP {0}");
+            Row(builder, "status.chain", "사슬 {0}연속", "CHAIN {0} IN A ROW");
+            Row(builder, "status.memories", "삼킨 기억 {0}", "MEMORIES {0}");
+            Row(builder, "status.memories.none", "아직 삼킨 기억이 없다", "NO MEMORIES YET");
             Row(builder, "ending.skip", "아무 곳이나 눌러 넘기기", "TAP TO SKIP");
 
             // 공통

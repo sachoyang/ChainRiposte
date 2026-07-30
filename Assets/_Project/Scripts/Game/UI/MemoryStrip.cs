@@ -22,7 +22,7 @@ namespace ChainRiposte.Game.UI
     public sealed class MemoryStrip : MonoBehaviour
     {
         [Header("참조")]
-        [Tooltip("이 판의 GameManager. 비우면 씬에서 찾는다.")]
+        [Tooltip("이 판의 GameManager. 비우면 씬에서 찾고, 그래도 없으면(월드맵 등) 저장된 런을 직접 읽는다.")]
         [SerializeField] private GameManager gameManager;
         [Tooltip("아이콘이 늘어설 자리(가로 Layout Group을 붙여 두면 정렬은 Unity가 한다). " +
                  "비우면 이 오브젝트 자신.")]
@@ -102,11 +102,14 @@ namespace ChainRiposte.Game.UI
         /// 그릴 목록 = <b>진입 시점에 가진 것</b> + <b>이 판에서 방금 삼킨 것</b>.
         /// 방금 삼킨 것은 세이브에 들어갔지만 진입 시점 사본에는 없으므로 여기서 뒤에 붙인다
         /// (진입 사본을 안 쓰고 세이브를 직접 읽으면, 전투 중에 이 판의 보스 기억이 이미 있는 것처럼 보인다).
+        ///
+        /// <para><b>판 밖(월드맵)에서는 GameManager가 없다</b> — 그때는 저장된 런을 그대로 읽는다.
+        /// 거기서는 "진입 시점"이라는 개념 자체가 없으므로 세이브가 곧 지금 가진 것이다.</para>
         /// </summary>
         private List<BossMemorySO> Collect()
         {
             if (gameManager == null)
-                return new List<BossMemorySO>();
+                return MemoryLibrary.Resolve(Progress.RunStateService.Current.AcquiredMemoryIds);
 
             List<BossMemorySO> memories = MemoryLibrary.Resolve(gameManager.MemoriesAtEntry);
             BossMemorySO gained = gameManager.GainedMemory;
@@ -122,7 +125,7 @@ namespace ChainRiposte.Game.UI
             if (memory.Icon != null)
                 icon.sprite = memory.Icon;
 
-            bool isGained = highlightGained && memory == gameManager.GainedMemory;
+            bool isGained = highlightGained && gameManager != null && memory == gameManager.GainedMemory;
             icon.color = highlightGained && !isGained ? dimColor : normalColor;
             icon.transform.localScale = Vector3.one * (isGained ? gainedScale : 1f);
             icon.gameObject.SetActive(true);

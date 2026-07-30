@@ -87,6 +87,29 @@ namespace ChainRiposte.Core.Tests
         }
 
         [Test]
+        public void 방어는_들어오는_피해를_깎지만_0으로_만들지_못한다()
+        {
+            // 전투의 노트와 퍼즐의 잡몹이 같은 함수를 쓴다 — 예전엔 퍼즐만 생피해가 들어갔다.
+            PlayerStats stats = new(new PlayerStatsConfig
+            {
+                BaseDamageReduction = 3f,
+                DamageReductionPerLevel = 2f,
+                AttackPointCost = 1,
+                DefensePointCost = 1,
+                ParryPointCost = 2,
+            });
+
+            Assert.That(stats.ResolveIncomingDamage(8f), Is.EqualTo(5), "8 − 기본 방어 3");
+            Assert.That(stats.ResolveIncomingDamage(2f), Is.EqualTo(1), "방어가 더 커도 최소 1은 들어온다");
+            Assert.That(stats.ResolveIncomingDamage(0f), Is.Zero, "피해가 없으면 0 (최소 1이 아니다)");
+
+            stats.AddSouls(30);
+            stats.Allocate(StatType.Defense);
+
+            Assert.That(stats.ResolveIncomingDamage(8f), Is.EqualTo(3), "방어 1레벨 = 3 + 2");
+        }
+
+        [Test]
         public void 판정치는_하드_캡_이후_할당할_수_없다()
         {
             PlayerStats stats = CreateStats(parryCap: 2);

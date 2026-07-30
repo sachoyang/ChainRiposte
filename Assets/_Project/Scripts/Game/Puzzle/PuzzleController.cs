@@ -110,7 +110,7 @@ namespace ChainRiposte.Game.Puzzle
             if (boardMoves)
                 _replaying = false;
 
-            if (phase.PlayerDamage > 0 && gameManager.Session.Health.ApplyDamage(phase.PlayerDamage))
+            if (TakeGimmickDamage(phase.PlayerDamage))
             {
                 gameManager.Session.EndStage(victory: false);
                 yield break;
@@ -119,6 +119,17 @@ namespace ChainRiposte.Game.Puzzle
             // 그 사이에 스왑이 시작됐다면 그쪽이 입력의 주인이다 — 여기서 켜면 연출 중에 손이 풀린다.
             if (!_replaying && gameManager.Session.Phase == GamePhase.Puzzle)
                 input.SetActive(true);
+        }
+
+        /// <summary>
+        /// 기믹이 낸 피해를 <b>방어를 적용해</b> 입는다 (전투의 노트와 같은 함수 — <c>PlayerStats.ResolveIncomingDamage</c>).
+        /// 예전에는 여기서 생피해를 그대로 넣어서 <b>방어를 올려도 퍼즐에서는 똑같이 아팠다.</b>
+        /// </summary>
+        /// <returns>이 피해로 죽었으면 true.</returns>
+        private bool TakeGimmickDamage(int rawDamage)
+        {
+            int damage = gameManager.Session.Stats.ResolveIncomingDamage(rawDamage);
+            return damage > 0 && gameManager.Session.Health.ApplyDamage(damage);
         }
 
         private void BeginPuzzle()
@@ -177,9 +188,8 @@ namespace ChainRiposte.Game.Puzzle
                 // 런 경제(인컴 배수 + 사슬 배수)를 통과시킨 뒤 적립한다 (Docs/PROGRESSION.md §2.4)
                 gameManager.Session.Stats.AddSouls(gameManager.ScaleSoulIncome(result.TotalSouls));
 
-                // 기믹 피해(시한폭탄 폭발 등)는 퍼즐 중에도 HP를 깎는다 (GDD §3.6)
-                if (result.Gimmicks.PlayerDamage > 0 &&
-                    gameManager.Session.Health.ApplyDamage(result.Gimmicks.PlayerDamage))
+                // 기믹 피해(성난 몬스터·시한폭탄 등)는 퍼즐 중에도 HP를 깎는다 (GDD §3.6)
+                if (TakeGimmickDamage(result.Gimmicks.PlayerDamage))
                 {
                     _replaying = false;
                     gameManager.Session.EndStage(victory: false);

@@ -42,6 +42,9 @@ namespace ChainRiposte.Core.Stats
         /// </summary>
         public float BaseParryWindowSeconds => _config.BaseParryWindowSeconds;
 
+        /// <summary>최대 체력(캐릭터 특화까지 반영된 값). 판마다 만피로 시작하므로 이 값이 곧 이 런의 체력이다.</summary>
+        public int MaxHp => _config.MaxHp;
+
         /// <summary>공격 커밋 시간 — 스탯이 아닌 고정 템포 값이지만 전투가 참조하는 단일 창구를 유지한다.</summary>
         public float AttackCommitSeconds => _config.AttackCommitSeconds;
 
@@ -50,6 +53,16 @@ namespace ChainRiposte.Core.Stats
 
         /// <summary>타격 직후에도 패링을 받아 주는 유예 시간.</summary>
         public float ParryLateGraceSeconds => _config.ParryLateGraceSeconds;
+
+        /// <summary>
+        /// 들어온 피해에 방어를 적용한 <b>최종 피해</b>. 전투의 노트와 퍼즐의 잡몹·폭탄이 <b>같은 이 함수를</b> 쓴다 —
+        /// 규칙이 두 곳에 있으면 한쪽만 고쳐져서 "방어를 올렸는데 퍼즐에서는 그대로 아프다"가 된다(실제로 그랬다).
+        ///
+        /// <para><b>완전 무효화는 불가</b> — 방어가 피해보다 커도 최소 1은 들어온다.
+        /// 0이 되는 순간 그 위협은 없는 것과 같아지고, 방어만 올리면 퍼즐이 무해해진다.</para>
+        /// </summary>
+        public int ResolveIncomingDamage(float rawDamage) =>
+            rawDamage <= 0f ? 0 : Math.Max(1, (int)Math.Round(rawDamage - DamageReduction));
 
         /// <summary>(현재 영혼석, 다음 레벨 요구량) — XP 바 갱신용.</summary>
         public event Action<int, int> SoulsChanged;

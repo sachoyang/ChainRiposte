@@ -699,8 +699,8 @@ namespace ChainRiposte.Core.Combat
                 return;
             }
 
-            // DEF로 완전 무효화는 불가 — 최소 1 피해로 압박을 유지한다
-            int damage = Math.Max(1, (int)Math.Round(runtime.Note.Damage - _stats.DamageReduction));
+            // 방어 적용은 퍼즐의 잡몹 피해와 같은 함수를 쓴다(완전 무효화는 불가 — 최소 1)
+            int damage = _stats.ResolveIncomingDamage(runtime.Note.Damage);
             PlayerHit?.Invoke(runtime.Note, damage);
             BreakParryStreak();
 

@@ -69,10 +69,7 @@ namespace ChainRiposte.Editor
                       "위치·크기는 씬에서 조절하고, 아이콘 그림은 각 MemoryStrip ▸ IconTemplate 의 Image 에 꽂으세요.");
         }
 
-        /// <summary>
-        /// 한 화면에 줄 하나. 가로 정렬은 <see cref="HorizontalLayoutGroup"/>에 맡긴다 —
-        /// 아이콘 수가 판마다 달라지므로 좌표를 코드가 계산하면 개수마다 어긋난다.
-        /// </summary>
+        /// <summary>한 화면에 줄 하나 — 같은 이름의 옛것만 갈아 끼운다.</summary>
         private static bool Add(
             Transform parent, GameManager manager, Vector2 anchor, Vector2 position,
             bool highlightGained, bool withLabel)
@@ -84,6 +81,19 @@ namespace ChainRiposte.Editor
             if (existing != null)
                 Undo.DestroyObjectImmediate(existing.gameObject);
 
+            return CreateStrip(parent, manager, anchor, position, highlightGained, withLabel) != null;
+        }
+
+        /// <summary>
+        /// 기억 아이콘 줄 하나를 만든다. 가로 정렬은 <see cref="HorizontalLayoutGroup"/>에 맡긴다 —
+        /// 아이콘 수가 판마다 달라지므로 좌표를 코드가 계산하면 개수마다 어긋난다.
+        ///
+        /// <para><paramref name="manager"/>가 null이면(월드맵 등) 컴포넌트가 저장된 런을 직접 읽는다.</para>
+        /// </summary>
+        internal static MemoryStrip CreateStrip(
+            Transform parent, GameManager manager, Vector2 anchor, Vector2 position,
+            bool highlightGained, bool withLabel)
+        {
             RectTransform strip = EditorUiFactory.NewRect(StripName, parent);
             Undo.RegisterCreatedObjectUndo(strip.gameObject, "Add Memory Strip");
             strip.anchorMin = anchor;
@@ -135,7 +145,7 @@ namespace ChainRiposte.Editor
                 so.FindProperty("gainedLabel").objectReferenceValue = label;
             so.ApplyModifiedPropertiesWithoutUndo();
 
-            return true;
+            return script;
         }
 
         private static Transform FirstChildOrSelf(Transform root) =>
