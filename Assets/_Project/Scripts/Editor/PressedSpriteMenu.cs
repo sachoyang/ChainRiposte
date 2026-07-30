@@ -24,6 +24,12 @@ namespace ChainRiposte.Editor
     {
         private const string PressedSuffix = "_pressed";
 
+        /// <summary>
+        /// 눌림 조각이 없는 이 그림들은 <b>내려앉는 것</b>으로 눌림을 표현한다
+        /// (<see cref="PressOffset"/>). 전투의 패링·공격 버튼이 여기 해당한다.
+        /// </summary>
+        private const string OffsetSpritePrefix = "arrow";
+
         [MenuItem("Tools/ChainRiposte/UI/Apply Pressed Sprites (Open Scene)")]
         private static void Apply()
         {
@@ -34,36 +40,12 @@ namespace ChainRiposte.Editor
             var skipped = new List<string>();
 
             foreach (Selectable selectable in selectables)
-            {
-                if (selectable.targetGraphic is not Image image || image.sprite == null)
-                {
-                    skipped.Add($"{Path(selectable)} (그림 없음)");
-                    continue;
-                }
+                ApplyTo(selectable, applied, skipped);
 
-                Sprite pressed = FindVariant(image.sprite, PressedSuffix);
-                if (pressed == null)
-                {
-                    skipped.Add($"{Path(selectable)} ({image.sprite.name}{PressedSuffix} 없음)");
-                    continue;
-                }
-
-                Undo.RecordObject(selectable, "Apply Pressed Sprites");
-                selectable.transition = Selectable.Transition.SpriteSwap;
-
-                SpriteState state = selectable.spriteState;
-                state.pressedSprite = pressed;
-                // 하이라이트·선택 상태는 비워 둔다 — 터치에는 마우스 오버가 없고,
-                // 채우면 손을 뗀 뒤에도 눌린 그림이 남아 있는 것처럼 보인다.
-                state.highlightedSprite = null;
-                state.selectedSprite = null;
-                selectable.spriteState = state;
-
-                EditorUtility.SetDirty(selectable);
-                applied.Add($"{Path(selectable)} → {pressed.name}");
-            }
-
-            ApplyPauseToggle(applied);
+            // 씬에 직접 놓인 것만 — 프리팹 인스턴스의 것은 Prefabs 메뉴가 원본에 넣는다.
+            PauseMenu pause = Object.FindFirstObjectByType<PauseMenu>(FindObjectsInactive.Include);
+            if (pause != null && !PrefabUtility.IsPartOfPrefabInstance(pause))
+                ApplyPauseToggle(pause, applied);
 
             if (applied.Count > 0)
                 EditorSceneManager.MarkSceneDirty(SceneManager.GetActiveScene());
@@ -72,13 +54,114 @@ namespace ChainRiposte.Editor
         }
 
         /// <summary>
+        /// 프리팹 안의 버튼에도 같은 규칙을 적용한다.
+        /// <para>씬만 훑으면 <b>프리팹 인스턴스에 override 로만 박혀</b> 다른 씬의 같은 프리팹은 안 바뀐다 —
+        /// 시스템 메뉴(일시정지·설정)가 지금 프리팹 하나를 두 씬이 공유하므로 원본을 고쳐야 한다.</para>
+        /// </summary>
+        [MenuItem("Tools/ChainRiposte/UI/Apply Pressed Sprites (Prefabs)")]
+        private static void ApplyToPrefabs()
+        {
+            var applied = new List<string>();
+            var skipped = new List<string>();
+
+            foreach (string guid in AssetDatabase.FindAssets("t:Prefab", new[] { "Assets/_Project" }))
+            {
+                string path = AssetDatabase.GUIDToAssetPath(guid);
+                GameObject root = PrefabUtility.LoadPrefabContents(path);
+                int before = applied.Count;
+
+                foreach (Selectable selectable in root.GetComponentsInChildren<Selectable>(true))
+                    ApplyTo(selectable, applied, skipped, prefabPath: path);
+
+                // 일시정지 토글의 눌림 그림 두 벌도 원본에 넣는다 — 씬 인스턴스에 박으면 다른 씬이 못 받는다.
+                ApplyPauseToggle(root.GetComponentInChildren<PauseMenu>(true), applied);
+
+                if (applied.Count > before)
+                    PrefabUtility.SaveAsPrefabAsset(root, path);
+
+                PrefabUtility.UnloadPrefabContents(root);
+            }
+
+            Report(applied, skipped);
+        }
+
+        /// <summary>
+        /// 버튼 하나 — 짝이 되는 <c>_pressed</c> 조각이 있으면 Sprite Swap, 없고 <c>arrow_*</c> 면 내려앉기,
+        /// 둘 다 아니면 <b>건드리지 않는다</b>(빈 Pressed 슬롯을 넣으면 누를 때 버튼이 사라진다).
+        /// </summary>
+        private static void ApplyTo(
+            Selectable selectable, List<string> applied, List<string> skipped, string prefabPath = null)
+        {
+            string label = prefabPath == null ? Path(selectable) : $"{System.IO.Path.GetFileName(prefabPath)}:{Path(selectable)}";
+
+            // 프리팹 인스턴스는 원본이 관리한다 — 여기서 고치면 인스턴스 override 로 박혀서
+            // 나중에 프리팹을 고쳐도 이 씬만 안 따라온다(시스템 메뉴가 두 씬이 공유하는 프리팹이다).
+            if (prefabPath == null && PrefabUtility.IsPartOfPrefabInstance(selectable))
+            {
+                skipped.Add($"{label} (프리팹이 관리 — Prefabs 메뉴로 처리)");
+                return;
+            }
+
+            if (selectable.targetGraphic is not Image image || image.sprite == null)
+            {
+                skipped.Add($"{label} (그림 없음)");
+                return;
+            }
+
+            Sprite pressed = FindVariant(image.sprite, PressedSuffix);
+            if (pressed == null)
+            {
+                if (image.sprite.name.StartsWith(OffsetSpritePrefix, System.StringComparison.OrdinalIgnoreCase))
+                    ApplyPressOffset(selectable, label, applied, prefabPath == null);
+                else
+                    skipped.Add($"{label} ({image.sprite.name}{PressedSuffix} 없음)");
+
+                return;
+            }
+
+            // 프리팹 내용물(LoadPrefabContents)은 씬에 없는 임시 오브젝트라 되돌리기 대상이 아니다.
+            if (prefabPath == null)
+                Undo.RecordObject(selectable, "Apply Pressed Sprites");
+
+            selectable.transition = Selectable.Transition.SpriteSwap;
+
+            SpriteState state = selectable.spriteState;
+            state.pressedSprite = pressed;
+            // 하이라이트·선택 상태는 비워 둔다 — 터치에는 마우스 오버가 없고,
+            // 채우면 손을 뗀 뒤에도 눌린 그림이 남아 있는 것처럼 보인다.
+            state.highlightedSprite = null;
+            state.selectedSprite = null;
+            selectable.spriteState = state;
+
+            EditorUtility.SetDirty(selectable);
+            applied.Add($"{label} → {pressed.name}");
+        }
+
+        /// <summary>
+        /// 눌림 그림이 없는 화살표 버튼 — <b>색은 지금 그대로</b> 두고(회색 틴트) 몇 픽셀 내려앉게 한다.
+        /// 이미 붙어 있으면 그대로 둔다(내려가는 양을 손으로 조절해 뒀을 수 있다).
+        /// </summary>
+        private static void ApplyPressOffset(Selectable selectable, string label, List<string> applied, bool inScene)
+        {
+            if (selectable.GetComponent<PressOffset>() != null)
+                return;
+
+            if (inScene)
+                Undo.AddComponent<PressOffset>(selectable.gameObject);
+            else
+                selectable.gameObject.AddComponent<PressOffset>();
+
+            EditorUtility.SetDirty(selectable.gameObject);
+            applied.Add($"{label} → 내려앉기(PressOffset)");
+        }
+
+        /// <summary>
         /// 일시정지 버튼은 아이콘이 ⏸↔▶ 로 바뀌는 <b>토글</b>이라 눌림 그림도 두 벌이다.
         /// 한 벌만 꽂으면 ▶ 상태에서 ⏸의 눌림 그림이 뜬다 — <see cref="PauseMenu"/>가 같이 갈아 끼우도록
         /// 짝을 찾아 채워 준다(여기서도 규칙은 <c>_pressed</c> 하나).
         /// </summary>
-        private static void ApplyPauseToggle(List<string> applied)
+        private static void ApplyPauseToggle(PauseMenu pause, List<string> applied)
         {
-            var pause = Object.FindFirstObjectByType<PauseMenu>(FindObjectsInactive.Include);
             if (pause == null)
                 return;
 
