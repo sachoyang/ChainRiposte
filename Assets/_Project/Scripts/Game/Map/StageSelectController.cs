@@ -505,7 +505,11 @@ namespace ChainRiposte.Game.Map
 
         private void StartStage()
         {
-            StageSelection.Select(nodes[_currentIndex].Stage, IsLastLink(_currentIndex), LinkDepth(_currentIndex));
+            StageSelection.Select(
+                nodes[_currentIndex].Stage,
+                IsLastLink(_currentIndex),
+                LinkDepth(_currentIndex),
+                IsBossFinale(_currentIndex));
             SceneManager.LoadScene("Main");
         }
 
@@ -534,6 +538,29 @@ namespace ChainRiposte.Game.Map
             for (int i = index + 1; i < nodes.Length; i++)
                 if (nodes[i] != null && nodes[i].Stage != null)
                     return false;
+
+            return true;
+        }
+
+        /// <summary>
+        /// 이 판이 <b>그 보스를 마지막으로 만나는 판</b>인가 = 뒤에 <b>같은 보스</b>가 걸린 노드가 더 없는가.
+        /// 기억은 여기서만 떨어진다(<c>Docs/PROGRESSION.md</c> §2.2) — 같은 보스가 여러 판에 걸쳐 나오는 것은
+        /// 상처를 입고 다시 나오는 것이고, 마지막 판이 그 보스의 끝이다.
+        ///
+        /// <para>보스 <b>에셋</b>으로 비교한다 — 이름이나 스테이지 번호로 묶으면 보스를 새로 배치할 때마다
+        /// 규칙을 다시 적어야 한다. 보스를 안 지정한 노드는 셈에서 빠진다(비교할 상대가 없다).</para>
+        /// </summary>
+        private bool IsBossFinale(int index)
+        {
+            StageDataSO stage = nodes[index] != null ? nodes[index].Stage : null;
+            if (stage == null || stage.BossData == null)
+                return false;
+
+            for (int i = index + 1; i < nodes.Length; i++)
+            {
+                if (nodes[i] != null && nodes[i].Stage != null && nodes[i].Stage.BossData == stage.BossData)
+                    return false;
+            }
 
             return true;
         }

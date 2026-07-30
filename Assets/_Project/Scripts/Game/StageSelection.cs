@@ -31,15 +31,29 @@ namespace ChainRiposte.Game
         public static int SelectedLinkDepth;
 
         /// <summary>
-        /// 셋은 <b>항상 같이</b> 정해진다 — 스테이지만 바꾸고 나머지를 그대로 두면
+        /// 고른 판이 <b>그 보스를 마지막으로 만나는 판</b>인가 — 기억은 여기서만 떨어진다
+        /// (<c>Docs/PROGRESSION.md</c> §2.2).
+        ///
+        /// <para>같은 보스가 여러 판에 걸쳐 나오는 것은 <b>상처를 입고 다시 나오는</b> 것이고,
+        /// 마지막 판이 그 보스의 끝이다. 그때 비로소 기억을 삼킨다 — 첫 만남에 주면
+        /// 뒤의 두 판은 "이미 다 가진 보스를 또 베는" 판이 된다.</para>
+        ///
+        /// <para>최종 고리·고리 깊이와 같은 이유로 <b>지도가 세어서 실어 보낸다</b> — 어느 판이
+        /// 그 보스의 마지막인지는 노드 순서로만 알 수 있고, Main 씬은 그 목록을 갖고 있지 않다.</para>
+        /// </summary>
+        public static bool SelectedIsBossFinale;
+
+        /// <summary>
+        /// 넷은 <b>항상 같이</b> 정해진다 — 스테이지만 바꾸고 나머지를 그대로 두면
         /// 앞 판의 "마지막이었다"·"몇 번째였다"가 다음 판에 묻어 엉뚱한 곳에서 엔딩이 나거나
         /// 첫 판이 후반 난이도로 부푼다.
         /// </summary>
-        public static void Select(StageDataSO stage, bool isFinalLink, int linkDepth)
+        public static void Select(StageDataSO stage, bool isFinalLink, int linkDepth, bool isBossFinale)
         {
             Selected = stage;
             SelectedIsFinalLink = isFinalLink;
             SelectedLinkDepth = linkDepth;
+            SelectedIsBossFinale = isBossFinale;
         }
     }
 }

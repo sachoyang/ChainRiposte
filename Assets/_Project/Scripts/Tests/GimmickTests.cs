@@ -145,6 +145,48 @@ namespace ChainRiposte.Core.Tests
         }
 
         [Test]
+        public void 타일_종류가_적은_공격까지_초수가_공용값을_이긴다()
+        {
+            // 박 길이 1초 · 공용 박 수 2 → 이 놈만 3초(=3박)로 느리게 때린다.
+            var slow = new TileDefinition("Slow", TileCategory.Monster, attackDamage: 5, attackSeconds: 3f);
+            BoardGrid board = FilledBoard(Plain3x3, slow);
+            GimmickContext context = Context(board, EnrageSettings(chance: 1f, beats: 2, damage: 7, max: 1));
+            var gimmick = new EnragedMonstersGimmick();
+
+            for (int i = 0; i < 3; i++) // 성남 + 2박
+            {
+                context.BeginTurn();
+                gimmick.OnTimeElapsed(context, Beat);
+            }
+
+            Assert.That(context.PlayerDamage, Is.EqualTo(0), "공용값(2박)이면 여기서 이미 때렸을 것");
+
+            context.BeginTurn();
+            gimmick.OnTimeElapsed(context, Beat); // 3박째 → 공격
+
+            Assert.That(context.PlayerDamage, Is.EqualTo(5));
+        }
+
+        [Test]
+        public void 공격까지_초수는_박으로_반올림되고_최소_한_박이다()
+        {
+            // 박 길이 1초에 0.1초를 적어도 성난 그 순간에 때리지는 않는다 — 예고가 사라지면 안 된다.
+            var instant = new TileDefinition("Instant", TileCategory.Monster, attackDamage: 5, attackSeconds: 0.1f);
+            BoardGrid board = FilledBoard(Plain3x3, instant);
+            GimmickContext context = Context(board, EnrageSettings(chance: 1f, beats: 5, damage: 7, max: 1));
+            var gimmick = new EnragedMonstersGimmick();
+
+            context.BeginTurn();
+            gimmick.OnTimeElapsed(context, Beat); // 성남 — 갓 성난 박에는 안 줄어든다
+            Assert.That(context.PlayerDamage, Is.EqualTo(0));
+
+            context.BeginTurn();
+            gimmick.OnTimeElapsed(context, Beat); // 1박째 → 공격
+
+            Assert.That(context.PlayerDamage, Is.EqualTo(5));
+        }
+
+        [Test]
         public void 확률이_0이면_잡몹_공격이_꺼진다()
         {
             BoardGrid board = FilledBoard(Plain3x3, S);

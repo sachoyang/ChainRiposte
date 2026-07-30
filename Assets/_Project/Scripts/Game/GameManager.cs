@@ -64,6 +64,12 @@ namespace ChainRiposte.Game
         public int LinkDepth { get; private set; }
 
         /// <summary>
+        /// 이 판이 <b>그 보스를 마지막으로 만나는 판</b>인가 — 기억은 여기서만 떨어진다.
+        /// 지도가 세어 준 값이고, 단독 실행이면 true다(실험 스테이지에서 바로 확인할 수 있어야 한다).
+        /// </summary>
+        public bool IsBossFinale { get; private set; }
+
+        /// <summary>
         /// 이 판에 적용된 보스 배수 — 이미 <see cref="StageConfig"/>의 보스에 곱해져 있다.
         /// 디버그·HUD 표시용으로만 읽을 것(다시 곱하면 두 번 부푼다).
         /// </summary>
@@ -99,6 +105,8 @@ namespace ChainRiposte.Game
             IsFinalLink = (fromMap && StageSelection.SelectedIsFinalLink)
                 || (stageData != null && stageData.IsFinalLink);
             LinkDepth = fromMap ? StageSelection.SelectedLinkDepth : 0;
+            // 지도를 안 거친 단독 실행은 그 자리에서 기억을 확인할 수 있어야 한다(실험 스테이지).
+            IsBossFinale = !fromMap || StageSelection.SelectedIsBossFinale;
 
             if (statsConfig == null || stageData == null)
             {
@@ -247,11 +255,15 @@ namespace ChainRiposte.Game
         /// <para><b>클리어할 때만</b> 부른다 — 성장·채굴량과 같은 규칙이다. 인살한 순간에 저장해 버리면
         /// 2페이즈 보스의 1페이즈만 인살하고 죽어도 기억이 남아, 죽어서 기억만 모으는 길이 열린다.</para>
         ///
-        /// <para>같은 보스를 쓰는 두 번째 판은 <see cref="RunState.AddMemory"/>가 false를 돌려주므로
-        /// 조용히 넘어간다 — 결과 화면도 그때는 기억을 강조하지 않는다.</para>
+        /// <para>그리고 <b>그 보스를 마지막으로 만나는 판</b>에서만 떨어진다(<see cref="IsBossFinale"/>).
+        /// 같은 보스가 여러 판에 걸쳐 나오는 것은 상처를 입고 다시 나오는 것이고, 마지막 판이 그 보스의 끝이다
+        /// — 첫 만남에 주면 뒤의 두 판은 "이미 다 가진 보스를 또 베는" 판이 된다.</para>
         /// </summary>
         private void SwallowBossMemory(RunState run)
         {
+            if (!IsBossFinale)
+                return;
+
             BossMemorySO memory = stageData.BossData != null ? stageData.BossData.Memory : null;
             if (memory == null || !run.AddMemory(memory.MemoryId))
                 return;

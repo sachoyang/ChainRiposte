@@ -97,7 +97,7 @@ namespace ChainRiposte.Core.Stage.Gimmicks
                 context.DealPlayerDamage(damage);
 
                 // 재장전 — 없애지 않으면 계속 맞는다. 보드는 안 건드리므로 재정착도 필요 없다.
-                tile.Status.EnrageCountdown = Math.Max(1, context.Settings.EnrageBeats);
+                tile.Status.EnrageCountdown = ResolveBeats(tile, context.Settings);
                 context.Report(new GimmickEvent(GimmickEventType.EnrageAttacked, pos, tile, damage));
             }
         }
@@ -125,7 +125,7 @@ namespace ChainRiposte.Core.Stage.Gimmicks
 
             GridPos pos = candidates[context.Rng.Next(candidates.Count)];
             Tile tile = context.Board.GetTile(pos);
-            tile.Status.EnrageCountdown = Math.Max(1, settings.EnrageBeats);
+            tile.Status.EnrageCountdown = ResolveBeats(tile, settings);
             _enragedThisBeat.Add(tile.InstanceId);
             context.Report(new GimmickEvent(
                 GimmickEventType.EnrageStarted, pos, tile, tile.Status.EnrageCountdown));
@@ -134,5 +134,24 @@ namespace ChainRiposte.Core.Stage.Gimmicks
         /// <summary>타일 종류가 자기 공격력을 적었으면 그쪽이 이긴다 — 해골과 슬라임이 같이 아프면 안 된다.</summary>
         private static int ResolveDamage(Tile tile, GimmickSettings settings) =>
             tile.Definition.AttackDamage > 0 ? tile.Definition.AttackDamage : Math.Max(0, settings.EnrageDamage);
+
+        /// <summary>
+        /// 이 종류가 때리기까지 몇 박인가. 타일이 <b>초</b>를 적었으면 그것을 박으로 환산하고,
+        /// 안 적었으면 스테이지의 공용 박 수를 쓴다 — 해골은 느리게 크게, 쥐는 빠르게 작게 같은 차등을 준다.
+        ///
+        /// <para>카운트다운을 초가 아니라 <b>박</b>으로 세는 이유: 보드에 뜨는 숫자가 정수여야 읽히고,
+        /// 몬스터마다 제 속도로 흐르면 "다음 박에 저놈이 때린다"를 셀 수 없다. 맥박은 하나여야 한다.</para>
+        ///
+        /// <para><b>최소 1박</b> — 0이 되면 성난 그 순간에 때리므로 예고가 사라진다.</para>
+        /// </summary>
+        private static int ResolveBeats(Tile tile, GimmickSettings settings)
+        {
+            float seconds = tile.Definition.AttackSeconds;
+            if (seconds <= 0f)
+                return Math.Max(1, settings.EnrageBeats);
+
+            float beat = Math.Max(0.05f, settings.EnrageBeatSeconds);
+            return Math.Max(1, (int)Math.Round(seconds / beat, MidpointRounding.AwayFromZero));
+        }
     }
 }

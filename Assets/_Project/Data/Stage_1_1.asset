@@ -88,9 +88,10 @@ MonoBehaviour:
     m_PreInfinity: 2
     m_PostInfinity: 2
     m_RotationOrder: 4
-  bossEngageSeconds: 90
+  bossEngageSeconds: 60
   maxLiveBossTiles: 1
   bossData: {fileID: 11400000, guid: c227ecf42446f934788dc32872effdd2, type: 2}
+  battlePhaseLimit: 0
   isFinalLink: 0
   gimmicks: 
   gimmickTuning:
