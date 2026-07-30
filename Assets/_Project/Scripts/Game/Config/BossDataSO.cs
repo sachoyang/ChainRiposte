@@ -17,9 +17,9 @@ namespace ChainRiposte.Game.Config
         [Header("표시")]
         [Tooltip("테마가 겉모습을 갈아 끼울 때 쓰는 키. 비우면 에셋 이름. 한 번 정하면 바꾸지 말 것.")]
         [SerializeField] private string bossId;
-        [Tooltip("이름의 현지화 키(CSV). 비우면 아래 Display Name을 그대로 쓴다.")]
-        [SerializeField] private string nameKey;
-        [SerializeField] private string displayName = "Boss";
+        // 이름의 원천은 아래 「캐릭터별 겉모습」의 nameKey 하나뿐이다(그림과 같은 규칙).
+        // 공용 displayName/nameKey 슬롯을 따로 두면 같은 이름을 두 곳에 적게 되고, 실제로 지도만
+        // 개발용 생 이름("Mushroom King")을 띄우고 전투는 다른 이름을 띄우는 사고가 났다.
 
         [Header("겉모습 — 캐릭터마다 다르게 보이는 같은 보스")]
         [Tooltip("고른 캐릭터에 해당하는 줄이 있으면 그 그림·이름을 쓰고, 없으면 <b>맨 위 줄(0번)</b>이 기본값이다. " +
@@ -249,7 +249,13 @@ namespace ChainRiposte.Game.Config
                 ? visual.phaseVisuals[phaseIndex]
                 : null;
 
-        /// <summary>이 캐릭터로 만났을 때의 이름 키. 없으면 0번 줄, 그것도 없으면 null.</summary>
+        /// <summary>
+        /// 이 캐릭터로 만났을 때의 이름 키. 없으면 <b>0번 줄</b>, 그것도 없으면 <b>에셋 이름</b>.
+        ///
+        /// <para>키를 안 적은 보스가 에셋 이름("Boss_01")으로 뜨는 것은 의도다 —
+        /// 화면에 키가 그대로 보이는 것이 곧 "번역 누락" 신호라는 이 프로젝트의 규칙과 같다.
+        /// 빈 문자열로 두면 보스 이름 칸이 조용히 사라져서 빠뜨린 것을 알 수 없다.</para>
+        /// </summary>
         public string GetNameKey(Characters.PlayerCharacterSO character)
         {
             CharacterVisual visual = Find(character);
@@ -257,7 +263,7 @@ namespace ChainRiposte.Game.Config
                 return visual.nameKey;
 
             CharacterVisual fallback = DefaultVisual;
-            return fallback != null && !string.IsNullOrWhiteSpace(fallback.nameKey) ? fallback.nameKey : null;
+            return fallback != null && !string.IsNullOrWhiteSpace(fallback.nameKey) ? fallback.nameKey : name;
         }
 
         private CharacterVisual Find(Characters.PlayerCharacterSO character)
@@ -274,11 +280,6 @@ namespace ChainRiposte.Game.Config
             return null;
         }
 
-        /// <summary>이름 문구. 현지화 키를 걸었으면 그것, 아니면 생 문자열(구 데이터 호환).</summary>
-        public string NameKey => string.IsNullOrWhiteSpace(nameKey) ? displayName : nameKey;
-
-        public string DisplayName => displayName;
-
         /// <param name="battlePhaseLimit">
         /// 이 판에서 싸울 인살 페이즈 수 (0 = 전부). <b>같은 보스를 1페이즈로도 2페이즈로도 쓰기 위한 것</b> —
         /// 스테이지가 정한다(<c>StageDataSO.BattlePhaseLimit</c>). 이 손잡이가 없으면 페이즈 수만 다른
@@ -292,7 +293,9 @@ namespace ChainRiposte.Game.Config
             return new BossConfig
             {
                 BattlePhases = LimitPhases(BuildBattlePhases(built, sharedHpPhases), battlePhaseLimit),
-                Name = displayName,
+                // 화면에 나오는 이름이 아니다 — 로그·디버그용이라 에셋 이름을 쓴다
+                // (보이는 이름은 캐릭터별 목록의 nameKey → 현지화 CSV가 맡는다).
+                Name = name,
                 MaxHp = maxHp,
                 MaxPosture = maxPosture,
                 ParryPostureGain = parryPostureGain,

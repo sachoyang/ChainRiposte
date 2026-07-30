@@ -603,6 +603,9 @@ namespace ChainRiposte.Editor
             Row(builder, "pause.resume", "계속하기", "RESUME");
             Row(builder, "pause.quit", "지도로 나가기", "QUIT TO MAP");
             Row(builder, "pause.quit.confirm", "지도로 나갈까요?\\n진행 중인 판은 사라집니다.", "Quit to map?\\nThis run will be lost.");
+            // 같은 메뉴 프리팹을 지도에서도 쓴다 — 거기서는 목적지가 타이틀이라 문구만 갈아 끼운다.
+            Row(builder, "pause.quit.title", "타이틀로 나가기", "QUIT TO TITLE");
+            Row(builder, "pause.quit.title.confirm", "타이틀로 나갈까요?", "Quit to title?");
             // 보스 이름은 테마(고른 캐릭터)가 갈아 끼운다 — ThemeSO의 보스 항목에서 이 키를 가리킨다.
             Row(builder, "boss.irithyll.01", "이루실의 감시자", "WARDEN OF IRITHYLL");
             Row(builder, "boss.irithyll.02", "이루실의 도살자", "BUTCHER OF IRITHYLL");

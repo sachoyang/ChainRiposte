@@ -126,12 +126,41 @@
 - 비파괴 메뉴 **`Add Status Panel To StageSelect`**(실행·저장 완료, 배선 14슬롯 전부 확인).
   딤이 raycast를 먹어 창이 열린 채로 뒤 노드를 눌러 판에 들어가는 일은 없다.
 
+**⑧ 엔딩 영상 배선 (사용자가 AI로 뽑음)**
+- `Assets/_Project/Movie/knight2-3.mp4` · `sekiro2-3.mp4` (1280×720 · 10초 · 24fps · 2MB) →
+  `Character_Knight/Sekiro ▸ endingVideo`. Main의 `EndingVideoPlayer`·`ResultScreen ▸ endingVideo`는
+  이미 배선돼 있었다(세션 12 몫). **가로 720p라 세로 화면에서는 위아래가 비는 레터박스**로 나온다.
+
+**⑨ 지도 보스 이름이 개발용 생 이름으로 뜨던 버그 (사용자 보고: "mushroom king")**
+- 원인: `StageSelectController.BossName`이 `BossData.DisplayName`을 **현지화를 안 거치고** 그대로 찍었다.
+  `Boss_01.displayName`이 "Mushroom King"이라 **지도만** 영어 생 이름, 전투는 캐릭터별 이름이 나왔다.
+- 이제 `BossVisual.ResolveNameKey` → `Loc.GetText` (전투와 같은 규칙).
+- **`BossDataSO`의 공용 `displayName`·`nameKey` 삭제**(사용자 지적: 캐릭터별 이름이 따로 있는데 왜 있나).
+  이름의 원천은 **캐릭터별 목록 하나**뿐 — 세션 12의 `portrait`/`battleSprite` 정리와 같은 판단이다.
+  둘 다 비면 **에셋 이름**("Boss_01")으로 떨어진다(빈 칸으로 두면 빠뜨린 것을 알 수 없다).
+  `BossConfig.Name`은 로그·디버그용이라 에셋 이름을 쓴다. 보스 2종 재직렬화로 죽은 필드 제거.
+- MCP 확인: 기사 → 설리번의 짐승/법왕 설리번, 낭인 → 목없는 사자원숭이/아시나 겐이치로.
+
+**⑩ 시스템 메뉴(일시정지·설정)를 프리팹으로 — 지도에도 (사용자 요청)**
+- `Assets/_Project/Prefabs/SystemMenuCanvas.prefab`. **Main의 `PauseCanvas`를 그대로 뽑았으므로
+  손으로 꽂은 아이콘 스프라이트가 프리팹 값이 됐고 Main의 것은 인스턴스가 됐다.**
+  앞으로 아이콘·색·배치는 **프리팹에서 한 번만** 고친다(씬마다 만들면 한쪽만 고쳐진다).
+- 씬마다 다른 것은 **「나가기」 목적지 한 줄**뿐 — `PauseMenu.quitSceneName`(전투=StageSelect, 지도=Title).
+  문구도 `pause.quit.title`·`pause.quit.title.confirm`으로 갈아 끼운다(번역은 CSV가 계속 맡는다).
+- 메뉴 2개: `System Menu ▸ Extract Prefab From Open Scene`(이미 인스턴스면 원본에 반영) ·
+  `System Menu ▸ Add To StageSelect`. 둘 다 실행·저장·배선 확인 완료.
+
+**⑪ 지도 보스 초상이 정보 글씨를 덮던 문제 (사용자 지적)**
+- `StageSelectController ▸ revealedTint`(기본 흰색 알파 **0.45**). 공개 전 실루엣은 그대로다.
+  초상은 분위기이고 읽어야 하는 것은 보스 이름·기믹·광맥 줄이다.
+
 #### 🔴 다음 세션에서 가장 먼저 할 것
 
 1. **기억 플레이 검증** (아래 「검증 부탁」). 특히 보호막·아이콘 줄.
-2. **현지화 키 11개를 구글 시트에 넣기** — `Localization.csv`에 직접 적었으므로 **다음 시트 굽기에 날아간다.**
+2. **현지화 키 13개를 구글 시트에 넣기** — `Localization.csv`에 직접 적었으므로 **다음 시트 굽기에 날아간다.**
    `combat.popup.memoryguard` / `result.memory.gained` / `memory.edge.name`·`.desc` / `memory.ward.name`·`.desc` /
-   `status.title` / `status.hp` / `status.chain` / `status.memories` / `status.memories.none`.
+   `status.title` / `status.hp` / `status.chain` / `status.memories` / `status.memories.none` /
+   `pause.quit.title` / `pause.quit.title.confirm`.
 3. **잡몹 수치 산정은 사용자 몫** — 타일 6종의 `공격력`·`공격까지 박 수`가 아직 전부 0(=공용값)이다.
 4. 그 다음: **Boss_02 채보**(미리듣기 툴 있음) 또는 **난이도 커브 체감 튜닝**(세션 13 몫) 또는 **사운드 클립**(오디오 0개).
 
@@ -147,6 +176,11 @@
 6. **지도 현재 상태 창** — 좌하단 얼굴 버튼을 누르면 열리는지, 수치가 판에서 보는 것과 같은지,
    기억 목록이 뜨는지. 위치·크기는 씬에서 조절할 것(`MapCanvas/StatusTab`).
 7. **방어 효과** — 방어를 올린 뒤 퍼즐에서 잡몹에게 맞아 **덜 아픈지**(전과 달라진 부분).
+8. **지도 시스템 메뉴** — 일시정지/설정이 뜨는지, **나가기가 타이틀로** 가는지. 버튼 위치는 씬에서 조절
+   (프리팹 인스턴스라 위치만 옮기면 프리팹은 안 바뀐다).
+9. **엔딩 영상** — 2-3 클리어 시 캐릭터별 영상이 뜨고 **아무 곳이나 눌러 넘길** 수 있는지.
+   가로 720p라 세로 화면에서 레터박스로 나오는 것이 괜찮은지(아니면 세로로 다시 뽑을지).
+10. **지도 보스 초상 투명도** — 0.45가 적당한지(진하면 글씨를 덮고, 옅으면 실루엣이 안 읽힌다).
 
 ### 마지막 갱신: 2026-07-29 (세션 13)
 

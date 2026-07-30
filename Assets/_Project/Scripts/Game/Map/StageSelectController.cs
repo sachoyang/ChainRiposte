@@ -49,6 +49,9 @@ namespace ChainRiposte.Game.Map
         [SerializeField] private Image bossPortrait;
         [Tooltip("정보가 공개되지 않은 스테이지의 초상 색 (검은 그림자)")]
         [SerializeField] private Color silhouetteTint = new(0f, 0f, 0f, 0.85f);
+        [Tooltip("공개된 스테이지의 초상 색. <b>알파를 1로 두면 그림이 정보 글씨를 덮는다</b> — " +
+            "초상은 분위기이고 읽어야 하는 것은 보스 이름·기믹·광맥 줄이므로 반투명하게 둔다.")]
+        [SerializeField] private Color revealedTint = new(1f, 1f, 1f, 0.45f);
         [Tooltip("선택 사항 — 꽂으면 정보 패널에 그 스테이지의 소울 광맥 잔량을 한 줄 더 띄운다. " +
             "비우면 그 줄만 빠지고 나머지는 그대로 (Main 의 GameManager 에 꽂은 것과 같은 에셋).")]
         [SerializeField] private RunEconomyConfigSO economyConfig;
@@ -476,11 +479,21 @@ namespace ChainRiposte.Game.Map
                 return;
 
             bossPortrait.sprite = portrait;
-            bossPortrait.color = revealed ? Color.white : silhouetteTint;
+            bossPortrait.color = revealed ? revealedTint : silhouetteTint;
         }
 
-        private static string BossName(StageDataSO stage) =>
-            stage.BossData != null ? stage.BossData.DisplayName : Loc.GetText("map.unknown");
+        /// <summary>
+        /// 보스 이름은 <b>현지화 키</b>로 읽는다 — 전투 화면과 같은 규칙(<see cref="BossVisual.ResolveNameKey"/>)이라
+        /// 캐릭터별 이름(이루실/아시나)이 지도에서도 그대로 나온다.
+        ///
+        /// <para>예전에는 <c>BossData.DisplayName</c>을 그대로 찍어서, 인스펙터에 적어 둔 <b>개발용 생 이름</b>
+        /// ("Mushroom King")이 지도에만 영어로 뜨고 전투에서는 다른 이름이 나왔다.</para>
+        /// </summary>
+        private static string BossName(StageDataSO stage)
+        {
+            string key = BossVisual.ResolveNameKey(stage != null ? stage.BossData : null);
+            return string.IsNullOrWhiteSpace(key) ? Loc.GetText("map.unknown") : Loc.GetText(key);
+        }
 
         /// <summary>이 스테이지에 나오는 기믹 이름들. 없으면 '없음'.</summary>
         private static string GimmickSummary(StageDataSO stage)

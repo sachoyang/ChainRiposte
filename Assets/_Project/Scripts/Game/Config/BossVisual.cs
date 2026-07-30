@@ -36,16 +36,10 @@ namespace ChainRiposte.Game.Config
             boss != null ? boss.GetTransitionTextKey(phaseIndex) : null;
 
         /// <summary>
-        /// 이름은 <b>현지화 키</b>다. 키가 CSV에 없으면 받은 문자열이 그대로 화면에 나오므로
-        /// 구 데이터의 생 이름도 경고 없이 계속 보인다는 점에 주의.
+        /// 이름은 <b>현지화 키</b>이고 원천은 캐릭터별 목록 하나뿐이다(그림과 같은 규칙).
+        /// 키가 CSV에 없으면 그 문자열이 그대로 화면에 나온다 — 그것이 "번역 누락" 신호다.
         /// </summary>
-        public static string ResolveNameKey(BossDataSO boss)
-        {
-            if (boss == null)
-                return null;
-
-            string perCharacter = boss.GetNameKey(CharacterService.Current);
-            return !string.IsNullOrWhiteSpace(perCharacter) ? perCharacter : boss.NameKey;
-        }
+        public static string ResolveNameKey(BossDataSO boss) =>
+            boss != null ? boss.GetNameKey(CharacterService.Current) : null;
     }
 }

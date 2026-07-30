@@ -99,3 +99,5 @@ status.hp,최대 체력 {0},MAX HP {0}
 status.chain,사슬 {0}연속,CHAIN {0} IN A ROW
 status.memories,삼킨 기억 {0},MEMORIES {0}
 status.memories.none,아직 삼킨 기억이 없다,NO MEMORIES YET
+pause.quit.title,타이틀로 나가기,QUIT TO TITLE
+pause.quit.title.confirm,타이틀로 나갈까요?,Quit to title?

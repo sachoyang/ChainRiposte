@@ -13,8 +13,6 @@ MonoBehaviour:
   m_Name: Boss_01
   m_EditorClassIdentifier: ChainRiposte.Game::ChainRiposte.Game.Config.BossDataSO
   bossId: 
-  nameKey: 
-  displayName: Mushroom King
   characterVisuals:
   - character: {fileID: 11400000, guid: dddc9d8434eef9747a421ffefbafc0df, type: 2}
     battleSprite: {fileID: 4329424280674337, guid: 967e76409f35c4443812d7f30e145105, type: 3}

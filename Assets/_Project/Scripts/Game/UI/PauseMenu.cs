@@ -37,6 +37,11 @@ namespace ChainRiposte.Game.UI
         [Tooltip("지도로 나가기. 확인 패널을 거친다.")]
         [SerializeField] private Button quitButton;
 
+        [Header("나가기 목적지")]
+        [Tooltip("「나가기」로 이동할 씬. 전투 씬에서는 지도(StageSelect), <b>지도에서는 타이틀(Title)</b>이다 " +
+                 "— 프리팹 하나를 두 씬이 공유하므로 목적지만 인스턴스에서 덮어쓴다.")]
+        [SerializeField] private string quitSceneName = "StageSelect";
+
         [Header("설정 / 확인")]
         [SerializeField] private GameObject optionsPanel;
         [Tooltip("지도로 나가기 확인 패널 (예/아니오). 없으면 바로 나간다.")]
@@ -53,7 +58,7 @@ namespace ChainRiposte.Game.UI
             if (resumeButton != null) resumeButton.onClick.AddListener(Resume);
             if (settingsButton != null) settingsButton.onClick.AddListener(OpenSettings);
             if (quitButton != null) quitButton.onClick.AddListener(AskQuit);
-            if (quitConfirmYes != null) quitConfirmYes.onClick.AddListener(QuitToMap);
+            if (quitConfirmYes != null) quitConfirmYes.onClick.AddListener(Quit);
             if (quitConfirmNo != null) quitConfirmNo.onClick.AddListener(() => SetActive(quitConfirmPanel, false));
 
             SetActive(pausePanel, false);
@@ -115,13 +120,13 @@ namespace ChainRiposte.Game.UI
             if (quitConfirmPanel != null)
                 SetActive(quitConfirmPanel, true);
             else
-                QuitToMap();
+                Quit();
         }
 
-        private void QuitToMap()
+        private void Quit()
         {
             Time.timeScale = 1f;
-            SceneManager.LoadScene("StageSelect");
+            SceneManager.LoadScene(string.IsNullOrWhiteSpace(quitSceneName) ? "StageSelect" : quitSceneName);
         }
 
         /// <summary>멈춤 이유가 하나라도 있으면 0, 없으면 1.</summary>

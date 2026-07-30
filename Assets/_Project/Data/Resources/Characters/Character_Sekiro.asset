@@ -20,6 +20,8 @@ MonoBehaviour:
   portrait: {fileID: 0}
   combatSprite: {fileID: -5854442186229547440, guid: d347dbf99bf68e442968b889e751c7b0, type: 3}
   saintSprite: {fileID: 8195546328963567565, guid: 79eded66c4a84d849a7bf068a6b756e6, type: 3}
+  mapSprite: {fileID: 0}
+  endingVideo: {fileID: 32900000, guid: 0d59d496e467a7446b295f2d658c4567, type: 3}
   bonusMaxHp: 0
   bonusDamageReduction: 0
   bonusAttackDamage: 1.5
