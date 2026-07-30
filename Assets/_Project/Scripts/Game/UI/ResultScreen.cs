@@ -12,8 +12,9 @@ namespace ChainRiposte.Game.UI
     /// 승리/패배 결과 화면.
     ///
     /// <list type="bullet">
-    /// <item><b>승리</b>(보스 인살) — 다시 시작은 필요 없다. 짧은 텀을 두고 <b>지도로 자동 복귀</b>한다.
-    /// (나중에 인살 컷씬/애니메이션이 이 텀 자리에 들어간다.)</item>
+    /// <item><b>승리</b>(보스 인살) — 다시 시작은 필요 없다. 짧은 텀을 두고 <b>지도로 자동 복귀</b>한다.</item>
+    /// <item><b>마지막 고리</b> — 순서가 <b>인살 연출 → 엔딩 영상 → 스테이지 클리어 → 타이틀</b>이다.
+    /// 클리어 문구가 영상보다 먼저 뜨면 판이 이미 끝난 것으로 읽혀서 영상이 부록처럼 보인다.</item>
     /// <item><b>패배</b> — 다시 시작 / 지도 두 버튼을 띄운다. 퍼즐 패배(턴 소진·기믹)와 전투 패배가 모두 여기로 온다.</item>
     /// </list>
     ///
@@ -38,6 +39,9 @@ namespace ChainRiposte.Game.UI
         [Header("엔딩 (마지막 고리를 끊었을 때)")]
         [Tooltip("캐릭터별 엔딩 영상을 트는 자리. 비어 있어도 엔딩은 난다 — 영상만 없다.")]
         [SerializeField] private EndingVideoPlayer endingVideo;
+        [Tooltip("인살 연출이 끝나고 영상이 시작되기까지의 숨 고르기(초). " +
+                 "0이면 처형 직후 곧바로 영상이 붙어 숨 쉴 틈이 없다.")]
+        [SerializeField, Min(0f)] private float endingVideoDelay = 0.8f;
         [Tooltip("엔딩 뒤에 타이틀로 돌아간다. 끄면 지도로 돌아간다(엔딩 뒤 이어서 놀게 하고 싶을 때).")]
         [SerializeField] private bool endingReturnsToTitle = true;
 
@@ -78,25 +82,44 @@ namespace ChainRiposte.Game.UI
             // 승리엔 버튼이 없다 — 잠깐 결과를 보여 준 뒤 지도로 넘어간다.
             restartButton.gameObject.SetActive(false);
             mapButton.gameObject.SetActive(false);
-            panelRoot.SetActive(true);
 
             // 마지막 고리를 끊었으면 지도가 아니라 엔딩으로 간다. '무엇이 마지막인가'는
             // 지도가 알려 준 것을 GameManager가 들고 있다 — 여기서 스테이지 이름을 알 필요가 없다.
-            StartCoroutine(gameManager.IsFinalLink ? EndingRoutine() : GoToMapAfterDelay());
+            if (gameManager.IsFinalLink)
+            {
+                StartCoroutine(EndingRoutine());
+                return;
+            }
+
+            panelRoot.SetActive(true);
+            StartCoroutine(GoToMapAfterDelay());
         }
 
         /// <summary>
-        /// 엔딩. 영상이 있으면 틀고, 없으면 결과 문구만 잠깐 보여 준 뒤 넘어간다 —
-        /// <b>영상이 없다고 엔딩 자체가 없어지면 안 된다.</b>
+        /// 엔딩 — <b>인살 연출 → 영상 → 스테이지 클리어</b> 순서다(사용자 지정).
+        ///
+        /// <para>클리어 문구를 영상 <b>앞</b>에 띄우면 그 판이 이미 끝난 것으로 읽혀서, 뒤에 나오는 영상이
+        /// 엔딩이 아니라 결과 화면에 붙은 부록처럼 보인다. 마지막 고리는 <b>영상이 이야기의 끝</b>이고
+        /// 클리어 문구는 그 뒤의 정산이다.</para>
+        ///
+        /// <para>영상이 있으면 틀고, 없으면 곧바로 클리어 문구로 간다 —
+        /// <b>영상이 없다고 엔딩 자체가 없어지면 안 된다.</b></para>
         /// </summary>
         private IEnumerator EndingRoutine()
         {
-            yield return new WaitForSecondsRealtime(victoryToMapDelay);
+            // 인살 히트스톱이 timeScale을 떨어뜨려 둔 채로 올 수 있다. 아래는 전부 실시간이지만
+            // 영상 소리·UI 애니가 스케일 시간을 타는 경우를 대비해 여기서 되돌린다.
+            Time.timeScale = 1f;
+
+            yield return new WaitForSecondsRealtime(endingVideoDelay);
 
             if (endingVideo != null)
                 yield return endingVideo.Play(EndingVideoPlayer.ResolveClip());
 
-            Time.timeScale = 1f;
+            // 영상이 다 끝난 뒤에야 스테이지 클리어
+            panelRoot.SetActive(true);
+            yield return new WaitForSecondsRealtime(victoryToMapDelay);
+
             if (endingReturnsToTitle)
                 Flow.SceneRouter.GoTitle();
             else

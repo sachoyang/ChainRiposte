@@ -166,6 +166,14 @@
   같은 것을 코드에 적어 두지 않으므로 앞으로 어느 컴포넌트가 들고 있어도 따라온다).
 - 메뉴: `System Menu ▸ Extract Options Panel Prefab` · `Replace Options Panel In Open Scene`.
 
+**⑰ 엔딩 순서 — 인살 연출 → 영상 → 스테이지 클리어 (사용자 지정)**
+- 예전에는 승리하자마자 클리어 문구를 띄우고 그 뒤에 영상을 틀었다. 그러면 판이 이미 끝난 것으로
+  읽혀서 **영상이 엔딩이 아니라 결과 화면에 붙은 부록**처럼 보인다.
+- 이제 마지막 고리에서는 결과 패널을 **영상이 끝난 뒤에** 켠다(`ResultScreen.EndingRoutine`).
+  일반 판은 그대로 — 승리 즉시 문구 → 지도.
+- 새 다이얼 `endingVideoDelay`(0.8초) = 인살 연출과 영상 사이의 숨 고르기.
+  `victoryToMapDelay`(1.6초)는 이제 **클리어 문구를 보여 주는 시간**이다.
+
 **⑯ 치트 메뉴 (사용자 요청)**
 - `Tools ▸ ChainRiposte ▸ Progress ▸ Cheat: Max Stats + Clear To Final (치트)`
 - 스탯 상한(ATK 10 / DEF 10 / **PARRY 5 = 하드 캡**) + 기억 전부 + **최종 고리 직전까지 클리어**.
