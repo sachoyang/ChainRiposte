@@ -107,7 +107,8 @@ namespace ChainRiposte.Editor
             box.anchoredPosition = Vector2.zero;
             box.sizeDelta = new Vector2(760f, 720f);
             var boxImg = box.gameObject.AddComponent<Image>();
-            boxImg.sprite = EditorUiFactory.Square;
+            boxImg.sprite = EditorUiFactory.PixelSprite("panel");
+            boxImg.type = Image.Type.Sliced;
             boxImg.color = PanelColor;
 
             TMP_Text title = EditorUiFactory.Text(box, "Title", new Vector2(0f, 250f), new Vector2(0.5f, 0.5f), 76f,
@@ -131,7 +132,8 @@ namespace ChainRiposte.Editor
             box.anchoredPosition = Vector2.zero;
             box.sizeDelta = new Vector2(820f, 480f);
             var boxImg = box.gameObject.AddComponent<Image>();
-            boxImg.sprite = EditorUiFactory.Square;
+            boxImg.sprite = EditorUiFactory.PixelSprite("panel");
+            boxImg.type = Image.Type.Sliced;
             boxImg.color = PanelColor;
 
             TMP_Text text = EditorUiFactory.Text(box, "Text", new Vector2(0f, 110f), new Vector2(0.5f, 0.5f), 44f,

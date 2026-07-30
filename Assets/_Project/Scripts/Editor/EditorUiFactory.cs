@@ -15,8 +15,31 @@ namespace ChainRiposte.Editor
     {
         internal static readonly Color DefaultTextColor = new(0.92f, 0.90f, 0.85f);
 
-        internal static Sprite Square =>
-            AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/UISprite.psd");
+        /// <summary>
+        /// 단색 사각형 자리표시자. <b>Unity 기본 UI 그림(UISprite)을 쓰지 않는다</b> —
+        /// 이 게임에는 엔진 기본 UI가 한 곳도 있으면 안 된다(사용자 규칙).
+        ///
+        /// <para><c>Image.sprite</c>가 <b>null이면 uGUI가 단색 사각형을 그린다.</b> 딤·번쩍임·투명 버튼처럼
+        /// "그냥 네모"인 것들은 이것으로 충분하고, 테두리가 필요한 것(대화창 틀·버튼)은
+        /// 빌더가 <see cref="PixelSprite"/>로 실제 아트를 꽂는다.</para>
+        /// </summary>
+        internal static Sprite Square => null;
+
+        /// <summary>
+        /// 픽셀 UI 시트에서 조각 하나를 꺼낸다(<c>panel</c>, <c>btn_wide</c>, <c>box_small</c> …).
+        /// 시트가 없으면 null — 그때는 단색 사각형으로 그려지고 <b>빌더가 멈추지는 않는다.</b>
+        /// </summary>
+        internal static Sprite PixelSprite(string spriteName)
+        {
+            const string sheet = "Assets/DEVNIK 2D/2D UI PIXEL BUTTONS/UI SIMPLE PIXEL UNSPLIT.png";
+            foreach (Object asset in AssetDatabase.LoadAllAssetsAtPath(sheet))
+            {
+                if (asset is Sprite sprite && sprite.name == spriteName)
+                    return sprite;
+            }
+
+            return null;
+        }
 
         internal static void SetupCanvas(GameObject go, int sortingOrder)
         {
@@ -115,7 +138,8 @@ namespace ChainRiposte.Editor
             rect.anchoredPosition = pos;
             rect.sizeDelta = size;
             var bg = rect.gameObject.AddComponent<Image>();
-            bg.sprite = Square;
+            bg.sprite = PixelSprite("bar_container_a");
+            bg.type = Image.Type.Sliced;
             bg.color = new Color(0.05f, 0.05f, 0.07f, 0.9f);
             bg.raycastTarget = false;
 
@@ -125,7 +149,9 @@ namespace ChainRiposte.Editor
             fillRect.offsetMin = new Vector2(4f, 4f);
             fillRect.offsetMax = new Vector2(-4f, -4f);
             var fill = fillRect.gameObject.AddComponent<Image>();
-            fill.sprite = Square;
+            // 채움은 <b>반드시 그림이 있어야</b> 한다 — 그림이 없는 Image 는 언제나 칸을 꽉 채우므로
+            // fillAmount 가 아무 일도 안 한다(게이지가 안 줄어든다).
+            fill.sprite = PixelSprite("box_small");
             fill.color = fillColor;
             fill.type = Image.Type.Filled;
             fill.fillMethod = Image.FillMethod.Horizontal;
@@ -144,7 +170,10 @@ namespace ChainRiposte.Editor
             rect.anchoredPosition = pos;
             rect.sizeDelta = size;
             image = rect.gameObject.AddComponent<Image>();
-            image.sprite = Square;
+            // 버튼은 전부 같은 픽셀 프레임을 쓴다 — 눌림 배선(UI ▸ Apply Pressed Sprites)이
+            // 이름 규칙(btn_wide → btn_wide_pressed)으로 붙으므로 여기서 맞춰 두면 다시 손댈 일이 없다.
+            image.sprite = PixelSprite("btn_wide");
+            image.type = Image.Type.Sliced;
             image.color = imageColor;
             var button = rect.gameObject.AddComponent<Button>();
             // 기본은 색 틴트 — 스프라이트가 없어도 누름 피드백이 있다.

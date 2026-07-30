@@ -121,7 +121,8 @@ namespace ChainRiposte.Editor
             var iconGo = new GameObject("IconTemplate", typeof(RectTransform), typeof(Image));
             iconGo.transform.SetParent(row, false);
             var icon = iconGo.GetComponent<Image>();
-            icon.sprite = EditorUiFactory.Square;
+            icon.sprite = EditorUiFactory.PixelSprite("box_small");
+            icon.type = Image.Type.Sliced;
             icon.color = new Color(0.85f, 0.78f, 0.45f);
             var iconRect = (RectTransform)iconGo.transform;
             iconRect.sizeDelta = new Vector2(64f, 64f);

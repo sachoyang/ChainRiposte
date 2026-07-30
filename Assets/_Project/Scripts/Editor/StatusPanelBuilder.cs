@@ -81,7 +81,8 @@ namespace ChainRiposte.Editor
             card.anchoredPosition = Vector2.zero;
             card.sizeDelta = new Vector2(900f, 1150f);
             var cardBg = card.gameObject.AddComponent<Image>();
-            cardBg.sprite = EditorUiFactory.Square;
+            cardBg.sprite = EditorUiFactory.PixelSprite("panel");
+            cardBg.type = Image.Type.Sliced;
             cardBg.color = new Color(0.07f, 0.06f, 0.1f, 0.96f);
 
             var top = new Vector2(0.5f, 1f);
