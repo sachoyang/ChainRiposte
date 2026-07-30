@@ -6,7 +6,8 @@
         "ChainRiposte.Core",
         "UnityEngine.UI",
         "Unity.TextMeshPro",
-        "Unity.InputSystem"
+        "Unity.InputSystem",
+        "Unity.2D.Sprite.Editor"
     ],
     "includePlatforms": [
         "Editor"

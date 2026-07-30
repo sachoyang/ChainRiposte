@@ -117,9 +117,9 @@ namespace ChainRiposte.Core.Stage.Gimmicks
                 return;
 
             // 사슬·폭탄이 걸린 놈은 건너뛴다 — 이미 손이 묶였거나 곧 사라질 타일에 위협을 겹치면
-            // "없애서 취소한다"는 해법이 성립하지 않는다.
+            // "없애서 취소한다"는 해법이 성립하지 않는다. (타일 하나에 기믹은 하나뿐)
             List<GridPos> candidates = context.Collect(t =>
-                t.Category == TileCategory.Monster && !t.Status.IsEnraged && !t.Status.Chained && !t.Status.IsBomb);
+                t.Category == TileCategory.Monster && !t.Status.HasGimmick);
             if (candidates.Count == 0)
                 return;
 

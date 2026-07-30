@@ -138,12 +138,12 @@ TextureImporter:
       name: angry_0
       rect:
         serializedVersion: 2
-        x: 13
-        y: 49
-        width: 34
-        height: 34
+        x: 14
+        y: 50
+        width: 32
+        height: 32
       alignment: 0
-      pivot: {x: 0, y: 0}
+      pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
@@ -160,12 +160,12 @@ TextureImporter:
       name: angry_1
       rect:
         serializedVersion: 2
-        x: 49
-        y: 41
-        width: 30
-        height: 38
+        x: 50
+        y: 42
+        width: 28
+        height: 36
       alignment: 0
-      pivot: {x: 0, y: 0}
+      pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
@@ -182,12 +182,12 @@ TextureImporter:
       name: angry_2
       rect:
         serializedVersion: 2
-        x: 11
-        y: 10
-        width: 30
-        height: 38
+        x: 12
+        y: 11
+        width: 28
+        height: 36
       alignment: 0
-      pivot: {x: 0, y: 0}
+      pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
@@ -204,12 +204,12 @@ TextureImporter:
       name: angry_3
       rect:
         serializedVersion: 2
-        x: 43
-        y: 7
-        width: 34
-        height: 34
+        x: 44
+        y: 8
+        width: 32
+        height: 32
       alignment: 0
-      pivot: {x: 0, y: 0}
+      pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
@@ -226,7 +226,7 @@ TextureImporter:
     customData: 
     physicsShape: []
     bones: []
-    spriteID: 
+    spriteID: 1cdcab4519593ee4ba6b920a46459589
     internalID: 0
     vertices: []
     indices: 

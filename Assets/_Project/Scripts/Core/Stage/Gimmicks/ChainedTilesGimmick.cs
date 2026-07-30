@@ -16,7 +16,8 @@ namespace ChainRiposte.Core.Stage.Gimmicks
 
         public override void OnBoardInitialized(GimmickContext context)
         {
-            List<GridPos> monsters = context.Collect(t => t.Category == TileCategory.Monster);
+            // 이미 다른 기믹이 걸린 타일은 후보에서 뺀다 — 타일 하나에 기믹은 하나뿐이다.
+            List<GridPos> monsters = context.Collect(t => t.Category == TileCategory.Monster && !t.Status.HasGimmick);
             int count = Math.Min(context.Settings.ChainInitialCount, monsters.Count);
 
             for (int i = 0; i < count; i++)
@@ -31,7 +32,7 @@ namespace ChainRiposte.Core.Stage.Gimmicks
         {
             foreach (TileSpawn spawn in spawns)
             {
-                if (spawn.Tile.Category != TileCategory.Monster || spawn.Tile.Status.Chained)
+                if (spawn.Tile.Category != TileCategory.Monster || spawn.Tile.Status.HasGimmick)
                     continue;
                 if (context.Rng.NextDouble() >= context.Settings.ChainChance)
                     continue;

@@ -21,7 +21,9 @@ namespace ChainRiposte.Core.Stage.Gimmicks
             foreach (TileSpawn spawn in spawns)
             {
                 Tile tile = spawn.Tile;
-                if (tile.Category != TileCategory.Monster || tile.Status.IsBomb)
+                // 사슬·성남이 이미 걸린 타일은 건너뛴다 — 타일 하나에 기믹은 하나뿐이다
+                // (사슬은 매치해도 안 사라지는데 폭탄은 매치로 없애야 해서, 겹치면 해법이 서로 부딪힌다).
+                if (tile.Category != TileCategory.Monster || tile.Status.HasGimmick)
                     continue;
                 if (context.Rng.NextDouble() >= context.Settings.BombChance)
                     continue;

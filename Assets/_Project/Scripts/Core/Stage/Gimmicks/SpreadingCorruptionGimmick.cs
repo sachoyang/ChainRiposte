@@ -20,7 +20,8 @@ namespace ChainRiposte.Core.Stage.Gimmicks
 
         public override void OnBoardInitialized(GimmickContext context)
         {
-            List<GridPos> monsters = context.Collect(t => t.Category == TileCategory.Monster);
+            // 다른 기믹이 걸린 타일은 씨앗에서 뺀다 — 타일 하나에 기믹은 하나뿐이다.
+            List<GridPos> monsters = context.Collect(t => t.Category == TileCategory.Monster && !t.Status.HasGimmick);
             int seeds = Math.Min(context.Settings.CorruptionSeeds, monsters.Count);
 
             for (int i = 0; i < seeds; i++)
@@ -89,7 +90,9 @@ namespace ChainRiposte.Core.Stage.Gimmicks
             foreach (GridPos neighbor in context.Board.ActiveNeighbors4(source))
             {
                 Tile tile = context.Board.GetTile(neighbor);
-                if (tile != null && tile.Category == TileCategory.Monster)
+                // 사슬·폭탄·성남이 걸린 놈은 감염시키지 않는다 — 부패로 바뀌면 그 기믹의 해법
+                // (매치로 없애기)이 통째로 사라지는데, 화면에는 상태 표시가 남아 거짓말이 된다.
+                if (tile != null && tile.Category == TileCategory.Monster && !tile.Status.HasGimmick)
                     targets.Add(neighbor);
             }
             return targets;

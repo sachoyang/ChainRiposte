@@ -129,12 +129,12 @@ TextureImporter:
       name: bosstile_0
       rect:
         serializedVersion: 2
-        x: 1
-        y: 0
-        width: 29
-        height: 30
+        x: 2
+        y: 1
+        width: 27
+        height: 28
       alignment: 0
-      pivot: {x: 0, y: 0}
+      pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
@@ -151,7 +151,7 @@ TextureImporter:
     customData: 
     physicsShape: []
     bones: []
-    spriteID: 
+    spriteID: 14b289d75fda1934bb223947e29c82ba
     internalID: 0
     vertices: []
     indices: 

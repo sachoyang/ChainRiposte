@@ -21,5 +21,16 @@ namespace ChainRiposte.Core.Board
         public int EnrageCountdown;
 
         public bool IsEnraged => EnrageCountdown > 0;
+
+        /// <summary>
+        /// 이 타일에 <b>이미 기믹이 하나 걸려 있는가</b>.
+        ///
+        /// <para><b>타일 하나에는 기믹도 하나</b>가 규칙이다(사용자 결정). 겹치면 화면에서 무엇이 급한지
+        /// 읽을 수 없고 — 사슬 위에 폭탄 뱃지가 얹히고 그 위에 붉은 틴트가 깔린다 — 해법도 서로 부딪힌다
+        /// (사슬은 매치해도 안 사라지는데 폭탄은 매치로 없애야 한다).</para>
+        ///
+        /// <para>거는 쪽(각 기믹)이 이 값을 보고 후보에서 빼는 것으로 지킨다.</para>
+        /// </summary>
+        public bool HasGimmick => Chained || IsBomb || IsEnraged;
     }
 }
