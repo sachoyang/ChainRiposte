@@ -114,11 +114,23 @@ namespace ChainRiposte.Game.UI
                 return;
 
             // 그림이 없으면 씬에 꽂아 둔 것을 그대로 둔다 — 배선이 덜 됐다고 버튼이 사라지면 안 된다.
-            if (faceImage != null && character.Portrait != null)
-                faceImage.sprite = character.Portrait;
+            SetPortrait(faceImage, character.Portrait);
+            SetPortrait(portraitImage, character.Portrait);
+        }
 
-            if (portraitImage != null && character.Portrait != null)
-                portraitImage.sprite = character.Portrait;
+        /// <summary>
+        /// 초상을 <b>원본 비율 그대로</b> 꽂는다. 칸(160×160 · 220×220)은 정사각형인데 캐릭터 그림은
+        /// 그렇지 않아서, 늘려 채우면 얼굴이 찌그러진다. <c>preserveAspect</c>는 비율을 지키고
+        /// 남는 쪽에 여백을 둔다 — 잘라 내지 않으므로 머리·무기가 안 날아간다.
+        /// </summary>
+        private static void SetPortrait(Image image, Sprite portrait)
+        {
+            if (image == null)
+                return;
+
+            image.preserveAspect = true;
+            if (portrait != null)
+                image.sprite = portrait;
         }
 
         private void Redraw()

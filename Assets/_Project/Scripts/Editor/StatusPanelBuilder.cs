@@ -64,6 +64,8 @@ namespace ChainRiposte.Editor
             faceIcon.sprite = EditorUiFactory.Square;
             faceIcon.color = new Color(0.75f, 0.72f, 0.6f); // 초상은 런타임에 고른 캐릭터로 채워진다
             faceIcon.raycastTarget = false;
+            // 칸은 정사각형인데 캐릭터 그림은 아니다 — 늘려 채우면 얼굴이 찌그러진다.
+            faceIcon.preserveAspect = true;
             face.targetGraphic = faceBg;
 
             // ── 패널: 화면 전체 딤 + 카드. 딤이 raycast를 먹어 지도 클릭이 통과하지 않는다
@@ -95,6 +97,7 @@ namespace ChainRiposte.Editor
             portrait.sprite = EditorUiFactory.Square;
             portrait.color = new Color(0.75f, 0.72f, 0.6f);
             portrait.raycastTarget = false;
+            portrait.preserveAspect = true;
 
             TMP_Text nameText = EditorUiFactory.Text(card, "Name", new Vector2(0f, -400f), top, 48f,
                 TextAlignmentOptions.Center, new Vector2(860f, 70f), FontStyles.Bold);
