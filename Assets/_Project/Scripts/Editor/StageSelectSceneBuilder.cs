@@ -95,11 +95,9 @@ namespace ChainRiposte.Editor
                 TMP_Text nodeLabel = CreateWorldLabel(sr.transform, DisplayName(i));
                 node.SetLabelEditorOnly(nodeLabel);
 
-                // 잠금 배지 — 씬 오브젝트라 자물쇠 아트로 그대로 교체 가능.
-                // 클리어 배지는 안 만든다: 글자 색이 그 일을 한다(작은 CLEAR 글씨는 안 읽혔다).
-                GameObject lockedBadge = CreateBadge(sr.transform, "LockedBadge", "LOCK",
-                    new Vector3(0f, 0f, -0.1f), new Color(0.85f, 0.83f, 0.80f));
-                node.SetBadgesEditorOnly(lockedBadge, null);
+                // 잠금 배지 = 퍼즐의 사슬 아트. 클리어 배지는 안 만든다 — 글자 색이 그 일을 한다
+                // (작은 CLEAR 글씨는 지도를 훑을 때 안 읽혔다).
+                node.SetBadgesEditorOnly(CreateLockBadge(sr.transform, sr), null);
             }
 
             // ── 경로선 (노드를 잇는 LineRenderer) ──
@@ -188,7 +186,45 @@ namespace ChainRiposte.Editor
             return tmp;
         }
 
-        /// <summary>노드 상태 배지(잠금/클리어). 기본은 꺼진 채로 두고 런타임에 MapNode가 켠다.</summary>
+        /// <summary>
+        /// 잠금 배지 — <b>퍼즐의 사슬 아트를 그대로 쓴다.</b> 퍼즐에서 "손이 묶인 타일"이 사슬이었으니
+        /// 지도에서 "아직 갈 수 없는 곳"도 같은 그림이면 설명이 필요 없다.
+        ///
+        /// <para>기본은 꺼진 채로 두고 <see cref="MapNode"/>가 잠김일 때 켠다.
+        /// 그림이 없으면 아무것도 안 만든다 — 배지가 없다고 지도가 안 돌면 안 된다.</para>
+        /// </summary>
+        private static GameObject CreateLockBadge(Transform node, SpriteRenderer nodeArt)
+        {
+            Sprite chain = null;
+            foreach (Object asset in AssetDatabase.LoadAllAssetsAtPath("Assets/_Project/DotImgs/MonsterTile/chain.png"))
+            {
+                if (asset is Sprite sprite && sprite.name == "chain_0")
+                    chain = sprite;
+            }
+
+            if (chain == null || nodeArt == null)
+                return null;
+
+            var go = new GameObject("LockedBadge");
+            Undo.RegisterCreatedObjectUndo(go, "Build StageSelect");
+            go.transform.SetParent(node, false);
+            go.transform.localPosition = new Vector3(0f, 0f, -0.1f);
+
+            var renderer = go.AddComponent<SpriteRenderer>();
+            renderer.sprite = chain;
+            renderer.sortingOrder = nodeArt.sortingOrder + 1;
+
+            // 노드 그림의 80% — 덮되 테두리는 보이게. 크기를 그림에서 역산하므로 아트를 바꿔도 그대로다.
+            float target = nodeArt.bounds.size.x * 0.8f;
+            float k = target / chain.bounds.size.x;
+            Vector3 parent = node.lossyScale;
+            go.transform.localScale = new Vector3(k / parent.x, k / parent.y, 1f);
+
+            go.SetActive(false);
+            return go;
+        }
+
+        /// <summary>노드 상태 배지(글씨형). 기본은 꺼진 채로 두고 런타임에 MapNode가 켠다.</summary>
         private static GameObject CreateBadge(Transform node, string name, string text, Vector3 localPos, Color color)
         {
             var go = new GameObject(name);
