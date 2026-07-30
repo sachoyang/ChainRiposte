@@ -91,14 +91,15 @@ namespace ChainRiposte.Editor
                     node.SetStageEditorOnly(stages[i]);
                 nodes[i] = node;
 
-                CreateWorldLabel(sr.transform, DisplayName(i));
+                // 스테이지 글자 — 클리어·잠김을 이 글자의 <b>색</b>으로 알린다(작은 배지보다 멀리서 읽힌다)
+                TMP_Text nodeLabel = CreateWorldLabel(sr.transform, DisplayName(i));
+                node.SetLabelEditorOnly(nodeLabel);
 
-                // 잠금/클리어 배지 — 씬 오브젝트라 자물쇠·깃발 아트로 그대로 교체 가능
+                // 잠금 배지 — 씬 오브젝트라 자물쇠 아트로 그대로 교체 가능.
+                // 클리어 배지는 안 만든다: 글자 색이 그 일을 한다(작은 CLEAR 글씨는 안 읽혔다).
                 GameObject lockedBadge = CreateBadge(sr.transform, "LockedBadge", "LOCK",
                     new Vector3(0f, 0f, -0.1f), new Color(0.85f, 0.83f, 0.80f));
-                GameObject clearedBadge = CreateBadge(sr.transform, "ClearedBadge", "CLEAR",
-                    new Vector3(0f, 0.95f, -0.1f), new Color(0.95f, 0.83f, 0.35f));
-                node.SetBadgesEditorOnly(lockedBadge, clearedBadge);
+                node.SetBadgesEditorOnly(lockedBadge, null);
             }
 
             // ── 경로선 (노드를 잇는 LineRenderer) ──
@@ -172,7 +173,7 @@ namespace ChainRiposte.Editor
             return renderer;
         }
 
-        private static void CreateWorldLabel(Transform node, string label)
+        private static TMP_Text CreateWorldLabel(Transform node, string label)
         {
             var go = new GameObject("Label");
             Undo.RegisterCreatedObjectUndo(go, "Build StageSelect");
@@ -184,6 +185,7 @@ namespace ChainRiposte.Editor
             tmp.fontSize = 6f;
             tmp.alignment = TextAlignmentOptions.Center;
             tmp.color = new Color(0.92f, 0.90f, 0.85f);
+            return tmp;
         }
 
         /// <summary>노드 상태 배지(잠금/클리어). 기본은 꺼진 채로 두고 런타임에 MapNode가 켠다.</summary>

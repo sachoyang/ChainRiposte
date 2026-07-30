@@ -21,13 +21,24 @@ namespace ChainRiposte.Game.Map
         [SerializeField] private SpriteRenderer iconRenderer;
         [Tooltip("잠겼을 때만 켜지는 오브젝트 (자물쇠 아이콘 등)")]
         [SerializeField] private GameObject lockedBadge;
-        [Tooltip("클리어했을 때만 켜지는 오브젝트 (깃발/체크 등)")]
+        [Tooltip("클리어했을 때만 켜지는 오브젝트 (깃발/체크 등). 비워도 된다 — 클리어 표시는 아래 라벨 색이 맡는다.")]
         [SerializeField] private GameObject clearedBadge;
         [Tooltip("잠긴 노드에 곱해지는 색")]
         [SerializeField] private Color lockedTint = new(0.35f, 0.35f, 0.40f, 1f);
 
+        [Header("스테이지 글자 (1-1, 1-2 …)")]
+        [Tooltip("클리어 여부를 <b>글자 색</b>으로 알린다. 작은 CLEAR 배지보다 멀리서도 읽힌다.")]
+        [SerializeField] private TMPro.TMP_Text label;
+        [Tooltip("깬 스테이지의 글자 색 (연초록)")]
+        [SerializeField] private Color clearedLabelColor = new(0.55f, 0.92f, 0.60f);
+        [Tooltip("잠긴 스테이지의 글자 색 — 갈 수 없는 곳이라는 게 글자에서도 읽혀야 한다.")]
+        [SerializeField] private Color lockedLabelColor = new(0.45f, 0.45f, 0.50f);
+
         private Color _unlockedColor;
         private bool _colorCaptured;
+        // 아직 안 깬 상태의 글자 색. 씬에서 칠한 색이 원본이므로 처음 한 번만 기억한다.
+        private Color _labelColor;
+        private bool _labelColorCaptured;
 
         public StageDataSO Stage => stage;
         public Vector3 Position => transform.position;
@@ -48,6 +59,30 @@ namespace ChainRiposte.Game.Map
                 lockedBadge.SetActive(!unlocked);
             if (clearedBadge != null)
                 clearedBadge.SetActive(cleared);
+
+            ApplyLabelColor(unlocked, cleared);
+        }
+
+        /// <summary>
+        /// 스테이지 글자(1-1, 1-2 …)의 색으로 상태를 알린다.
+        ///
+        /// <para>작은 <c>CLEAR</c> 배지는 지도를 훑을 때 읽히지 않는다 — 이미 화면에 있는 글자의
+        /// <b>색</b>을 바꾸는 편이 멀리서도 한눈에 들어온다. 잠김은 회색, 클리어는 연초록.</para>
+        /// </summary>
+        private void ApplyLabelColor(bool unlocked, bool cleared)
+        {
+            if (label == null)
+                return;
+
+            if (!_labelColorCaptured)
+            {
+                _labelColor = label.color;
+                _labelColorCaptured = true;
+            }
+
+            label.color = !unlocked ? lockedLabelColor
+                : cleared ? clearedLabelColor
+                : _labelColor;
         }
 
         private SpriteRenderer ResolveRenderer()
@@ -72,6 +107,9 @@ namespace ChainRiposte.Game.Map
             lockedBadge = locked;
             clearedBadge = cleared;
         }
+
+        /// <summary>에디터 빌더 전용 — 스테이지 글자를 연결한다(클리어·잠김을 색으로 알린다).</summary>
+        public void SetLabelEditorOnly(TMPro.TMP_Text value) => label = value;
 #endif
     }
 }

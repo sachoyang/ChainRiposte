@@ -623,7 +623,7 @@ MonoBehaviour:
   m_fontColor32:
     serializedVersion: 2
     rgba: 4278246143
-  m_fontColor: {r: 1, g: 0.85504407, b: 0, a: 1}
+  m_fontColor: {r: 1, g: 0.855, b: 0, a: 1}
   m_enableVertexGradient: 0
   m_colorMode: 3
   m_fontColorGradient:
@@ -1050,8 +1050,11 @@ MonoBehaviour:
   stage: {fileID: 11400000, guid: d6bb7ed6f24e925489fc980ff9ad55b1, type: 2}
   iconRenderer: {fileID: 363358677}
   lockedBadge: {fileID: 1530475961}
-  clearedBadge: {fileID: 1565862}
+  clearedBadge: {fileID: 0}
   lockedTint: {r: 0.35, g: 0.35, b: 0.4, a: 1}
+  label: {fileID: 74516523}
+  clearedLabelColor: {r: 0.55, g: 0.92, b: 0.6, a: 1}
+  lockedLabelColor: {r: 0.45, g: 0.45, b: 0.5, a: 1}
 --- !u!4 &217957550
 Transform:
   m_ObjectHideFlags: 0
@@ -1240,8 +1243,11 @@ MonoBehaviour:
   stage: {fileID: 11400000, guid: 6b32152b8ce1ba64cb17a44f56b306ca, type: 2}
   iconRenderer: {fileID: 1032100361}
   lockedBadge: {fileID: 1551561922}
-  clearedBadge: {fileID: 2108197582}
+  clearedBadge: {fileID: 0}
   lockedTint: {r: 0.35, g: 0.35, b: 0.4, a: 1}
+  label: {fileID: 546543178}
+  clearedLabelColor: {r: 0.55, g: 0.92, b: 0.6, a: 1}
+  lockedLabelColor: {r: 0.45, g: 0.45, b: 0.5, a: 1}
 --- !u!4 &299179799
 Transform:
   m_ObjectHideFlags: 0
@@ -1328,7 +1334,7 @@ MonoBehaviour:
   m_fontColor32:
     serializedVersion: 2
     rgba: 4278246143
-  m_fontColor: {r: 1, g: 0.85504407, b: 0, a: 1}
+  m_fontColor: {r: 1, g: 0.855, b: 0, a: 1}
   m_enableVertexGradient: 0
   m_colorMode: 3
   m_fontColorGradient:
@@ -1815,7 +1821,7 @@ SpriteRenderer:
   m_SortingOrder: 2
   m_MaskInteraction: 0
   m_Sprite: {fileID: -4147214026715712772, guid: a37e8466236089c45b610370218b5353, type: 3}
-  m_Color: {r: 0.396, g: 0.612, b: 0.43199998, a: 1.8}
+  m_Color: {r: 0.396, g: 0.612, b: 0.432, a: 1.8}
   m_FlipX: 0
   m_FlipY: 0
   m_DrawMode: 0
@@ -2326,7 +2332,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!224 &525914417
 RectTransform:
   m_ObjectHideFlags: 0
@@ -2557,7 +2563,7 @@ MonoBehaviour:
   m_fontColor32:
     serializedVersion: 2
     rgba: 4278246143
-  m_fontColor: {r: 1, g: 0.85504407, b: 0, a: 1}
+  m_fontColor: {r: 1, g: 0.855, b: 0, a: 1}
   m_enableVertexGradient: 0
   m_colorMode: 3
   m_fontColorGradient:
@@ -2788,8 +2794,11 @@ MonoBehaviour:
   stage: {fileID: 11400000, guid: 5646ddd971be6e744bdd4379e2de6eca, type: 2}
   iconRenderer: {fileID: 489214178}
   lockedBadge: {fileID: 525914416}
-  clearedBadge: {fileID: 672270619}
+  clearedBadge: {fileID: 0}
   lockedTint: {r: 0.35, g: 0.35, b: 0.4, a: 1}
+  label: {fileID: 344976265}
+  clearedLabelColor: {r: 0.55, g: 0.92, b: 0.6, a: 1}
+  lockedLabelColor: {r: 0.45, g: 0.45, b: 0.5, a: 1}
 --- !u!4 &642533499
 Transform:
   m_ObjectHideFlags: 0
@@ -4880,7 +4889,7 @@ MonoBehaviour:
   m_fontColor32:
     serializedVersion: 2
     rgba: 4278246143
-  m_fontColor: {r: 1, g: 0.85504407, b: 0, a: 1}
+  m_fontColor: {r: 1, g: 0.855, b: 0, a: 1}
   m_enableVertexGradient: 0
   m_colorMode: 3
   m_fontColorGradient:
@@ -5165,7 +5174,7 @@ MonoBehaviour:
   m_fontColor32:
     serializedVersion: 2
     rgba: 4278246143
-  m_fontColor: {r: 1, g: 0.85504407, b: 0, a: 1}
+  m_fontColor: {r: 1, g: 0.855, b: 0, a: 1}
   m_enableVertexGradient: 0
   m_colorMode: 3
   m_fontColorGradient:
@@ -5287,6 +5296,34 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 1844610696496405357, guid: 961c80982741df343930f5bd4e8a8b49, type: 3}
+      propertyPath: m_AnchorMax.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1844610696496405357, guid: 961c80982741df343930f5bd4e8a8b49, type: 3}
+      propertyPath: m_AnchorMax.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1844610696496405357, guid: 961c80982741df343930f5bd4e8a8b49, type: 3}
+      propertyPath: m_AnchorMin.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2099990969307033002, guid: 961c80982741df343930f5bd4e8a8b49, type: 3}
+      propertyPath: m_AnchorMax.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2099990969307033002, guid: 961c80982741df343930f5bd4e8a8b49, type: 3}
+      propertyPath: m_AnchorMax.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2287087332689504593, guid: 961c80982741df343930f5bd4e8a8b49, type: 3}
+      propertyPath: m_AnchorMax.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2287087332689504593, guid: 961c80982741df343930f5bd4e8a8b49, type: 3}
+      propertyPath: m_AnchorMax.y
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 2379117612468565892, guid: 961c80982741df343930f5bd4e8a8b49, type: 3}
       propertyPath: m_Pivot.x
       value: 0
@@ -5366,6 +5403,34 @@ PrefabInstance:
     - target: {fileID: 2379117612468565892, guid: 961c80982741df343930f5bd4e8a8b49, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2412030267966167772, guid: 961c80982741df343930f5bd4e8a8b49, type: 3}
+      propertyPath: m_AnchorMax.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2412030267966167772, guid: 961c80982741df343930f5bd4e8a8b49, type: 3}
+      propertyPath: m_AnchorMax.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2412030267966167772, guid: 961c80982741df343930f5bd4e8a8b49, type: 3}
+      propertyPath: m_AnchorMin.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 3813394331765723074, guid: 961c80982741df343930f5bd4e8a8b49, type: 3}
+      propertyPath: m_AnchorMax.y
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 3813394331765723074, guid: 961c80982741df343930f5bd4e8a8b49, type: 3}
+      propertyPath: m_AnchorMin.y
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 3813394331765723074, guid: 961c80982741df343930f5bd4e8a8b49, type: 3}
+      propertyPath: m_AnchoredPosition.x
+      value: 450
+      objectReference: {fileID: 0}
+    - target: {fileID: 3813394331765723074, guid: 961c80982741df343930f5bd4e8a8b49, type: 3}
+      propertyPath: m_AnchoredPosition.y
+      value: -60
       objectReference: {fileID: 0}
     - target: {fileID: 5102324864965649272, guid: 961c80982741df343930f5bd4e8a8b49, type: 3}
       propertyPath: key
@@ -6197,8 +6262,11 @@ MonoBehaviour:
   stage: {fileID: 11400000, guid: f6ca82208df61344d95ffd5e93470d36, type: 2}
   iconRenderer: {fileID: 1816305061}
   lockedBadge: {fileID: 759835627}
-  clearedBadge: {fileID: 862991169}
+  clearedBadge: {fileID: 0}
   lockedTint: {r: 0.35, g: 0.35, b: 0.4, a: 1}
+  label: {fileID: 1061963080}
+  clearedLabelColor: {r: 0.55, g: 0.92, b: 0.6, a: 1}
+  lockedLabelColor: {r: 0.45, g: 0.45, b: 0.5, a: 1}
 --- !u!4 &1341145676
 Transform:
   m_ObjectHideFlags: 0
@@ -7127,8 +7195,11 @@ MonoBehaviour:
   stage: {fileID: 11400000, guid: d3ad744a33aaed5439a6a208f855287f, type: 2}
   iconRenderer: {fileID: 869263156}
   lockedBadge: {fileID: 491503502}
-  clearedBadge: {fileID: 11063077}
+  clearedBadge: {fileID: 0}
   lockedTint: {r: 0.35, g: 0.35, b: 0.4, a: 1}
+  label: {fileID: 1138422345}
+  clearedLabelColor: {r: 0.55, g: 0.92, b: 0.6, a: 1}
+  lockedLabelColor: {r: 0.45, g: 0.45, b: 0.5, a: 1}
 --- !u!4 &1532668727
 Transform:
   m_ObjectHideFlags: 0
@@ -7781,8 +7852,11 @@ MonoBehaviour:
   stage: {fileID: 11400000, guid: ea8ebbad7055d824a8cc80b9944558af, type: 2}
   iconRenderer: {fileID: 1268307049}
   lockedBadge: {fileID: 748571192}
-  clearedBadge: {fileID: 506382202}
+  clearedBadge: {fileID: 0}
   lockedTint: {r: 0.35, g: 0.35, b: 0.4, a: 1}
+  label: {fileID: 1972815085}
+  clearedLabelColor: {r: 0.55, g: 0.92, b: 0.6, a: 1}
+  lockedLabelColor: {r: 0.45, g: 0.45, b: 0.5, a: 1}
 --- !u!4 &1758842964
 Transform:
   m_ObjectHideFlags: 0
@@ -8039,7 +8113,7 @@ MonoBehaviour:
   m_fontColor32:
     serializedVersion: 2
     rgba: 4278246143
-  m_fontColor: {r: 1, g: 0.85504407, b: 0, a: 1}
+  m_fontColor: {r: 1, g: 0.855, b: 0, a: 1}
   m_enableVertexGradient: 0
   m_colorMode: 3
   m_fontColorGradient:
