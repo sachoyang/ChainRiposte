@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using ChainRiposte.Core.Board;
 using UnityEngine;
 
@@ -453,6 +454,70 @@ namespace ChainRiposte.Game.Puzzle
             }
 
             transform.localPosition = localTarget;
+        }
+
+        /// <summary>
+        /// 낙하 — <b>꺾인 길을 따라</b> 간다. 벽에 얹혀 옆으로 미끄러진 타일은 「제 열에서 떨어지다가
+        /// 마지막에 옆 칸으로 넘어가는」 두 토막짜리 경로를 갖는데, 시작점과 끝점만 이으면
+        /// 비스듬한 직선이 되어 <b>옆 열을 통째로 가로질러</b> 내려온다(남의 자리를 지나간다).
+        ///
+        /// <para>꺾이는 지점에서 <b>멈췄다 다시 가속하지 않는다</b> — 토막마다 따로 애니메이션하면
+        /// 모서리에서 속도가 0이 되어 두 번 떨어지는 것처럼 보인다. 그래서 경로 전체의 길이를
+        /// 하나의 자로 삼고 그 위를 훑는다.</para>
+        ///
+        /// <para>가속하는 이유: <see cref="MoveTo"/>의 SmoothStep은 양 끝이 눕는 곡선이라
+        /// 스왑에는 맞지만 낙하에 쓰면 <b>떨어지는 게 아니라 떠 보인다.</b> 중력은 빨라져야 한다.</para>
+        /// </summary>
+        /// <param name="accelPower">1이면 등속, 2면 중력과 같은 가속. <see cref="BoardView"/>가 정한다.</param>
+        public IEnumerator FallAlong(IReadOnlyList<Vector3> path, float duration, float accelPower)
+        {
+            if (path == null || path.Count == 0)
+                yield break;
+
+            Vector3 target = path[path.Count - 1];
+            if (duration <= 0f)
+            {
+                transform.localPosition = target;
+                yield break;
+            }
+
+            // 토막별 누적 길이 — 이걸 자로 삼아야 꺾이는 곳에서 속도가 안 끊긴다
+            var cumulative = new float[path.Count];
+            cumulative[0] = 0f;
+            for (int i = 1; i < path.Count; i++)
+                cumulative[i] = cumulative[i - 1] + Vector3.Distance(path[i - 1], path[i]);
+
+            float total = cumulative[path.Count - 1];
+            if (total <= Mathf.Epsilon)
+            {
+                transform.localPosition = target;
+                yield break;
+            }
+
+            for (float t = 0f; t < duration; t += Time.deltaTime)
+            {
+                float travelled = Mathf.Pow(t / duration, accelPower) * total;
+                transform.localPosition = PointAlong(path, cumulative, travelled);
+                yield return null;
+            }
+
+            transform.localPosition = target;
+        }
+
+        /// <summary>경로 위에서 시작점으로부터 <paramref name="distance"/> 만큼 간 지점.</summary>
+        private static Vector3 PointAlong(IReadOnlyList<Vector3> path, float[] cumulative, float distance)
+        {
+            for (int i = 1; i < path.Count; i++)
+            {
+                if (distance > cumulative[i])
+                    continue;
+
+                float span = cumulative[i] - cumulative[i - 1];
+                float u = span <= Mathf.Epsilon ? 1f : (distance - cumulative[i - 1]) / span;
+                return Vector3.Lerp(path[i - 1], path[i], u);
+            }
+
+            return path[path.Count - 1];
         }
 
         public IEnumerator ClearAndDestroy(float duration)

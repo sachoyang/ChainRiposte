@@ -98,6 +98,8 @@ namespace ChainRiposte.Game.Puzzle
         [SerializeField, Min(0.01f)] private float swapDuration = 0.15f;
         [SerializeField, Min(0.01f)] private float clearDuration = 0.18f;
         [SerializeField, Min(0.01f)] private float fallDurationPerCell = 0.07f;
+        [Tooltip("낙하 가속. 1이면 등속(떠 보인다), 2면 중력. 올릴수록 늦게 출발해 세게 떨어진다.")]
+        [SerializeField, Range(1f, 3f)] private float fallAccelPower = 2f;
         [SerializeField, Min(0f)] private float stepPause = 0.05f;
         [Tooltip("데드락 리롤 — 타일이 새 자리로 날아가는 시간")]
         [SerializeField, Min(0.01f)] private float shuffleDuration = 0.45f;
@@ -448,7 +450,8 @@ namespace ChainRiposte.Game.Puzzle
                 {
                     _views[move.To] = view;
                     int distance = Mathf.Abs(move.From.Y - move.To.Y) + Mathf.Abs(move.From.X - move.To.X);
-                    anims.Add(view.MoveTo(GridToLocal(move.To), fallDurationPerCell * Mathf.Max(1, distance)));
+                    anims.Add(view.FallAlong(
+                        BuildFallPath(move), fallDurationPerCell * Mathf.Max(1, distance), fallAccelPower));
                 }
 
                 // 스폰 — 보드 상단 밖에서 낙하. 같은 열의 연속 스폰은 위로 쌓아 겹침 방지
@@ -460,12 +463,52 @@ namespace ChainRiposte.Game.Puzzle
 
                     TileView view = CreateTileView(spawn.Tile, spawn.Position);
                     int startY = _board.Height + stack;
-                    view.transform.localPosition = GridToLocal(new GridPos(spawn.Position.X, startY));
-                    anims.Add(view.MoveTo(GridToLocal(spawn.Position), fallDurationPerCell * (startY - spawn.Position.Y)));
+                    Vector3 start = GridToLocal(new GridPos(spawn.Position.X, startY));
+                    view.transform.localPosition = start;
+                    // 새로 들어오는 타일도 같은 중력을 탄다 — 여기만 등속이면 리필만 떠 보인다
+                    anims.Add(view.FallAlong(
+                        new[] { start, GridToLocal(spawn.Position) },
+                        fallDurationPerCell * (startY - spawn.Position.Y),
+                        fallAccelPower));
                 }
 
                 yield return WhenAll(anims);
             }
+        }
+
+        /// <summary>
+        /// 낙하 경로. 곧게 떨어지는 이동은 두 점이면 되지만, <b>옆으로 미끄러진 이동은 꺾어서</b> 간다.
+        ///
+        /// <para>왜 꺾어야 하나: <c>GravityResolver</c>는 한 웨이브에서 같은 타일이 두 번 움직인 기록
+        /// (직선 낙하 → 벽에서 대각선 슬라이드)을 <c>From→To</c> 한 줄로 합친다. 뷰가 칸 좌표로
+        /// 타일을 추적하므로 중간 좌표가 남으면 뷰가 어긋나기 때문이다. 그런데 그 한 줄을 곧장 이으면
+        /// 비스듬한 직선이 되어 <b>타일이 옆 열을 통째로 가로지르며</b> 내려온다 — 실제로는
+        /// 제 열에서 떨어지다가 <b>마지막에</b> 옆으로 한 칸 넘어간 것인데도.</para>
+        ///
+        /// <para>꺾이는 지점은 <b>내려온 열(From.X)에서 옆으로 넘어가기 직전</b>이다. 슬라이드는
+        /// <c>SlideDiagonalOnce</c>가 웨이브당 한 번만 하므로 넘어가는 것도 한 번뿐이고, 넘어간 뒤로는
+        /// 더 안 움직인다 — 그래서 꺾이는 높이는 도착 바로 위 칸이다.</para>
+        ///
+        /// <para>⚠ 구멍이 있는 비정형 보드에서는 슬라이드가 <b>두 칸 이상 아래로</b> 떨어질 수 있어
+        /// (구멍을 건너뛰고 위 칸에서 끌어온다) 꺾이는 높이가 실제보다 낮게 잡힌다. 그래도 모양은
+        /// 맞다 — 제 열로 떨어지다 끝에서 옆으로 넘어간다. 정확히 맞추려면 Core가 중간 좌표를
+        /// 들고 와야 하는데, 그 좌표가 뷰의 추적 키와 부딪혀서 애초에 합쳐 둔 것이다.</para>
+        /// </summary>
+        private Vector3[] BuildFallPath(TileMove move)
+        {
+            Vector3 target = GridToLocal(move.To);
+            if (move.From.X == move.To.X)
+                return new[] { GridToLocal(move.From), target };
+
+            // 도착 바로 위 칸. 옆으로 안 내려온 만큼만 곧게 떨어진다
+            // (한 칸짜리 순수 슬라이드면 From과 같아져 저절로 곧은 대각선 한 토막이 된다).
+            int cornerY = Mathf.Min(move.From.Y, move.To.Y + 1);
+            return new[]
+            {
+                GridToLocal(move.From),
+                GridToLocal(new GridPos(move.From.X, cornerY)),
+                target,
+            };
         }
 
         private bool TryFindView(long tileId, out TileView found)
