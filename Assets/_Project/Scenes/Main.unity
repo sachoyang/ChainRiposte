@@ -12998,18 +12998,18 @@ MonoBehaviour:
   m_EditorClassIdentifier: ChainRiposte.Game::ChainRiposte.Game.Juice.JuiceDirector
   gameManager: {fileID: 775320524}
   cameraShaker: {fileID: 661218002}
-  puzzleMusic: {fileID: 0}
-  combatMusic: {fileID: 0}
-  tensionLoop: {fileID: 0}
+  puzzleMusic: {fileID: 8300000, guid: 5281a4ab9b421454ab67a58d732dc5c6, type: 3}
+  combatMusic: {fileID: 8300000, guid: 32511a0595d971f4684062f7dcb87d24, type: 3}
+  tensionLoop: {fileID: 8300000, guid: 119a9e6f03785a544b60ece992ab1dc0, type: 3}
   tensionMaxChance: 0.3
   matchClearClip: {fileID: 0}
   comboPitchStep: 0.08
-  levelUpClip: {fileID: 0}
+  levelUpClip: {fileID: 8300000, guid: 8b87cec63a8f5d6448084be7052b227d, type: 3}
   parryClip: {fileID: 0}
-  playerHitClip: {fileID: 0}
-  attackLandClip: {fileID: 0}
+  playerHitClip: {fileID: 8300000, guid: d374ec2186de7234bb3fe0828ee1d823, type: 3}
+  attackLandClip: {fileID: 8300000, guid: fe0b1f9aeb45b41b089175aeeabd5d95, type: 3}
   bossBrokenClip: {fileID: 0}
-  executionClip: {fileID: 0}
+  executionClip: {fileID: 8300000, guid: d46323e22e74e46baa241cbf48c85671, type: 3}
   parryHitStop: 0.06
   executionHitStop: 0.35
 --- !u!4 &1848880341

@@ -2102,7 +2102,7 @@ MonoBehaviour:
   pathSmoothing: 8
   blockedBumpRatio: 0.35
   blockedBumpCount: 2
-  blockedSfx: {fileID: 0}
+  blockedSfx: {fileID: 8300000, guid: eb8b85795fa4cfd4882479bbe3adb6df, type: 3}
 --- !u!4 &548820500
 Transform:
   m_ObjectHideFlags: 0
@@ -6597,6 +6597,53 @@ SpriteRenderer:
   m_SpriteTileMode: 0
   m_WasSpriteAssigned: 1
   m_SpriteSortPoint: 0
+--- !u!1 &1592464548
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1592464550}
+  - component: {fileID: 1592464549}
+  m_Layer: 0
+  m_Name: SceneMusic
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1592464549
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1592464548}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6ac39f36e719d6849a1e9bdb48bb8a36, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: ChainRiposte.Game::ChainRiposte.Game.Audio.SceneMusic
+  clip: {fileID: 8300000, guid: e657e82d26b021f439bd47b699477b3f, type: 3}
+  loop: 1
+  playOnEnable: 1
+--- !u!4 &1592464550
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1592464548}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1641271363
 GameObject:
   m_ObjectHideFlags: 0
@@ -7795,3 +7842,4 @@ SceneRoots:
   - {fileID: 1960102720}
   - {fileID: 548820500}
   - {fileID: 1150265670}
+  - {fileID: 1592464550}
