@@ -39,8 +39,191 @@ MonoBehaviour:
   scaleDecayWithHp: 1
   firstAttackDelaySeconds: 1.5
   patternGapSeconds: 0.6
-  patterns: []
-  phases: []
+  patterns:
+  - name: Cleave
+    bpm: 105
+    lengthBeats: 8
+    speedMultiplier: 1
+    notes:
+    - beat: 1.5
+      telegraphBeats: 2.5
+      speedMultiplier: 1
+      damage: 16
+    - beat: 4
+      telegraphBeats: 2.5
+      speedMultiplier: 1
+      damage: 16
+    - beat: 6.5
+      telegraphBeats: 2.5
+      speedMultiplier: 1
+      damage: 18
+  - name: Hook And Swing
+    bpm: 115
+    lengthBeats: 8
+    speedMultiplier: 1
+    notes:
+    - beat: 2
+      telegraphBeats: 3
+      speedMultiplier: 1
+      damage: 14
+    - beat: 4.5
+      telegraphBeats: 1.75
+      speedMultiplier: 1
+      damage: 11
+    - beat: 5
+      telegraphBeats: 1.75
+      speedMultiplier: 1
+      damage: 11
+    - beat: 7.5
+      telegraphBeats: 2.25
+      speedMultiplier: 1
+      damage: 17
+  - name: Offbeat Maul
+    bpm: 120
+    lengthBeats: 8
+    speedMultiplier: 1
+    notes:
+    - beat: 1.5
+      telegraphBeats: 2
+      speedMultiplier: 1
+      damage: 12
+    - beat: 3.5
+      telegraphBeats: 2
+      speedMultiplier: 1
+      damage: 12
+    - beat: 5.5
+      telegraphBeats: 1.75
+      speedMultiplier: 1
+      damage: 13
+    - beat: 7.5
+      telegraphBeats: 1.75
+      speedMultiplier: 1
+      damage: 14
+  - name: Frenzy
+    bpm: 125
+    lengthBeats: 8
+    speedMultiplier: 1
+    notes:
+    - beat: 2
+      telegraphBeats: 2.5
+      speedMultiplier: 1
+      damage: 12
+    - beat: 4
+      telegraphBeats: 1.5
+      speedMultiplier: 1
+      damage: 8
+    - beat: 4.5
+      telegraphBeats: 1.5
+      speedMultiplier: 1
+      damage: 8
+    - beat: 5
+      telegraphBeats: 1.5
+      speedMultiplier: 1
+      damage: 8
+    - beat: 7.5
+      telegraphBeats: 2.25
+      speedMultiplier: 1.6
+      damage: 20
+  - name: Lightning
+    bpm: 130
+    lengthBeats: 8
+    speedMultiplier: 1
+    notes:
+    - beat: 1
+      telegraphBeats: 2
+      speedMultiplier: 1
+      damage: 13
+    - beat: 2.5
+      telegraphBeats: 1.75
+      speedMultiplier: 1
+      damage: 13
+    - beat: 4
+      telegraphBeats: 1.75
+      speedMultiplier: 1
+      damage: 13
+    - beat: 5.5
+      telegraphBeats: 1.5
+      speedMultiplier: 1
+      damage: 14
+    - beat: 7
+      telegraphBeats: 1.5
+      speedMultiplier: 1
+      damage: 15
+  - name: Chain Storm
+    bpm: 125
+    lengthBeats: 8
+    speedMultiplier: 1
+    notes:
+    - beat: 2
+      telegraphBeats: 2.5
+      speedMultiplier: 1
+      damage: 9
+    - beat: 2.5
+      telegraphBeats: 1.5
+      speedMultiplier: 1
+      damage: 9
+    - beat: 3
+      telegraphBeats: 1.5
+      speedMultiplier: 1
+      damage: 9
+    - beat: 5.5
+      telegraphBeats: 2
+      speedMultiplier: 1
+      damage: 10
+    - beat: 6
+      telegraphBeats: 1.5
+      speedMultiplier: 1
+      damage: 10
+    - beat: 6.5
+      telegraphBeats: 1.5
+      speedMultiplier: 1
+      damage: 10
+    - beat: 7
+      telegraphBeats: 1.5
+      speedMultiplier: 1
+      damage: 12
+  - name: Executioners Thrust
+    bpm: 120
+    lengthBeats: 8
+    speedMultiplier: 1
+    notes:
+    - beat: 3
+      telegraphBeats: 3.5
+      speedMultiplier: 1
+      damage: 20
+    - beat: 5
+      telegraphBeats: 1.5
+      speedMultiplier: 1
+      damage: 10
+    - beat: 5.5
+      telegraphBeats: 1.5
+      speedMultiplier: 1
+      damage: 10
+    - beat: 6
+      telegraphBeats: 1.5
+      speedMultiplier: 1
+      damage: 10
+    - beat: 7.75
+      telegraphBeats: 2
+      speedMultiplier: 2
+      damage: 24
+  phases:
+  - hpRatioAtOrBelow: 1
+    patterns:
+    - patternIndex: 0
+      weight: 3
+    - patternIndex: 1
+      weight: 2
+    - patternIndex: 2
+      weight: 1
+  - hpRatioAtOrBelow: 0.5
+    patterns:
+    - patternIndex: 1
+      weight: 2
+    - patternIndex: 2
+      weight: 2
+    - patternIndex: 3
+      weight: 2
   memory: {fileID: 11400000, guid: d6e493311500b4348aa22971a676763b, type: 2}
   battlePhases:
   - label: Phase 1
@@ -56,4 +239,20 @@ MonoBehaviour:
     transitionTextKey: boss.phase.transition
     maxHp: 200
     maxPosture: 250
-    hpPhases: []
+    hpPhases:
+    - hpRatioAtOrBelow: 1
+      patterns:
+      - patternIndex: 3
+        weight: 1
+      - patternIndex: 4
+        weight: 3
+      - patternIndex: 5
+        weight: 2
+    - hpRatioAtOrBelow: 0.45
+      patterns:
+      - patternIndex: 4
+        weight: 2
+      - patternIndex: 5
+        weight: 3
+      - patternIndex: 6
+        weight: 3
