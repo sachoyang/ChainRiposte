@@ -4825,6 +4825,11 @@ MonoBehaviour:
   slashThickness: 0.35
   slashOvershoot: 0.55
   slashDuration: 0.22
+  explosionSprite: {fileID: 3612168020674768952, guid: c0676b6f3b454204387b36b5ce4bf338, type: 3}
+  explosionColor: {r: 1, g: 1, b: 1, a: 1}
+  explosionSize: 1.35
+  explosionDuration: 0.34
+  explosionGrowRatio: 0.28
   tileFillRatio: 0.9
   wallFillRatio: 1
   bossFillRatio: 1

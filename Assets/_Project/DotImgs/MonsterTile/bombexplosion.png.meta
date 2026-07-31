@@ -1,10 +1,10 @@
 fileFormatVersion: 2
-guid: 408aff06df7f7c249a257792c54c1574
+guid: c0676b6f3b454204387b36b5ce4bf338
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: 7469847711430903180
-    second: sekirobonfire_0
+      213: 3612168020674768952
+    second: bombexplosion_0
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -126,23 +126,23 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: sekirobonfire_0
+      name: bombexplosion_0
       rect:
         serializedVersion: 2
-        x: 12
-        y: 3
-        width: 106
-        height: 121
-      alignment: 9
-      pivot: {x: 0.5, y: 0.1735537}
+        x: 0
+        y: 0
+        width: 90
+        height: 90
+      alignment: 0
+      pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: c858a16aaea3aa760800000000000000
-      internalID: 7469847711430903180
+      spriteID: 830785d3daff02230800000000000000
+      internalID: 3612168020674768952
       vertices: []
       indices: 
       edges: []
@@ -151,7 +151,7 @@ TextureImporter:
     customData: 
     physicsShape: []
     bones: []
-    spriteID: cf5677ae1169675499093cc1ff0b5e4b
+    spriteID: 
     internalID: 0
     vertices: []
     indices: 
@@ -161,7 +161,7 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      sekirobonfire_0: 7469847711430903180
+      bombexplosion_0: 3612168020674768952
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

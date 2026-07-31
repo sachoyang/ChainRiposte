@@ -71,6 +71,16 @@ namespace ChainRiposte.Game.Puzzle
         [SerializeField, Min(0f)] private float slashOvershoot = 0.55f;
         [SerializeField, Min(0.02f)] private float slashDuration = 0.22f;
 
+        [Header("폭발 — 폭탄이 '터졌을 때만'. 매치로 해체한 폭탄에는 안 뜬다")]
+        [Tooltip("터지는 그림. 비우면 폭발 연출 없이 예전처럼 조용히 사라진다.")]
+        [SerializeField] private Sprite explosionSprite;
+        [SerializeField] private Color explosionColor = Color.white;
+        [Tooltip("셀 1칸 기준 크기. 1보다 조금 커야 칸을 넘쳐 터진 느낌이 난다.")]
+        [SerializeField, Range(0.5f, 3f)] private float explosionSize = 1.35f;
+        [SerializeField, Min(0.05f)] private float explosionDuration = 0.34f;
+        [Tooltip("전체 시간 중 커지는 데 쓰는 비율. 작을수록 「펑」에 가깝다.")]
+        [SerializeField, Range(0.05f, 0.9f)] private float explosionGrowRatio = 0.28f;
+
         [Header("타일 크기 — 셀 1칸 기준. 그림의 픽셀 크기·PPU와 무관하게 여기에 맞춰진다")]
         [Tooltip("일반 몬스터 타일이 셀에서 차지하는 비율. 1보다 작아야 타일 사이가 벌어져 개수가 읽힌다.")]
         [SerializeField, Range(0.1f, 1.2f)] private float tileFillRatio = 0.9f;
@@ -238,6 +248,14 @@ namespace ChainRiposte.Game.Puzzle
                 switch (gimmickEvent.Type)
                 {
                     case GimmickEventType.BombExploded:
+                        // 폭발은 <b>터졌을 때만</b> 띄운다. 매치로 해체한 폭탄은 이 사건을 안 내므로
+                        // 저절로 구분된다 — 터진 것(손해)과 해치운 것(이득)이 같은 그림이면
+                        // 플레이어가 자기가 잘한 건지 못한 건지 알 수 없다.
+                        PlayExplosion(gimmickEvent.Position);
+                        if (_views.Remove(gimmickEvent.Position, out TileView blown))
+                            anims.Add(blown.ClearAndDestroy(clearDuration));
+                        break;
+
                     case GimmickEventType.CorruptionCleared:
                         if (_views.Remove(gimmickEvent.Position, out TileView removed))
                             anims.Add(removed.ClearAndDestroy(clearDuration));
@@ -261,6 +279,28 @@ namespace ChainRiposte.Game.Puzzle
 
             foreach (CascadeStep step in phase.Cascades)
                 yield return PlayStep(step);
+        }
+
+        /// <summary>
+        /// 폭탄이 터진 자리에 폭발을 피운다. <b>그림이 없으면 아무것도 안 한다</b> —
+        /// 아트가 없다고 게임이 멈추면 안 된다(뱃지·검기와 같은 규칙).
+        ///
+        /// <para>타일 위에 그리고 <b>셀보다 조금 넘치게</b> 키운다. 딱 맞으면 칸 안에 갇혀
+        /// 터진 느낌이 안 나고, 크게 넘치면 어느 칸이 터졌는지가 안 읽힌다.</para>
+        /// </summary>
+        private void PlayExplosion(GridPos position)
+        {
+            if (explosionSprite == null)
+                return;
+
+            ExplosionView explosion = ExplosionView.Create(
+                transform, GridToLocal(position), explosionSprite, explosionColor, sortingOrder: 20);
+
+            // 크기는 그림에서 역산한다 — 아트를 바꿔도 셀 대비 비율이 그대로다(타일과 같은 규칙).
+            float longest = Mathf.Max(explosionSprite.bounds.size.x, explosionSprite.bounds.size.y);
+            float scale = longest > 0f ? explosionSize / longest : explosionSize;
+
+            StartCoroutine(explosion.Play(explosionDuration, scale, explosionGrowRatio));
         }
 
         /// <summary>파괴를 동반하지 않는 기믹 사건(사슬 해제·폭탄 카운트)만 뱃지에 반영한다.</summary>

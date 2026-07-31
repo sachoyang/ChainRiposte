@@ -204,7 +204,7 @@ namespace ChainRiposte.Game.Puzzle
         public void SetBombTurns(int turns)
         {
             _hasBombText = turns > 0;
-            ShowBadge(ref _bombBadge, "BombBadge", _art.Bomb, turns > 0, new Vector2(1f, 1f));
+            ShowBadge(ref _bombBadge, "BombBadge", _art.Bomb, turns > 0);
             if (turns <= 0)
             {
                 if (_countdownText != null)
@@ -229,7 +229,7 @@ namespace ChainRiposte.Game.Puzzle
         /// </summary>
         public void SetEnrageCountdown(int count, EnrageStyle style)
         {
-            ShowBadge(ref _enrageBadge, "EnrageBadge", _art.Enrage, count > 0, new Vector2(-1f, 1f));
+            ShowBadge(ref _enrageBadge, "EnrageBadge", _art.Enrage, count > 0);
 
             bool enraged = count > 0;
             if (_enraged != enraged)
@@ -380,13 +380,15 @@ namespace ChainRiposte.Game.Puzzle
         }
 
         /// <summary>
-        /// 모서리 뱃지(폭탄·성남)를 켜고 끈다. <b>그림이 없으면 아무것도 안 만든다</b> —
+        /// 상태 뱃지(폭탄·성남)를 켜고 끈다. <b>그림이 없으면 아무것도 안 만든다</b> —
         /// 뱃지는 덤이고, 진짜 정보는 숫자와 틴트다(그림을 안 꽂아도 게임은 읽힌다).
         ///
-        /// <para><paramref name="corner"/>는 셀 안에서의 방향(±1, ±1)이다. 폭탄과 성남을 반대 모서리에
-        /// 두는 이유는 <b>한 타일에 둘 다 걸릴 수 있기 때문</b>이다 — 같은 자리면 하나가 다른 하나를 가린다.</para>
+        /// <para><b>가운데에 둔다.</b> 예전에는 폭탄을 오른쪽 위, 성남을 왼쪽 위 모서리에 뒀는데,
+        /// 그건 한 타일에 둘 다 걸릴 수 있던 시절의 규칙이다. 지금은 <c>TileStatus.HasGimmick</c>이
+        /// <b>타일당 기믹 하나</b>를 보장하므로 자리를 나눌 이유가 없고, 모서리에 작게 붙은 뱃지는
+        /// 보드를 훑을 때 읽히지 않는다 — 급한 정보일수록 가운데에 크게 있어야 한다.</para>
         /// </summary>
-        private void ShowBadge(ref SpriteRenderer badge, string name, Sprite sprite, bool on, Vector2 corner)
+        private void ShowBadge(ref SpriteRenderer badge, string name, Sprite sprite, bool on)
         {
             if (!on || sprite == null)
             {
@@ -399,8 +401,6 @@ namespace ChainRiposte.Game.Puzzle
             {
                 var go = new GameObject(name);
                 go.transform.SetParent(transform, false);
-                // 셀 모서리 쪽으로 밀되 살짝 안쪽에 — 완전히 모서리에 붙이면 옆 타일과 붙어 보인다.
-                go.transform.localPosition = new Vector3(corner.x * 0.3f, corner.y * 0.3f, 0f);
                 go.transform.localScale = Vector3.one * ScaleToFit(sprite, _art.BadgeSize);
 
                 badge = go.AddComponent<SpriteRenderer>();

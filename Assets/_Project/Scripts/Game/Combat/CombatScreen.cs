@@ -618,6 +618,10 @@ namespace ChainRiposte.Game.Combat
             executeText.gameObject.SetActive(false);
             SetExecuteMarkVisible(false);
             StartCoroutine(Flash(new Color(1f, 1f, 1f, 0.9f)));
+
+            // 인살이 끝나면 보스는 더 이상 무너진 상태가 아니다 — 버튼을 다시 그리지 않으면
+            // 「처형」인 채로 남는다. 버튼 글씨는 상태 변화가 아니라 <b>지금 상태</b>에서 나와야 한다.
+            RefreshButtons(_combat.PlayerState);
         }
 
         private void OnPlayerStateChanged(PlayerActionState state)
@@ -831,7 +835,16 @@ namespace ChainRiposte.Game.Combat
         }
 
         /// <summary>새 페이즈가 시작됐다 — 인살 마크를 다시 그린다 (게이지는 Core 이벤트가 갱신한다).</summary>
-        public void OnPhaseStarted() => RefreshDeathblowMarks();
+        /// <summary>
+        /// 다음 인살 페이즈가 시작됐다. 인살 마크뿐 아니라 <b>버튼도 다시 그린다</b> —
+        /// 페이즈가 넘어가도 <c>PlayerState</c>는 그대로일 수 있어서 상태 변화 이벤트가 안 오고,
+        /// 그러면 공격 버튼이 「처형」인 채로 2페이즈를 시작한다(눌러야 돌아왔다).
+        /// </summary>
+        public void OnPhaseStarted()
+        {
+            RefreshDeathblowMarks();
+            RefreshButtons(_combat.PlayerState);
+        }
 
         private void StopExecutePulse()
         {
