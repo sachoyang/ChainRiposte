@@ -119,14 +119,17 @@ namespace ChainRiposte.Game.Puzzle
 
             Sprite sprite = visual.Sprite != null ? visual.Sprite : PlaceholderSprite.Square;
 
-            // 그림마다 픽셀 크기와 PPU가 다르다 — 그대로 두면 어떤 타일은 셀을 채우고 어떤 타일은 점만 하다.
-            // 스케일을 그림에서 역산해 항상 같은 크기로 맞춘다(임포트 설정에 기대지 않는다).
-            float iconScale = ScaleToFit(sprite, visual.IconSize);
-            go.transform.localScale = Vector3.one * iconScale;
+            // 뿌리는 <b>셀 단위</b>로 둔다(스케일 1 = 한 칸). 그림마다 픽셀 크기·PPU가 달라서 크기를
+            // 맞추려면 스케일을 역산해야 하는데, 그걸 뿌리에 걸면 <b>모든 자식이 그 배율을 물려받는다</b> —
+            // 뱃지·사슬·숫자가 몬스터 종류마다 다른 크기로 나오던 원인이 이것이었다(받침만 나눠서 피해 있었다).
+            // 이제 배율은 그림을 든 Icon 자식만 진다. 자식은 전부 셀 기준이라 나눗셈이 필요 없다.
+            view.CreateBackground(visual);
 
-            view.CreateBackground(visual, iconScale);
+            var iconGo = new GameObject("Icon");
+            iconGo.transform.SetParent(go.transform, false);
+            iconGo.transform.localScale = Vector3.one * ScaleToFit(sprite, visual.IconSize);
 
-            view._renderer = go.AddComponent<SpriteRenderer>();
+            view._renderer = iconGo.AddComponent<SpriteRenderer>();
             view._renderer.sprite = sprite;
             view._baseColor = visual.Color;
             view._maxHp = tile.Definition.MaxHp;
@@ -139,18 +142,14 @@ namespace ChainRiposte.Game.Puzzle
         /// 받침은 아이콘보다 <b>뒤에</b>(sortingOrder -1) 깔리고 타일과 함께 움직인다.
         /// 배경 셀(고정, -10)과 달리 낙하·스왑을 따라가야 아이콘과 어긋나지 않는다.
         /// </summary>
-        private void CreateBackground(Visual visual, float parentScale)
+        private void CreateBackground(Visual visual)
         {
             if (visual.Background == null || visual.BackgroundColor.a <= 0f)
                 return;
 
             var go = new GameObject("Background");
             go.transform.SetParent(transform, false);
-
-            // 받침은 아이콘이 아니라 <b>셀</b>에 맞춰야 한다. 자식이라 부모 스케일을 물려받으므로
-            // 그만큼 나눠 준다 — 안 그러면 작게 그려진 아이콘을 따라 받침까지 쪼그라든다.
-            float scale = ScaleToFit(visual.Background, visual.BackgroundSize);
-            go.transform.localScale = Vector3.one * (parentScale > 0f ? scale / parentScale : scale);
+            go.transform.localScale = Vector3.one * ScaleToFit(visual.Background, visual.BackgroundSize);
 
             var renderer = go.AddComponent<SpriteRenderer>();
             renderer.sprite = visual.Background;
@@ -158,7 +157,11 @@ namespace ChainRiposte.Game.Puzzle
             renderer.sortingOrder = -1;
         }
 
-        /// <summary>그림이 <paramref name="target"/> 월드 크기 안에 꽉 들어가게 하는 스케일 (비율 유지).</summary>
+        /// <summary>
+        /// 그림이 <paramref name="target"/> 월드 크기 안에 꽉 들어가게 하는 스케일 (비율 유지).
+        /// <b>뿌리가 셀 단위(스케일 1)</b>이므로 여기서 나온 값이 곧 그 자식의 월드 크기다 —
+        /// 부모 배율로 나눌 필요가 없다.
+        /// </summary>
         private static float ScaleToFit(Sprite sprite, float target)
         {
             if (target <= 0f)

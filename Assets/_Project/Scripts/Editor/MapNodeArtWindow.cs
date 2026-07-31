@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using ChainRiposte.Game.Map;
+using ChainRiposte.Game.Theming;
 using UnityEditor;
 using UnityEngine;
 
@@ -68,9 +69,10 @@ namespace ChainRiposte.Editor
             EditorGUILayout.Space();
             EditorGUILayout.LabelField("상태 표시 — 비우면 그대로 둔다", EditorStyles.boldLabel);
             EditorGUILayout.HelpBox(
-                "잠김·클리어 그림은 노드 그림 위에 얹히는 배지입니다(노드 크기의 80%).\n" +
-                "클리어 배지를 꽂으면 깬 판이 글자 색뿐 아니라 노드에서도 읽힙니다 — " +
-                "지금은 글자 색 하나뿐이라 지도를 훑을 때 놓치기 쉽습니다.",
+                "잠김·클리어 그림은 노드 한가운데에 얹히는 배지입니다(노드 크기의 80%).\n" +
+                "위아래로 얼마나 얹혀 보일지는 그림의 피벗이 정합니다 — 좌표는 안 건드립니다.\n" +
+                "클리어 배지에는 ThemedSprite(키 cleared)가 붙어 캐릭터마다 다른 그림이 나옵니다. " +
+                "여기 꽂는 그림은 크기 기준이자 씬 뷰에 보일 기본값이고, 실제 그림은 테마가 정합니다.",
                 MessageType.None);
             _lockSprite = (Sprite)EditorGUILayout.ObjectField("잠김 그림", _lockSprite, typeof(Sprite), false);
             _clearSprite = (Sprite)EditorGUILayout.ObjectField("클리어 그림", _clearSprite, typeof(Sprite), false);
@@ -167,8 +169,11 @@ namespace ChainRiposte.Editor
                 FitWidth(art.transform, art.sprite, targetWorldWidth);
                 EditorUtility.SetDirty(art);
 
-                ApplyBadge(node, art, LockBadgeName, "lockedBadge", sizeOnly ? null : _lockSprite);
-                ApplyBadge(node, art, ClearBadgeName, "clearedBadge", sizeOnly ? null : _clearSprite);
+                ApplyBadge(node, art, LockBadgeName, "lockedBadge", sizeOnly ? null : _lockSprite, null);
+                // 클리어 표시는 캐릭터마다 다르다(기사 = 화톳불, 낭인 = 아시나의 불) →
+                // 테마가 런타임에 갈아 끼운다. 여기서 꽂는 그림은 크기의 기준이자 씬 뷰에 보일 기본값이다.
+                ApplyBadge(node, art, ClearBadgeName, "clearedBadge", sizeOnly ? null : _clearSprite,
+                    ThemeSO.KeyCleared);
                 LinkIconRenderer(node, art);
                 applied++;
             }
@@ -207,9 +212,21 @@ namespace ChainRiposte.Editor
         /// <para>배지는 항상 <b>꺼진 채로</b> 둔다. 켜고 끄는 것은 <see cref="MapNode.ApplyState"/>의 일이고,
         /// 켜 둔 채 저장하면 잠기지도 깨지도 않은 노드에 배지가 붙어 있는 씬이 남는다.</para>
         /// </summary>
-        private static void ApplyBadge(MapNode node, SpriteRenderer art, string childName, string field, Sprite sprite)
+        private static void ApplyBadge(
+            MapNode node, SpriteRenderer art, string childName, string field, Sprite sprite, string themeKey)
         {
             Transform badge = node.transform.Find(childName);
+
+            // 옛 배지는 <b>글씨</b>였다(TMP/TextMesh = MeshRenderer). 유니티는 한 오브젝트에 Renderer 를
+            // 둘 둘 수 없어서 그림 배지로 바꾸려면 껍데기째 갈아야 한다 — 그냥 두면 SpriteRenderer 가
+            // 안 붙고 조용히 실패한다. 세션 14가 은퇴시킨 CLEAR 글씨 배지가 정확히 이 상태로 남아 있었다.
+            if (badge != null && badge.GetComponent<SpriteRenderer>() == null
+                              && badge.GetComponent<Renderer>() != null)
+            {
+                Undo.DestroyObjectImmediate(badge.gameObject);
+                badge = null;
+            }
+
             if (badge == null)
             {
                 if (sprite == null)
@@ -218,14 +235,24 @@ namespace ChainRiposte.Editor
                 var go = new GameObject(childName);
                 Undo.RegisterCreatedObjectUndo(go, "노드 그림 적용");
                 go.transform.SetParent(node.transform, false);
-                go.transform.localPosition = new Vector3(0f, 0f, -0.1f);
                 go.AddComponent<SpriteRenderer>();
                 badge = go.transform;
             }
 
+            // 배지는 노드 <b>한가운데</b>에 둔다. 위아래로 얼마나 얹혀 보일지는 그림의 피벗이 정한다 —
+            // 여기서 좌표로도 밀면 피벗을 조절해도 결과가 안 맞아 두 곳을 번갈아 만지게 된다.
+            Undo.RecordObject(badge, "노드 그림 적용");
+            badge.localPosition = new Vector3(0f, 0f, -0.1f);
+
             var renderer = badge.GetComponent<SpriteRenderer>();
             if (renderer == null)
                 renderer = Undo.AddComponent<SpriteRenderer>(badge.gameObject);
+            if (renderer == null)
+            {
+                Debug.LogWarning($"[MapNodeArt] {node.name}/{childName} 에 SpriteRenderer 를 붙이지 못했습니다 " +
+                                 "— 다른 Renderer 가 이미 붙어 있습니다.", badge.gameObject);
+                return;
+            }
 
             Undo.RecordObject(renderer, "노드 그림 적용");
             Undo.RecordObject(badge, "노드 그림 적용");
@@ -242,7 +269,28 @@ namespace ChainRiposte.Editor
             badge.gameObject.SetActive(false);
             EditorUtility.SetDirty(renderer);
 
+            if (!string.IsNullOrEmpty(themeKey))
+                LinkTheme(badge.gameObject, themeKey);
+
             LinkBadge(node, field, badge.gameObject);
+        }
+
+        /// <summary>
+        /// 캐릭터마다 다른 그림이 되게 한다 — <c>ThemedSprite</c>가 고른 캐릭터의 테마에서 이 키를 찾아
+        /// 그림을 갈아 끼운다(배경·보스 겉모습과 같은 규칙).
+        ///
+        /// <para>테마에 그 키가 없으면 <b>씬에 꽂아 둔 그림이 그대로 남는다</b> — 한쪽 캐릭터의 그림을
+        /// 아직 안 그렸다고 배지가 사라지면 안 된다.</para>
+        /// </summary>
+        private static void LinkTheme(GameObject badge, string key)
+        {
+            var themed = badge.GetComponent<ThemedSprite>();
+            if (themed == null)
+                themed = Undo.AddComponent<ThemedSprite>(badge);
+
+            var so = new SerializedObject(themed);
+            so.FindProperty("backgroundKey").stringValue = key;
+            so.ApplyModifiedProperties();
         }
 
         /// <summary>

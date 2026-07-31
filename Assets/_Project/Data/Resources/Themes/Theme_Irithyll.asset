@@ -17,11 +17,13 @@ MonoBehaviour:
   - key: map
     sprite: {fileID: -8473886284158217743, guid: 9f1ce03430b3f3e4091991cac094ef90, type: 3}
   - key: puzzle
-    sprite: {fileID: 0}
+    sprite: {fileID: -3215989325942713452, guid: 9d279d87225465648a786484b43cd1f0, type: 3}
   - key: combat
-    sprite: {fileID: 0}
+    sprite: {fileID: -3215989325942713452, guid: 9d279d87225465648a786484b43cd1f0, type: 3}
   - key: path
     sprite: {fileID: -8473886284158217743, guid: 9f1ce03430b3f3e4091991cac094ef90, type: 3}
+  - key: cleared
+    sprite: {fileID: 5801255725635399724, guid: 7f98f54cc5a10234c98074a6141f1629, type: 3}
   nodeLayout:
   - {x: -5.347941, y: -3.3392897}
   - {x: -3.0983002, y: -2.3119478}

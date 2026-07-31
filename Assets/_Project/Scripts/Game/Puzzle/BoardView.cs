@@ -454,9 +454,14 @@ namespace ChainRiposte.Game.Puzzle
                         BuildFallPath(move), fallDurationPerCell * Mathf.Max(1, distance), fallAccelPower));
                 }
 
-                // 스폰 — 보드 상단 밖에서 낙하. 같은 열의 연속 스폰은 위로 쌓아 겹침 방지
+                // 스폰 — 보드 상단 밖에서 낙하. 같은 열의 연속 스폰은 위로 쌓아 겹침 방지.
+                //
+                // ⚠ 쌓는 순서는 <b>아래 칸부터</b>여야 한다. BoardRefiller 는 열을 위에서 아래로 훑어
+                // 스폰을 만드는데, 그 순서대로 쌓으면 <b>가장 깊이 갈 타일이 가장 높은 데서 출발</b>한다 —
+                // 위의 것들을 뚫고 지나가며 제일 늦게 도착해서 "위가 먼저 차고 그 밑으로 더 들어가는"
+                // 것처럼 보인다. 아래 칸부터 쌓으면 모두 같은 거리를 떨어져 한 덩어리로 내려앉는다.
                 var stackByColumn = new Dictionary<int, int>();
-                foreach (TileSpawn spawn in phase.Spawns)
+                foreach (TileSpawn spawn in SpawnsBottomUp(phase.Spawns))
                 {
                     stackByColumn.TryGetValue(spawn.Position.X, out int stack);
                     stackByColumn[spawn.Position.X] = stack + 1;
@@ -474,6 +479,20 @@ namespace ChainRiposte.Game.Puzzle
 
                 yield return WhenAll(anims);
             }
+        }
+
+        /// <summary>
+        /// 스폰을 <b>아래 칸부터</b> 훑는 순서로 돌려준다. 열 안에서 낮은 칸이 먼저 와야
+        /// 그 타일이 가장 낮은 곳에서 출발해 먼저 자리를 잡는다(진짜 낙하의 순서).
+        /// <b>Core는 안 건드린다</b> — 이건 보이는 순서의 문제이지 보드 규칙이 아니다.
+        /// </summary>
+        private static List<TileSpawn> SpawnsBottomUp(IReadOnlyList<TileSpawn> spawns)
+        {
+            var sorted = new List<TileSpawn>(spawns);
+            sorted.Sort((a, b) => a.Position.X != b.Position.X
+                ? a.Position.X.CompareTo(b.Position.X)
+                : a.Position.Y.CompareTo(b.Position.Y));
+            return sorted;
         }
 
         /// <summary>

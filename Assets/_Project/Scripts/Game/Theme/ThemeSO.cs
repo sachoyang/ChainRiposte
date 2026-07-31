@@ -24,6 +24,12 @@ namespace ChainRiposte.Game.Theming
         public const string KeyPuzzle = "puzzle";
         /// <summary>전투 화면 배경.</summary>
         public const string KeyCombat = "combat";
+        /// <summary>
+        /// 월드맵에서 <b>깬 판에 뜨는 표시</b> — 기사는 화톳불, 낭인은 아시나의 불. 배경은 아니지만
+        /// 이 목록은 "캐릭터마다 다르게 보이는 그림"의 공용 표라 여기에 둔다
+        /// (키가 자유 문자열이라 코드를 안 고치고 늘릴 수 있다 — 세션 7의 설계 의도).
+        /// </summary>
+        public const string KeyCleared = "cleared";
 
         [Serializable]
         public sealed class BackgroundEntry
