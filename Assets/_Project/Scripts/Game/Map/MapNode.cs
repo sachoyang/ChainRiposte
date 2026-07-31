@@ -110,6 +110,13 @@ namespace ChainRiposte.Game.Map
 
         /// <summary>에디터 빌더 전용 — 스테이지 글자를 연결한다(클리어·잠김을 색으로 알린다).</summary>
         public void SetLabelEditorOnly(TMPro.TMP_Text value) => label = value;
+
+        /// <summary>
+        /// 에디터 빌더 전용 — 그림을 든 <c>Art</c> 자식을 연결한다. 비워 두면 노드 자신에서
+        /// <c>SpriteRenderer</c>를 찾는데, 그림이 자식에 있는 지금 구조에서는 못 찾아
+        /// <b>잠금 틴트가 조용히 사라진다.</b>
+        /// </summary>
+        public void SetIconRendererEditorOnly(SpriteRenderer value) => iconRenderer = value;
 #endif
     }
 }

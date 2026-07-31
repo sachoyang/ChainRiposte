@@ -38,6 +38,16 @@ namespace ChainRiposte.Editor
 
         private const int PathSort = 1, NodeSort = 2, CharSort = 3;
 
+        /// <summary>길 두께. 노드 크기가 이 값에서 나온다 — 아래 <see cref="NodeWidthInPaths"/> 참조.</summary>
+        private const float PathWidth = 0.12f;
+
+        /// <summary>
+        /// 노드 가로 크기 = 길 두께 × 이 값. 노드가 길보다 겨우 크면 <b>길이 노드 양옆으로 삐져나와</b>
+        /// 노드와 길이 겹쳐 보인다 — 노드는 길을 덮어야 그 위에 놓인 것으로 읽힌다.
+        /// 같은 규칙을 <c>Tools ▸ ChainRiposte ▸ Map ▸ Node Art…</c> 가 그대로 쓴다.
+        /// </summary>
+        private const float NodeWidthInPaths = 3f;
+
         [MenuItem("Tools/ChainRiposte/Build StageSelect Layout")]
         private static void Build()
         {
@@ -66,7 +76,10 @@ namespace ChainRiposte.Editor
             for (int i = root.childCount - 1; i >= 0; i--)
                 Undo.DestroyObjectImmediate(root.GetChild(i).gameObject);
 
-            Sprite square = AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/UISprite.psd");
+            // 엔진 기본 UI 그림(UISprite)은 쓰지 않는다 — 이 게임에는 한 곳도 있으면 안 된다(사용자 규칙).
+            // 노드는 픽셀 시트의 panel 로 깔아 두고, 실제 아트는
+            // Tools ▸ ChainRiposte ▸ Map ▸ Node Art… 로 한 번에 갈아 끼운다.
+            Sprite nodeSprite = EditorUiFactory.PixelSprite("panel");
             StageDataSO[] stages = LoadStages();
 
             // ── 배경 2층 ── 그림은 테마(고른 캐릭터)가 채운다.
@@ -84,20 +97,31 @@ namespace ChainRiposte.Editor
             {
                 Color color = i < 3 ? World1Color : World2Color;
                 Vector3 pos = new(NodePositions[i].x, NodePositions[i].y, 0f);
-                SpriteRenderer sr = CreateSprite(root, $"Node_{DisplayName(i)}", pos, Vector3.one * 0.8f, color * 1.8f, NodeSort, square);
 
-                var node = sr.gameObject.AddComponent<MapNode>();
+                // 노드 본체는 <b>그림을 안 든다</b> — 그림은 Art 자식이 든다. 노드 자신에 두면
+                // 크기를 맞출 때 라벨·배지가 같이 끌려간다(세션 14에 노드와 글자를 23배로 만든 사고).
+                var nodeGo = new GameObject($"Node_{DisplayName(i)}");
+                Undo.RegisterCreatedObjectUndo(nodeGo, "Build StageSelect");
+                nodeGo.transform.SetParent(root, false);
+                nodeGo.transform.position = pos;
+                nodeGo.transform.localScale = Vector3.one * 0.8f;
+
+                var node = nodeGo.AddComponent<MapNode>();
                 if (i < stages.Length && stages[i] != null)
                     node.SetStageEditorOnly(stages[i]);
                 nodes[i] = node;
 
+                SpriteRenderer sr = CreateSprite(
+                    nodeGo.transform, "Art", pos, NodeArtScale(nodeSprite), color * 1.8f, NodeSort, nodeSprite);
+                node.SetIconRendererEditorOnly(sr);
+
                 // 스테이지 글자 — 클리어·잠김을 이 글자의 <b>색</b>으로 알린다(작은 배지보다 멀리서 읽힌다)
-                TMP_Text nodeLabel = CreateWorldLabel(sr.transform, DisplayName(i));
+                TMP_Text nodeLabel = CreateWorldLabel(nodeGo.transform, DisplayName(i));
                 node.SetLabelEditorOnly(nodeLabel);
 
                 // 잠금 배지 = 퍼즐의 사슬 아트. 클리어 배지는 안 만든다 — 글자 색이 그 일을 한다
                 // (작은 CLEAR 글씨는 지도를 훑을 때 안 읽혔다).
-                node.SetBadgesEditorOnly(CreateLockBadge(sr.transform, sr), null);
+                node.SetBadgesEditorOnly(CreateLockBadge(nodeGo.transform, sr), null);
             }
 
             // ── 경로선 (노드를 잇는 LineRenderer) ──
@@ -106,7 +130,7 @@ namespace ChainRiposte.Editor
             // ── 캐릭터 ──
             SpriteRenderer character = CreateSprite(root, "Character",
                 new Vector3(NodePositions[0].x, NodePositions[0].y + 0.7f, 0f),
-                new Vector3(0.5f, 0.6f, 1f), new Color(0.92f, 0.88f, 0.75f), CharSort, square);
+                new Vector3(0.5f, 0.6f, 1f), Color.white, CharSort, DefaultCharacterMapSprite());
 
             // ── 정보 패널 (Canvas + TMP) ──
             BuildUi(root, out GameObject infoPanel, out TMP_Text titleText, out TMP_Text infoText,
@@ -155,6 +179,38 @@ namespace ChainRiposte.Editor
                     Debug.LogWarning($"[StageSelectSceneBuilder] '{StageAssetNames[i]}' 에셋을 찾지 못했습니다 — 노드에 직접 지정하세요.");
             }
             return result;
+        }
+
+        /// <summary>
+        /// 지도 위 캐릭터의 기본 그림. 런타임에는 <c>StageSelectController</c>가 고른 캐릭터로 갈아 끼우므로
+        /// 여기서 넣는 것은 <b>씬 뷰에서 뭐가 서 있는지 보이게 하는 용도</b>다.
+        /// 못 찾으면 null — 그림이 없다고 빌더가 멈추면 안 된다.
+        /// </summary>
+        private static Sprite DefaultCharacterMapSprite()
+        {
+            foreach (string guid in AssetDatabase.FindAssets("t:PlayerCharacterSO"))
+            {
+                var character = AssetDatabase.LoadAssetAtPath<ChainRiposte.Game.Characters.PlayerCharacterSO>(
+                    AssetDatabase.GUIDToAssetPath(guid));
+                if (character != null && character.MapSprite != null)
+                    return character.MapSprite;
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// 노드 그림을 길 두께의 <see cref="NodeWidthInPaths"/>배로 맞추는 <b>Art 자식의 로컬 스케일</b>.
+        /// 크기를 그림에서 역산하므로 아트를 바꿔도 노드 크기가 안 흔들린다(타일·잠금 배지와 같은 규칙).
+        /// 노드 본체가 0.8배로 서 있으므로 그만큼 나눠 준다.
+        /// </summary>
+        private static Vector3 NodeArtScale(Sprite sprite)
+        {
+            if (sprite == null || sprite.bounds.size.x <= Mathf.Epsilon)
+                return Vector3.one;
+
+            float k = PathWidth * NodeWidthInPaths / sprite.bounds.size.x / 0.8f;
+            return new Vector3(k, k, 1f);
         }
 
         private static SpriteRenderer CreateSprite(Transform parent, string name, Vector3 position, Vector3 scale, Color color, int sortingOrder, Sprite sprite)
@@ -249,7 +305,7 @@ namespace ChainRiposte.Editor
             go.transform.SetParent(parent, false);
             var line = go.AddComponent<LineRenderer>();
             line.useWorldSpace = true;
-            line.widthMultiplier = 0.12f;
+            line.widthMultiplier = PathWidth; // 노드 크기가 여기서 나온다 — 숫자를 두 곳에 적지 않는다
             line.numCornerVertices = 2;
             line.numCapVertices = 2;
             line.sortingOrder = PathSort;

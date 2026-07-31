@@ -24,11 +24,14 @@ namespace ChainRiposte.Editor
     {
         private const string ArtChildName = "Art";
         private const string LockBadgeName = "LockedBadge";
+        private const string ClearBadgeName = "ClearedBadge";
 
-        /// <summary>잠금 배지는 노드 그림의 몇 %인가. 덮되 테두리는 보이게 — 빌더와 같은 값.</summary>
-        private const float LockBadgeRatio = 0.8f;
+        /// <summary>배지는 노드 그림의 몇 %인가. 덮되 테두리는 보이게 — 빌더와 같은 값.</summary>
+        private const float BadgeRatio = 0.8f;
 
         private Sprite _sprite;
+        private Sprite _lockSprite;
+        private Sprite _clearSprite;
         private float _pathMultiple = 3f;
         private float _pathWidth = -1f;
         private bool _applyPathWidth;
@@ -63,6 +66,16 @@ namespace ChainRiposte.Editor
                 _resetTint);
 
             EditorGUILayout.Space();
+            EditorGUILayout.LabelField("상태 표시 — 비우면 그대로 둔다", EditorStyles.boldLabel);
+            EditorGUILayout.HelpBox(
+                "잠김·클리어 그림은 노드 그림 위에 얹히는 배지입니다(노드 크기의 80%).\n" +
+                "클리어 배지를 꽂으면 깬 판이 글자 색뿐 아니라 노드에서도 읽힙니다 — " +
+                "지금은 글자 색 하나뿐이라 지도를 훑을 때 놓치기 쉽습니다.",
+                MessageType.None);
+            _lockSprite = (Sprite)EditorGUILayout.ObjectField("잠김 그림", _lockSprite, typeof(Sprite), false);
+            _clearSprite = (Sprite)EditorGUILayout.ObjectField("클리어 그림", _clearSprite, typeof(Sprite), false);
+
+            EditorGUILayout.Space();
             EditorGUILayout.LabelField("크기 — 길 두께 기준", EditorStyles.boldLabel);
             _pathMultiple = EditorGUILayout.Slider(
                 new GUIContent("길 두께의 배수", "노드 가로 크기 = 길 두께 × 이 값. 3보다 작으면 길이 노드 옆으로 삐져나온다."),
@@ -78,7 +91,8 @@ namespace ChainRiposte.Editor
             EditorGUILayout.LabelField("→ 노드 가로 크기", target > 0f ? $"{target:0.###} (월드)" : "길을 찾지 못했습니다");
 
             EditorGUILayout.Space();
-            using (new EditorGUI.DisabledScope(nodes.Count == 0 || _sprite == null || target <= 0f))
+            bool nothingChosen = _sprite == null && _lockSprite == null && _clearSprite == null;
+            using (new EditorGUI.DisabledScope(nodes.Count == 0 || nothingChosen || target <= 0f))
             {
                 if (GUILayout.Button($"노드 {nodes.Count}개에 적용", GUILayout.Height(30f)))
                     Apply(nodes, path, target);
@@ -138,7 +152,8 @@ namespace ChainRiposte.Editor
                 Undo.RecordObject(art, "노드 그림 적용");
                 Undo.RecordObject(art.transform, "노드 그림 적용");
 
-                if (!sizeOnly)
+                // 그림을 안 고른 채로 눌렀다고 이미 꽂아 둔 노드 그림을 지우면 안 된다
+                if (!sizeOnly && _sprite != null)
                 {
                     art.sprite = _sprite;
                     if (_resetTint)
@@ -152,7 +167,8 @@ namespace ChainRiposte.Editor
                 FitWidth(art.transform, art.sprite, targetWorldWidth);
                 EditorUtility.SetDirty(art);
 
-                RefitLockBadge(node, art, pathOrder);
+                ApplyBadge(node, art, LockBadgeName, "lockedBadge", sizeOnly ? null : _lockSprite);
+                ApplyBadge(node, art, ClearBadgeName, "clearedBadge", sizeOnly ? null : _clearSprite);
                 LinkIconRenderer(node, art);
                 applied++;
             }
@@ -183,24 +199,65 @@ namespace ChainRiposte.Editor
         }
 
         /// <summary>
-        /// 잠금 배지(사슬)도 새 노드 크기에 다시 맞춘다. 안 맞추면 노드만 커지고 사슬은 옛 크기로 남아
-        /// <b>노드 한가운데 작은 사슬</b>이 뜬다. 크기 규칙은 빌더와 같은 80%.
+        /// 상태 배지(잠김 사슬 · 클리어 표시)를 노드 그림 위에 얹고 새 노드 크기에 다시 맞춘다.
+        ///
+        /// <para>크기를 다시 안 맞추면 노드만 커지고 배지는 옛 크기로 남아 <b>노드 한가운데 작은 사슬</b>이 뜬다.
+        /// 그림을 안 주면 <b>크기만</b> 맞춘다 — 이미 꽂아 둔 그림을 지우지 않기 위해서다.</para>
+        ///
+        /// <para>배지는 항상 <b>꺼진 채로</b> 둔다. 켜고 끄는 것은 <see cref="MapNode.ApplyState"/>의 일이고,
+        /// 켜 둔 채 저장하면 잠기지도 깨지도 않은 노드에 배지가 붙어 있는 씬이 남는다.</para>
         /// </summary>
-        private static void RefitLockBadge(MapNode node, SpriteRenderer art, int pathOrder)
+        private static void ApplyBadge(MapNode node, SpriteRenderer art, string childName, string field, Sprite sprite)
         {
-            Transform badge = node.transform.Find(LockBadgeName);
-            var renderer = badge != null ? badge.GetComponent<SpriteRenderer>() : null;
+            Transform badge = node.transform.Find(childName);
+            if (badge == null)
+            {
+                if (sprite == null)
+                    return; // 오브젝트도 그림도 없으면 만들 이유가 없다
+
+                var go = new GameObject(childName);
+                Undo.RegisterCreatedObjectUndo(go, "노드 그림 적용");
+                go.transform.SetParent(node.transform, false);
+                go.transform.localPosition = new Vector3(0f, 0f, -0.1f);
+                go.AddComponent<SpriteRenderer>();
+                badge = go.transform;
+            }
+
+            var renderer = badge.GetComponent<SpriteRenderer>();
             if (renderer == null)
-                return;
+                renderer = Undo.AddComponent<SpriteRenderer>(badge.gameObject);
 
             Undo.RecordObject(renderer, "노드 그림 적용");
             Undo.RecordObject(badge, "노드 그림 적용");
 
+            if (sprite != null)
+                renderer.sprite = sprite;
+            if (renderer.sprite == null)
+                return; // 그림이 없는 배지는 켜 봐야 흰 사각형이다
+
             if (renderer.sortingOrder <= art.sortingOrder)
                 renderer.sortingOrder = art.sortingOrder + 1;
 
-            FitWidth(badge, renderer.sprite, art.bounds.size.x * LockBadgeRatio);
+            FitWidth(badge, renderer.sprite, art.bounds.size.x * BadgeRatio);
+            badge.gameObject.SetActive(false);
             EditorUtility.SetDirty(renderer);
+
+            LinkBadge(node, field, badge.gameObject);
+        }
+
+        /// <summary>
+        /// <c>MapNode</c>가 이 배지를 켜고 끌 수 있게 연결한다. 안 연결하면 오브젝트만 씬에 남고
+        /// <b>영영 안 켜진다</b> — 클리어 배지가 세션 14에 정확히 그 상태로 은퇴해 있었다.
+        /// </summary>
+        private static void LinkBadge(MapNode node, string field, GameObject badge)
+        {
+            var so = new SerializedObject(node);
+            SerializedProperty prop = so.FindProperty(field);
+            if (prop == null || prop.objectReferenceValue == badge)
+                return;
+
+            prop.objectReferenceValue = badge;
+            so.ApplyModifiedProperties();
         }
 
         /// <summary>
