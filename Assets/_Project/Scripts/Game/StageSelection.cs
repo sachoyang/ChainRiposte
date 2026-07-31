@@ -55,5 +55,22 @@ namespace ChainRiposte.Game
             SelectedLinkDepth = linkDepth;
             SelectedIsBossFinale = isBossFinale;
         }
+
+        /// <summary>
+        /// 부팅 시 선택을 비운다. <b>도메인 리로드를 끈 환경</b>에서는 정적 필드가 플레이를 넘어
+        /// 살아남으므로, 지난 플레이에서 고른 판이 남아 <b>Main 단독 실행이 지도를 거친 것처럼</b> 동작한다
+        /// (그 판의 고리 깊이로 난이도가 부풀고, 최종 고리였다면 엔딩까지 난다).
+        ///
+        /// <para>다른 정적 서비스는 전부 이 훅을 갖고 있는데 여기만 없었다 —
+        /// 정적 상태를 들면 초기화도 같이 든다.</para>
+        /// </summary>
+        [UnityEngine.RuntimeInitializeOnLoadMethod(UnityEngine.RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetStatics()
+        {
+            Selected = null;
+            SelectedIsFinalLink = false;
+            SelectedLinkDepth = 0;
+            SelectedIsBossFinale = false;
+        }
     }
 }

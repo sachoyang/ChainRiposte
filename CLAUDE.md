@@ -174,10 +174,47 @@
   돌려준 그림으로 역산 → null이라 플레이스홀더(1×1) 기준. **실측 전 0.32셀 / 후 1.0셀.**
 - `SetIconSprite`가 갈아 끼울 때마다 크기를 다시 맞춰 같은 함정을 막았다.
 
+#### 🧭 매니저 지형 (세션 15에 정리·조사한 것)
+
+크게 갈아엎을 게 **없다.** 이미 3층으로 깔끔하게 나뉘어 있다:
+
+- **정적 서비스 12개** (`static class`) — GameObject가 아니라 `DontDestroyOnLoad`가 필요 없다.
+  저장(`ProgressService`·`RunStateService`·`GameOptions`·`CharacterService`) /
+  조회(`Loc`·`MemoryLibrary`·`BossVisual`·`PlaceholderSprite`·`UiGauge`) /
+  씬 간 전달(`StageSelection`·`SceneRouter`) / 위임(`ThemeService` — **상태 0**) / 감시(`OrientationService`)
+- **`DontDestroyOnLoad`는 딱 2개**: `AudioService`의 오디오 루트 · `ScreenFader`. **둘 다 자가 생성**이라
+  씬에 배치할 필요가 없다.
+- **씬마다 새로 서는 것**: `IntroController` / `TitleController` / `StageSelectController` /
+  `GameManager`(컴포지션 루트, `[DefaultExecutionOrder(-100)]`) + `PuzzleController`·`CombatController`·`JuiceDirector`
+
+**고친 것 하나**: `StageSelection`만 `[RuntimeInitializeOnLoadMethod] ResetStatics()`가 없었다.
+도메인 리로드를 끈 환경에서 지난 플레이의 선택이 남아 **Main 단독 실행이 지도를 거친 것처럼**
+동작한다(고리 깊이로 난이도가 부풀고, 최종 고리였다면 엔딩까지 난다). 다른 정적 서비스는 전부 갖고 있던 훅이다.
+
+#### 🎓 튜토리얼 — **기획 완료, 구현은 다음 세션** (`Docs/TUTORIAL.md`)
+
+사용자와 기획을 확정했다. **구현 전에 그 문서를 먼저 읽을 것.** 확정된 결정만 옮기면:
+
+- **두 종류로 나눈다**: ①기믹 소개 카드(반복·작음) / ②첫 등반 튜토리얼(1회·큼). **①부터.**
+- ① **판 시작 직전**에 띄운다. 트리거는 `StageDataSO.introduces[]` — **코드에 스테이지 이름을 안 적는다.**
+  본 것은 `TutorialService`(PlayerPrefs)에 id로 기록. **NG+ 유지 / `Reset Progress`에서 같이 삭제.**
+- ① 카드는 **영상**(게임 중 녹화본, 루프)이 우선이고 그림·글씨로 떨어진다. 배관은 `EndingVideoPlayer`를 재사용.
+  안드로이드 H.264 mp4, 장당 1MB 안쪽. **녹화는 구현이 끝난 뒤**에 한다.
+- ② **씬을 새로 안 만든다**(Main을 쓴다 — 별도 씬은 HUD·보드·전투 화면을 복제하게 되고 둘이 갈라진다).
+  스테이지는 **`Stage_Tutorial` 신규**(`Stage_01`은 실험용이라 `bossEngageSeconds` 15초 + `IsBossFinale` 항상 true).
+- ② 고정 보드는 **엔진 수술이 필요 없다** — `PuzzleEngine(config, spawner, rng)`에 난수 주입구가 이미 있고
+  `ITileSpawner`는 메서드 하나짜리다. `ScriptedTileSpawner` + 고정 씨앗이면 끝.
+- ② **허용 안 된 타일은 입력이 씹힌다**(되돌리기 아님). `PuzzleInput`에서 막으므로 **Core는 손도 안 댄다.**
+  되돌아가면 "틀렸다"로 읽히고, 씹히면 "지금은 저기"로 읽힌다.
+- ② **스포트라이트** — 허용된 타일만 밝고 나머지는 살짝 어둡게. 마스크를 새로 안 만들고
+  `TileView`의 틴트를 쓴다. **밝은 목록과 입력 허용 목록은 반드시 같은 목록 하나여야 한다.**
+- **사운드는 튜토리얼 뒤**(사용자 지정).
+
 #### 🔴 다음 세션에서 가장 먼저 할 것
 
 1. **한 판 완주 검증을 끝낸다.** 세션 15에 1-3까지 진행됐다. **남은 것은 2-1 → 2-3 → 엔딩 → NG+**이고,
    여기가 두 세션치 미검증이 몰린 구간이다. 아래 「검증 부탁」 참조.
+   그 다음이 **튜토리얼 ①**(`Docs/TUTORIAL.md` §6의 1~2단계).
 2. **현지화 키 14개를 구글 시트에 넣기** — 세션 14부터 미결. `Localization.csv`에 직접 적었으므로
    **다음 시트 굽기에 날아간다.**
 3. **잡몹 수치 산정은 사용자 몫** — 타일 6종의 `공격력`·`공격까지 박 수`가 아직 전부 0(공용 8피해·3박).
@@ -187,7 +224,8 @@
 - **🔴 사운드** — 오디오 파일 **0개**. 배관은 다 돼 있어 **클립만 꽂으면 소리가 난다**(`Docs/AUDIO.md`).
   이제 남은 큰 것 중 유일하게 손 안 댄 항목이다.
 - **🟠 밸런스** — 채보가 들어갔으니 이제 튜닝이 의미를 갖는다. 소울 매장량 표(미결)도 같이.
-- **🟡 튜토리얼**(코드 0) · **안드로이드 실기 빌드**(미검증, GDD §9.3 출시 요구사항).
+- **🟠 튜토리얼** — **기획 완료**(`Docs/TUTORIAL.md`), 코드 0. **사운드보다 먼저**(사용자 지정).
+- **🟡 안드로이드 실기 빌드**(미검증, GDD §9.3 출시 요구사항).
 
 #### ✅ 세션 15 검증 부탁
 
