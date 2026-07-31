@@ -86,11 +86,26 @@ namespace ChainRiposte.Game.Config
         // 보스의 캐릭터별 겉모습은 여기 없다 — 보스 에셋(BossDataSO)의 「캐릭터별 겉모습」이 맡는다.
         // 스테이지마다 적으면 같은 그림을 스테이지 수만큼 되풀이하게 되고, 한 곳만 빠뜨려도 보스가 달라진다.
 
+        [Header("고정 보드 — 매번 같은 판이어야 할 때 (Docs/TUTORIAL.md §4.3)")]
+        [Tooltip("켜면 엔진이 배치를 스스로 고치지 않는다 — 즉시 매치 재추첨도, 데드락 리롤도 안 한다.\n" +
+                 "둘 다 대본을 망가뜨리기 때문이다(재추첨은 다음 칸을 당겨 쓰고, 리롤은 자리를 섞는다).\n" +
+                 "대신 시작부터 매치가 나거나 둘 수가 없어도 그대로 그렇게 된다 — 판을 짠 쪽이 책임진다.")]
+        [SerializeField] private bool fixedBoard;
+        [Tooltip("난수 씨앗. 0이면 매번 다른 판(평소). 0이 아니면 초기 배치·리필·기믹이 매번 같다.")]
+        [SerializeField] private int boardSeed;
+        [Tooltip("스폰 대본 — 이 순서대로 타일이 나온다. 다 떨어지면 위의 가중치 추첨으로 돌아간다.\n" +
+                 "보드 아래 행부터 왼쪽 → 오른쪽 순으로 초기 배치에 먼저 쓰이고, 그 뒤가 리필이다.")]
+        [SerializeField] private TileDefinitionSO[] scriptedSpawns = Array.Empty<TileDefinitionSO>();
+
         [Header("튜토리얼 — 이 판에서 처음 소개할 것 (Docs/TUTORIAL.md §3.2)")]
         [Tooltip("판이 시작되기 직전, 아직 안 본 항목만 카드로 뜬다. 둘 이상이면 순서대로 넘어간다.\n\n" +
                  "트리거를 여기(데이터)에 두는 이유: 코드에 스테이지 이름을 적으면 스테이지를 재배치할 때마다 " +
                  "규칙을 다시 적어야 한다.")]
         [SerializeField] private TutorialTopicSO[] introduces = Array.Empty<TutorialTopicSO>();
+
+        [Tooltip("이 판에서 <b>첫 등반 튜토리얼</b>(유도형)이 돈다 — Docs/TUTORIAL.md §4.\n" +
+                 "한 번 끝내면 다시 안 돈다. 켤 판은 하나뿐이다(Stage_Tutorial).")]
+        [SerializeField] private bool runsFirstClimbTutorial;
 
         [Header("스테이지 기믹 on/off (GDD §3.6) — 목록에 넣은 것만 활성화, 조합 가능")]
         [SerializeField] private GimmickType[] gimmicks = Array.Empty<GimmickType>();
@@ -204,6 +219,13 @@ namespace ChainRiposte.Game.Config
         /// </summary>
         public IReadOnlyList<TutorialTopicSO> Introduces => introduces;
 
+        /// <summary>
+        /// 이 판에서 첫 등반 튜토리얼(유도형)이 도는가 (<c>Docs/TUTORIAL.md</c> §4).
+        /// <see cref="Tutorial.TutorialDirector"/>가 이 값만 보고 자기를 켜거나 끈다 —
+        /// 코드에 스테이지 이름을 적지 않는다는 규칙은 여기서도 같다.
+        /// </summary>
+        public bool RunsFirstClimbTutorial => runsFirstClimbTutorial;
+
         public StageConfig ToConfig()
         {
             ParseBoardRows(out bool[,] activeMask, out List<GridPos> wallPositions);
@@ -231,10 +253,37 @@ namespace ChainRiposte.Game.Config
                 MaxLiveBossTiles = maxLiveBossTiles,
                 // 페이즈 수는 보스가 아니라 이 판이 정한다 — 같은 보스 에셋을 1페이즈·2페이즈로 나눠 쓴다.
                 Boss = bossData != null ? bossData.ToConfig(battlePhaseLimit) : null,
+                FixedBoard = fixedBoard,
+                BoardSeed = boardSeed,
+                ScriptedSpawns = BuildScriptedSpawns(),
                 Gimmicks = (GimmickType[])gimmicks.Clone(),
                 // 이 필드가 없던 시절의 에셋도 열 수 있게 방어 (순수 C# 클래스라 ?? 사용 가능)
                 GimmickSettings = (gimmickTuning ?? new GimmickTuning()).ToSettings(),
             };
+        }
+
+        /// <summary>
+        /// 스폰 대본을 순수 C# 정의로.
+        ///
+        /// <para>빈 칸은 건너뛰되 <b>에러 로그를 남긴다</b>. 조용히 넘어가면 그 칸 뒤가 전부 하나씩
+        /// 밀려서 "짠 것과 다른 판"이 나오는데, 화면만 봐서는 왜 그런지 알 수가 없다.</para>
+        /// </summary>
+        private List<TileDefinition> BuildScriptedSpawns()
+        {
+            var script = new List<TileDefinition>(scriptedSpawns.Length);
+            for (int i = 0; i < scriptedSpawns.Length; i++)
+            {
+                if (scriptedSpawns[i] == null)
+                {
+                    Debug.LogError($"{name}: 스폰 대본 {i}번 칸이 비어 있습니다. " +
+                        "그 뒤가 한 칸씩 밀려 짠 것과 다른 판이 나옵니다.", this);
+                    continue;
+                }
+
+                script.Add(scriptedSpawns[i].ToDefinition());
+            }
+
+            return script;
         }
 
         /// <summary>인스펙터의 위→아래 행 순서를 y=0이 바닥인 좌표계로 변환한다.</summary>

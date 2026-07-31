@@ -24,6 +24,11 @@ namespace ChainRiposte.Game.Flow
         [Tooltip("옵션 패널. 비워두면 옵션 버튼이 비활성화된다.")]
         [SerializeField] private GameObject optionsPanel;
 
+        [Tooltip("첫 등반 튜토리얼 판(Stage_Tutorial). 꽂아 두면 새 게임 직후 지도를 건너뛰고 " +
+                 "이 판으로 곧장 들어간다 — 한 번 끝내면 그 다음부터는 평소대로 지도로 간다.\n" +
+                 "비워 두면 튜토리얼이 없던 것처럼 지도로 간다.")]
+        [SerializeField] private Config.StageDataSO tutorialStage;
+
         [Header("확인 대화상자 (선택 — 비우면 확인 없이 바로 진행)")]
         [SerializeField] private GameObject confirmPanel;
         [SerializeField] private TMP_Text confirmText;
@@ -112,11 +117,23 @@ namespace ChainRiposte.Game.Flow
             StartNewGame();
         }
 
-        private static void StartNewGame()
+        private void StartNewGame()
         {
             ProgressService.ResetAll();
             // 고른 캐릭터의 사슬을 처음부터 — 이전 회차 빌드/소울을 물려받지 않게 (Docs/PROGRESSION.md)
             RunStateService.StartNewRun();
+
+            // 처음이면 지도를 건너뛰고 튜토리얼 판으로 곧장 (Docs/TUTORIAL.md §7).
+            // ResetAll 이 튜토리얼 기록도 지웠으므로 "새 게임 = 튜토리얼부터"가 규칙 하나로 유지된다.
+            if (tutorialStage != null && tutorialStage.RunsFirstClimbTutorial
+                && !Tutorial.TutorialService.HasSeen(Tutorial.TutorialDirector.TopicId))
+            {
+                // 지도를 안 거치므로 고리 깊이 0·최종 아님으로 들어간다 — 난이도가 부풀지 않는다.
+                StageSelection.Select(tutorialStage, isFinalLink: false, linkDepth: 0, isBossFinale: false);
+                SceneRouter.GoMain();
+                return;
+            }
+
             SceneRouter.GoStageSelect();
         }
 

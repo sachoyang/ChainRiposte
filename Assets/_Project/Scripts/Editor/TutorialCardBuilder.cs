@@ -78,7 +78,8 @@ namespace ChainRiposte.Editor
 
             RectTransform panel = EditorUiFactory.NewRect("Panel", root);
             panel.anchorMin = panel.anchorMax = panel.pivot = new Vector2(0.5f, 0.5f);
-            panel.anchoredPosition = Vector2.zero;
+            // 아래에 말하는 사람이 설 자리를 비워 두려고 카드를 위로 올린다.
+            panel.anchoredPosition = new Vector2(0f, 190f);
             panel.sizeDelta = new Vector2(900f, 1180f);
             var panelImage = panel.gameObject.AddComponent<Image>();
             panelImage.sprite = EditorUiFactory.PixelSprite("panel");
@@ -138,6 +139,21 @@ namespace ChainRiposte.Editor
                 new Vector2(420f, 120f), Color.white, string.Empty, 46f,
                 out Image _, out TextMeshProUGUI nextLabel);
 
+            // 말하는 사람(무녀·성녀). 카드 <b>밖</b> 왼쪽 아래에 세운다 — 안에 넣으면 글씨 자리를
+            // 잡아먹는다. 그림은 고른 캐릭터를 따라 코드가 채운다 — 여기서는 자리만 만든다.
+            RectTransform speakerRect = EditorUiFactory.NewRect("Speaker", root);
+            speakerRect.anchorMin = speakerRect.anchorMax = speakerRect.pivot = new Vector2(0f, 0f);
+            speakerRect.anchoredPosition = new Vector2(60f, 40f);
+            speakerRect.sizeDelta = new Vector2(420f, 560f);
+            var speaker = speakerRect.gameObject.AddComponent<Image>();
+            // 비율을 지킨다 — 초상은 늘어나면 바로 티가 난다.
+            speaker.preserveAspect = true;
+            speaker.raycastTarget = false;
+            speakerRect.gameObject.SetActive(false); // 그림이 정해지면 코드가 켠다
+            // 가로 화면에서는 카드가 납작해지므로 사람도 작게, 오른쪽 아래로 비킨다.
+            EditorUiFactory.Orient(speakerRect, new Vector2(0f, 0f), new Vector2(0f, 0f),
+                new Vector2(40f, 20f), new Vector2(280f, 380f));
+
             // 재생기는 캔버스에 둔다 — 루트가 꺼져 있어도 살아 있어야 한다.
             // 소리는 안 낸다: 카드는 읽는 화면이고, 퍼즐 BGM 위에 겹치면 방해다.
             var video = canvasGo.AddComponent<VideoPlayer>();
@@ -156,6 +172,7 @@ namespace ChainRiposte.Editor
             so.FindProperty("mediaFitter").objectReferenceValue = fitter;
             so.FindProperty("videoScreen").objectReferenceValue = videoScreen;
             so.FindProperty("imageView").objectReferenceValue = imageView;
+            so.FindProperty("speakerImage").objectReferenceValue = speaker;
             so.FindProperty("video").objectReferenceValue = video;
             so.FindProperty("nextButton").objectReferenceValue = next;
             so.FindProperty("nextLabel").objectReferenceValue = nextLabel;

@@ -32,6 +32,11 @@ namespace ChainRiposte.Game.Config
         [Tooltip("영상이 없을 때 쓰는 정지 그림.")]
         [SerializeField] private Sprite image;
 
+        [Header("말하는 사람")]
+        [Tooltip("이 카드만 다른 사람이 말할 때 꽂는다. <b>비워 두는 것이 보통</b> — 그러면 고른 캐릭터의 " +
+                 "성녀·무녀가 말한다(기사=성녀 / 낭인=무녀). 안내는 한 사람의 목소리로 이어지는 편이 낫다.")]
+        [SerializeField] private Sprite speaker;
+
         /// <summary>「봤다」 세이브가 이 항목을 가리키는 이름.</summary>
         public string TopicId => string.IsNullOrWhiteSpace(topicId) ? name : topicId;
 
@@ -39,5 +44,8 @@ namespace ChainRiposte.Game.Config
         public string BodyKey => bodyKey;
         public VideoClip Clip => clip;
         public Sprite Image => image;
+
+        /// <summary>이 카드를 말하는 사람. null이면 고른 캐릭터의 성녀·무녀가 말한다.</summary>
+        public Sprite Speaker => speaker;
     }
 }

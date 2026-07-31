@@ -28,6 +28,11 @@ namespace ChainRiposte.Game.Puzzle
         /// <summary>아이콘이 차지할 셀 기준 크기. 그림을 갈아 끼울 때 다시 맞추려고 들고 있는다.</summary>
         private float _iconSize = 1f;
 
+        // 튜토리얼 스포트라이트 (Docs/TUTORIAL.md §4.5). 1 = 원래 밝기.
+        private float _dim = 1f;
+        private SpriteRenderer _background;
+        private Color _backgroundColor = Color.white;
+
         // 이번 성남이 시작될 때의 숫자. 커지는 정도를 여기에 견주므로, 몇 박짜리 위협이든
         // "마지막 한 칸"에서 가장 크게 보인다 (박 수를 스테이지마다 바꿔도 연출이 안 깨진다).
         private int _enrageStart;
@@ -160,7 +165,35 @@ namespace ChainRiposte.Game.Puzzle
             renderer.sprite = visual.Background;
             renderer.color = visual.BackgroundColor;
             renderer.sortingOrder = -1;
+
+            _background = renderer;
+            _backgroundColor = visual.BackgroundColor;
         }
+
+        /// <summary>
+        /// 튜토리얼 스포트라이트 — 지금 만질 수 없는 타일을 어둡게 한다
+        /// (<c>Docs/TUTORIAL.md</c> §4.5). 1이면 원래 밝기.
+        ///
+        /// <para>마스크를 새로 만들지 않고 <b>이미 있는 틴트 경로</b>를 쓴다. 벽 손상·성난 몬스터가
+        /// 색으로 상태를 말하는 것과 같은 방식이라, 어두워진 위에 그 표시들이 그대로 얹힌다.</para>
+        ///
+        /// <para>어둡게 하는 것은 <b>몬스터 그림과 받침까지</b>다 — 뱃지·숫자는 경고라서 밝게 남긴다.
+        /// 지금 만질 수 없는 칸이라고 해서 "저놈이 곧 때린다"를 안 보여 줄 이유는 없다.</para>
+        /// </summary>
+        public void SetDim(float dim)
+        {
+            dim = Mathf.Clamp01(dim);
+            if (Mathf.Approximately(_dim, dim))
+                return;
+
+            _dim = dim;
+            RefreshColor();
+            if (_background != null)
+                _background.color = Dimmed(_backgroundColor);
+        }
+
+        private Color Dimmed(Color color) =>
+            _dim >= 1f ? color : new Color(color.r * _dim, color.g * _dim, color.b * _dim, color.a);
 
         /// <summary>
         /// 아이콘 그림을 갈아 끼우고 <b>크기를 다시 맞춘다</b>. 그림마다 픽셀 크기가 달라서
@@ -562,7 +595,7 @@ namespace ChainRiposte.Game.Puzzle
                 float lost = 1f - (float)_remainingHp / _maxHp;
                 int index = Mathf.Clamp(Mathf.RoundToInt(lost * (_wallStages.Length - 1)), 0, _wallStages.Length - 1);
                 SetIconSprite(_wallStages[index]);
-                _renderer.color = Color.white;
+                _renderer.color = Dimmed(Color.white);
                 return;
             }
 
@@ -571,7 +604,7 @@ namespace ChainRiposte.Game.Puzzle
                 : _baseColor;
 
             // 성난 놈은 원래 색과 섞어 물들인다 — 통째로 갈아치우면 무슨 몬스터인지 못 알아본다.
-            _renderer.color = _enraged ? Color.Lerp(color, _enrageTint, 0.6f) : color;
+            _renderer.color = Dimmed(_enraged ? Color.Lerp(color, _enrageTint, 0.6f) : color);
         }
     }
 }

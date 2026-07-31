@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using ChainRiposte.Core.Board;
 using ChainRiposte.Core.Flow;
@@ -25,6 +26,15 @@ namespace ChainRiposte.Game.Puzzle
 
         private PuzzleEngine _engine;
         private IntrusionSystem _intrusion;
+
+        /// <summary>이 판의 퍼즐 엔진. 퍼즐이 시작되기 전에는 null이다 — <see cref="PuzzleBegun"/>을 기다릴 것.</summary>
+        public PuzzleEngine Engine => _engine;
+
+        /// <summary>
+        /// 보드가 깔리고 입력이 열린 직후. 튜토리얼처럼 <b>퍼즐을 옆에서 지켜보는</b> 쪽이
+        /// 붙을 자리다 — 퍼즐 코드가 그 존재를 알 필요가 없다.
+        /// </summary>
+        public event Action<PuzzleEngine> PuzzleBegun;
         private StageConfig _stageConfig;
         private bool _replaying;
 
@@ -136,8 +146,15 @@ namespace ChainRiposte.Game.Puzzle
         {
             _stageConfig = gameManager.StageConfig;
 
-            _intrusion = new IntrusionSystem(_stageConfig, () => gameManager.Session.Stats.TotalSoulsEarned);
-            _engine = new PuzzleEngine(_stageConfig, _intrusion.Spawner);
+            // 씨앗이 0이 아니면 매번 같은 판이 나온다. <b>같은 난수를</b> 스포너와 엔진 둘 다에 넣는 것이
+            // 요점이다 — 한쪽만 고정하면 배치는 같은데 기믹이 다르거나 그 반대가 된다.
+            System.Random rng = _stageConfig.BoardSeed != 0 ? new System.Random(_stageConfig.BoardSeed) : null;
+            var scripted = new ScriptedTileSpawner(
+                _stageConfig.ScriptedSpawns, new WeightedTileSpawner(_stageConfig.SpawnWeights, rng));
+
+            _intrusion = new IntrusionSystem(
+                _stageConfig, () => gameManager.Session.Stats.TotalSoulsEarned, rng, scripted);
+            _engine = new PuzzleEngine(_stageConfig, _intrusion.Spawner, rng);
             _intrusion.AttachBoard(_engine.Board);
 
             _intrusion.EngageTimerChanged += hud.SetBossTimer;
@@ -149,6 +166,7 @@ namespace ChainRiposte.Game.Puzzle
             if (juice != null)
                 juice.BindPuzzle(boardView, _intrusion.Spawner);
             input.SetActive(true);
+            PuzzleBegun?.Invoke(_engine);
         }
 
         /// <summary>

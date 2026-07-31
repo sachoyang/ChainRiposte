@@ -709,6 +709,7 @@ MonoBehaviour:
   optionsButton: {fileID: 295063768}
   quitButton: {fileID: 559117632}
   optionsPanel: {fileID: 707413318}
+  tutorialStage: {fileID: 11400000, guid: ef05323cd74a96f43b9b62e0be57ed50, type: 2}
   confirmPanel: {fileID: 906223142}
   confirmText: {fileID: 906223141}
   confirmYesButton: {fileID: 906223140}

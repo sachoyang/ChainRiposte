@@ -20,6 +20,7 @@ namespace ChainRiposte.Core.Match
         private readonly ITileSpawner _spawner;
         private readonly Random _rng;
         private readonly float _comboMultiplierStep;
+        private readonly bool _fixedBoard;
         private readonly IReadOnlyList<IStageGimmick> _gimmicks;
         private readonly GimmickContext _gimmickContext;
 
@@ -45,6 +46,7 @@ namespace ChainRiposte.Core.Match
             _spawner = spawner ?? throw new ArgumentNullException(nameof(spawner));
             _rng = rng ?? new Random();
             _comboMultiplierStep = config.ComboSoulMultiplierStep;
+            _fixedBoard = config.FixedBoard;
             HasTurnLimit = config.TurnLimit > 0;
             TurnsRemaining = config.TurnLimit;
             Board = config.CreateBoard();
@@ -291,7 +293,8 @@ namespace ChainRiposte.Core.Match
         /// <returns>뷰가 재생할 이동 기록. 데드락이 아니었으면 비어 있다.</returns>
         private IReadOnlyList<TileMove> ShuffleIfDeadlocked()
         {
-            if (MoveFinder.HasAnyValidMove(Board))
+            // 대본으로 짠 판은 섞지 않는다 — 구해 주려다 애써 놓은 자리를 통째로 무너뜨린다.
+            if (_fixedBoard || MoveFinder.HasAnyValidMove(Board))
                 return Array.Empty<TileMove>();
 
             var slots = new List<GridPos>();
@@ -362,8 +365,12 @@ namespace ChainRiposte.Core.Match
                     continue; // 초기 벽
 
                 TileDefinition def = _spawner.NextDefinition();
-                for (int attempt = 0; attempt < MaxRerolls && CreatesImmediateMatch(pos, def); attempt++)
-                    def = _spawner.NextDefinition();
+                // 대본으로 짠 판에서는 재추첨이 다음 칸을 몰래 당겨 써서 그 뒤 전체를 밀어 버린다.
+                if (!_fixedBoard)
+                {
+                    for (int attempt = 0; attempt < MaxRerolls && CreatesImmediateMatch(pos, def); attempt++)
+                        def = _spawner.NextDefinition();
+                }
 
                 Board.PlaceTile(pos, new Tile(def));
             }

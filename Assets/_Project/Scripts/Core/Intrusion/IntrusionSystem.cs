@@ -49,14 +49,20 @@ namespace ChainRiposte.Core.Intrusion
         /// <summary>(돌입 계기가 된 보스 타일. 판 시계 만료면 null) — 전투로 넘어간다.</summary>
         public event Action<Tile> Engage;
 
-        public IntrusionSystem(StageConfig config, Func<float> scoreGetter, Random rng = null)
+        /// <param name="baseSpawner">
+        /// 보스 데코레이터가 감쌀 <b>속</b> 스포너. 비우면 평소대로 가중치 추첨이다.
+        /// 튜토리얼이 <see cref="ScriptedTileSpawner"/>를 여기 끼워 넣는다 — 보스 난입은 그대로 두고
+        /// 어떤 잡몹이 나올지만 대본으로 정하기 위해서다(<c>Docs/TUTORIAL.md</c> §4.3).
+        /// </param>
+        public IntrusionSystem(
+            StageConfig config, Func<float> scoreGetter, Random rng = null, ITileSpawner baseSpawner = null)
         {
             _config = config ?? throw new ArgumentNullException(nameof(config));
             if (scoreGetter == null)
                 throw new ArgumentNullException(nameof(scoreGetter));
 
             Spawner = new BossTileSpawner(
-                new WeightedTileSpawner(config.SpawnWeights, rng),
+                baseSpawner ?? new WeightedTileSpawner(config.SpawnWeights, rng),
                 BossDefinition,
                 config.BossChanceByScore,
                 config.BossChanceBySeconds,

@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using ChainRiposte.Game.Characters;
 using ChainRiposte.Game.Config;
 using ChainRiposte.Game.Localization;
 using ChainRiposte.Game.Tutorial;
@@ -41,6 +42,13 @@ namespace ChainRiposte.Game.UI
         [SerializeField] private RawImage videoScreen;
         [SerializeField] private Image imageView;
         [SerializeField] private VideoPlayer video;
+
+        [Header("말하는 사람 (무녀·성녀)")]
+        [Tooltip("안내를 말하는 사람의 그림이 들어갈 자리. 그림이 없으면 통째로 꺼진다 " +
+                 "— 아트가 없다고 안내가 멈추면 안 된다.")]
+        [SerializeField] private Image speakerImage;
+        [Tooltip("캐릭터를 아직 안 골랐을 때(Main 단독 실행 등) 쓸 그림. 비워 두면 그때는 아무도 안 나온다.")]
+        [SerializeField] private Sprite fallbackSpeaker;
 
         [Header("버튼")]
         [SerializeField] private Button nextButton;
@@ -90,16 +98,33 @@ namespace ChainRiposte.Game.UI
         ///
         /// <para>큐가 비어 있으면(대부분의 판) 그 자리에서 끝난다 — 한 프레임도 안 먹는다.</para>
         /// </summary>
-        public IEnumerator Show(IReadOnlyList<TutorialTopicSO> topics)
+        public IEnumerator Show(IReadOnlyList<TutorialTopicSO> topics) =>
+            Present(Pending(topics), record: true);
+
+        /// <summary>
+        /// 한 장을 <b>기록하지 않고</b> 띄운다 — 유도형 튜토리얼(<c>Docs/TUTORIAL.md</c> §4)의 단계 카드용.
+        ///
+        /// <para>기록을 안 하는 이유: 유도형은 <b>통째로 한 번</b>이 단위다. 단계마다 id를 남기면
+        /// 중간에 죽고 다시 시작했을 때 앞부분만 건너뛰어져 "설명이 중간부터 나오는" 상태가 된다.</para>
+        /// </summary>
+        public IEnumerator ShowOnce(TutorialTopicSO topic)
         {
-            List<TutorialTopicSO> queue = Pending(topics);
+            var one = new List<TutorialTopicSO>();
+            if (topic != null)
+                one.Add(topic);
+
+            return Present(one, record: false);
+        }
+
+        private IEnumerator Present(List<TutorialTopicSO> queue, bool record)
+        {
             if (queue.Count == 0)
                 yield break;
 
             if (root == null || nextButton == null)
             {
                 // 배선이 없다고 「봤다」로 기록하면 안 된다 — 배선한 뒤에도 영영 안 뜬다.
-                Debug.LogWarning($"{nameof(TutorialCard)}: 배선이 없어 소개 카드 {queue.Count}장을 건너뜁니다. " +
+                Debug.LogWarning($"{nameof(TutorialCard)}: 배선이 없어 카드 {queue.Count}장을 건너뜁니다. " +
                     "Tools ▸ ChainRiposte ▸ Add Tutorial Card To Main 을 실행하세요.", this);
                 yield break;
             }
@@ -118,7 +143,8 @@ namespace ChainRiposte.Game.UI
                     yield return null;
 
                 // 닫는 순간 기록한다 — 판을 깨야 기록하면, 죽고 다시 들어올 때마다 같은 카드를 또 읽는다.
-                TutorialService.MarkSeen(queue[i].TopicId);
+                if (record)
+                    TutorialService.MarkSeen(queue[i].TopicId);
             }
 
             yield return Fade(1f, 0f);
@@ -157,10 +183,37 @@ namespace ChainRiposte.Game.UI
             if (nextLabel != null)
                 nextLabel.text = Loc.GetText(index == total - 1 ? "tutorial.card.start" : "tutorial.card.next");
 
+            DrawSpeaker(topic);
             yield return DrawMedia(topic);
 
             if (index == 0)
                 yield return Fade(0f, 1f);
+        }
+
+        /// <summary>
+        /// 안내를 말하는 사람. <b>고른 캐릭터를 따라간다</b> — 기사면 성녀, 낭인이면 무녀다.
+        /// 준비 화면의 NPC와 같은 그림(<c>PlayerCharacterSO ▸ Saint Sprite</c>)을 쓰므로,
+        /// 그 슬롯 하나만 갈아 끼우면 튜토리얼과 상점의 얼굴이 저절로 같아진다.
+        ///
+        /// <para>항목이 제 그림을 들고 있으면 그쪽이 이긴다 — 어떤 카드만 다른 사람이 말하게 할 수 있다.</para>
+        /// </summary>
+        private void DrawSpeaker(TutorialTopicSO topic)
+        {
+            if (speakerImage == null)
+                return;
+
+            Sprite sprite = topic.Speaker;
+            if (sprite == null)
+            {
+                PlayerCharacterSO character = CharacterService.Current;
+                sprite = character != null ? character.SaintSprite : null;
+            }
+
+            if (sprite == null)
+                sprite = fallbackSpeaker;
+
+            speakerImage.sprite = sprite;
+            speakerImage.gameObject.SetActive(sprite != null);
         }
 
         /// <summary>영상 → 그림 → 아무것도 없음. 없는 것은 자리째 접는다.</summary>

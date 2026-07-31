@@ -1,0 +1,118 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 605fa9713fb2bd44c8ee6b7c99f4bd10, type: 3}
+  m_Name: Stage_Tutorial
+  m_EditorClassIdentifier: ChainRiposte.Game::ChainRiposte.Game.Config.StageDataSO
+  stageId: Stage_Tutorial
+  boardRows:
+  - XXXOOXXX
+  - XXOOOOXX
+  - XOOOOOOX
+  - OOOOOOOO
+  - OOOOOOOO
+  - XOOOOOOX
+  - XXOOOOXX
+  - XXXOOXXX
+  wallHp: 3
+  turnLimit: 0
+  comboSoulMultiplierStep: 0.5
+  potionHealAmount: 10
+  soulBudget: 0
+  spawnWeights:
+  - tile: {fileID: 11400000, guid: c009100637f280245b5f700772cfddc1, type: 2}
+    weight: 1
+  - tile: {fileID: 11400000, guid: 749184a03d3c27e43a9d248e43ca6376, type: 2}
+    weight: 1
+  - tile: {fileID: 11400000, guid: 3e650c36c3633bd41b215fd26b5b06cf, type: 2}
+    weight: 1
+  - tile: {fileID: 11400000, guid: b30e9baac9b840243944ce7766d05242, type: 2}
+    weight: 1
+  - tile: {fileID: 11400000, guid: 7b3ea943a64181f43bef2935ec1aaf4d, type: 2}
+    weight: 1
+  - tile: {fileID: 11400000, guid: 93eeeb35c7d3d284c96816b2d2eac266, type: 2}
+    weight: 0.35
+  bossChanceByScore:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0
+      inSlope: 1
+      outSlope: 1
+      tangentMode: 34
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 1
+      value: 1
+      inSlope: 1
+      outSlope: 1
+      tangentMode: 34
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  bossChanceBySeconds:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 45
+      value: 0
+      inSlope: 0
+      outSlope: 0.0022222223
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 180
+      value: 0.3
+      inSlope: 0.0022222223
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  bossEngageSeconds: 180
+  maxLiveBossTiles: 1
+  bossData: {fileID: 11400000, guid: c227ecf42446f934788dc32872effdd2, type: 2}
+  battlePhaseLimit: 0
+  isFinalLink: 0
+  fixedBoard: 1
+  boardSeed: 1337
+  scriptedSpawns: []
+  introduces:
+  - {fileID: 11400000, guid: 3ca9303bfd3c22348868ba7ec95f00f3, type: 2}
+  runsFirstClimbTutorial: 1
+  gimmicks: 
+  gimmickTuning:
+    corruptionSeeds: 2
+    corruptionSpreadEveryTurns: 1
+    maxCorruptionRatio: 0.35
+    bombChance: 0.12
+    bombTurns: 3
+    bombDamage: 12
+    maxLiveBombs: 3
+    chainInitialCount: 3
+    chainChance: 0.08
+    enrageBeatSeconds: 1.6
+    enrageChance: 0.35
+    enrageChanceRampPerBeat: 0.01
+    enrageBeats: 3
+    enrageDamage: 8
+    maxEnragedTiles: 3

@@ -22,6 +22,18 @@ namespace ChainRiposte.Game.Combat
 
         private CombatSystem _combat;
 
+        /// <summary>
+        /// 이 판의 전투. 보스전에 들어가기 전에는 null이다 — 구독하려면
+        /// <see cref="CombatBegun"/>을 기다릴 것.
+        /// </summary>
+        public CombatSystem Combat => _combat;
+
+        /// <summary>
+        /// 전투가 만들어진 직후 (아직 첫 노트 전). 튜토리얼처럼 <b>전투를 옆에서 지켜보는</b> 쪽이
+        /// 이벤트를 붙일 자리다 — 전투 코드가 그 존재를 알 필요가 없다.
+        /// </summary>
+        public event System.Action<CombatSystem> CombatBegun;
+
         private void Awake()
         {
             gameManager.Session.PhaseChanged += OnPhaseChanged;
@@ -71,6 +83,7 @@ namespace ChainRiposte.Game.Combat
             _combat.Ended += OnCombatEnded;
             _combat.PhaseCleared += OnPhaseCleared;
             _combat.PhaseStarted += OnPhaseStarted;
+            CombatBegun?.Invoke(_combat);
 
             if (puzzleBoardRoot != null)
                 puzzleBoardRoot.SetActive(false);

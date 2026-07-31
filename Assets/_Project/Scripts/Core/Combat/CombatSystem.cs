@@ -126,6 +126,13 @@ namespace ChainRiposte.Core.Combat
         /// <summary>패링 성공 — 쇳소리+기타 피드백 훅.</summary>
         public event Action<BossNoteConfig> AttackParried;
 
+        /// <summary>
+        /// 헛침 — 판정 밖에서 눌렀다. 잠깐 잠기고 보스가 체간을 되찾는다.
+        /// <para>피격(<see cref="PlayerHit"/>)과 <b>따로</b> 둔다: 하나는 "안 눌러서 맞은 것"이고
+        /// 이것은 "잘못 눌러서 손해 본 것"이라, 화면이 서로 다른 말을 해야 한다.</para>
+        /// </summary>
+        public event Action Whiffed;
+
         /// <summary>(노트, 실제 피해량) — 패링 실패/미입력 피격. HP 반영은 PlayerHealth.Changed로 통지된다.</summary>
         public event Action<BossNoteConfig, int> PlayerHit;
 
@@ -310,6 +317,7 @@ namespace ChainRiposte.Core.Combat
             _playerTimer = _stats.ParryWhiffLockSeconds * _memories.WhiffLockMultiplier;
             RecoverPosture(_config.WhiffPostureRecovery);
             BreakParryStreak();
+            Whiffed?.Invoke();
         }
 
         /// <summary>

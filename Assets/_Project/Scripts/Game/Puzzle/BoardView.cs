@@ -114,7 +114,14 @@ namespace ChainRiposte.Game.Puzzle
         [Tooltip("데드락 리롤 — 타일이 새 자리로 날아가는 시간")]
         [SerializeField, Min(0.01f)] private float shuffleDuration = 0.45f;
 
+        [Header("튜토리얼 스포트라이트")]
+        [Tooltip("지금 만질 수 없는 타일의 밝기 (1 = 그대로). 너무 어두우면 보드가 안 읽히고, " +
+                 "약하면 어디를 눌러야 할지 모른다. — Docs/TUTORIAL.md §4.5")]
+        [SerializeField, Range(0.1f, 1f)] private float spotlightDim = 0.35f;
+
         private readonly Dictionary<GridPos, TileView> _views = new();
+        /// <summary>밝게 둘 칸. null이면 스포트라이트가 꺼져 있다.</summary>
+        private HashSet<GridPos> _spotlight;
         private readonly Dictionary<TileDefinition, Color> _colorByDefinition = new();
         private readonly Dictionary<TileDefinition, Sprite> _spriteByDefinition = new();
         private readonly Dictionary<TileDefinition, Sprite> _backgroundByDefinition = new();
@@ -153,6 +160,58 @@ namespace ChainRiposte.Game.Puzzle
                 if (tile != null)
                     CreateTileView(tile, pos);
             }
+        }
+
+        /// <summary>
+        /// <b>튜토리얼 스포트라이트</b> (<c>Docs/TUTORIAL.md</c> §4.5) — 넘긴 칸만 원래 밝기로 두고
+        /// 나머지를 어둡게 한다. null이거나 비면 끈다.
+        ///
+        /// <para>이것을 부르는 쪽(<c>TutorialDirector</c>)이 <b>같은 목록으로</b> 입력 허용도 건다.
+        /// 밝기와 입력이 두 목록에서 따로 나오면 반드시 어긋나고, 그러면 "안 눌리는데 밝은 칸"이
+        /// 생겨 플레이어가 고장으로 읽는다.</para>
+        /// </summary>
+        public void SetSpotlight(IEnumerable<GridPos> lit)
+        {
+            if (lit == null)
+            {
+                if (_spotlight == null)
+                    return;
+
+                _spotlight = null;
+                foreach (TileView view in _views.Values)
+                    view.SetDim(1f);
+                return;
+            }
+
+            _spotlight ??= new HashSet<GridPos>();
+            _spotlight.Clear();
+            foreach (GridPos pos in lit)
+                _spotlight.Add(pos);
+
+            if (_spotlight.Count == 0)
+            {
+                SetSpotlight(null);
+                return;
+            }
+
+            ApplySpotlight();
+        }
+
+        /// <summary>
+        /// 매 프레임 다시 칠한다. 타일은 떨어지고 사라지고 새로 생기는데 그 경로가 여럿이라,
+        /// 각 경로에서 잊지 않고 부르게 하는 것보다 <b>한 곳에서 늘 맞추는</b> 편이 안전하다.
+        /// (<see cref="TileView.SetDim"/>은 값이 같으면 아무 일도 안 한다 — 켜져 있을 때만 도는 비용이다.)
+        /// </summary>
+        private void LateUpdate()
+        {
+            if (_spotlight != null)
+                ApplySpotlight();
+        }
+
+        private void ApplySpotlight()
+        {
+            foreach (KeyValuePair<GridPos, TileView> entry in _views)
+                entry.Value.SetDim(_spotlight.Contains(entry.Key) ? 1f : spotlightDim);
         }
 
         public Vector3 GridToLocal(GridPos pos) =>

@@ -682,6 +682,41 @@ namespace ChainRiposte.Editor
                 "부패는 매 턴 옆 몬스터로 번진다.\\n바로 옆에서 매치를 만들어 태워라.",
                 "Corruption spreads to a neighbouring monster every turn.\\nMake a match beside it to burn it away.");
 
+            // 첫 등반 튜토리얼 (Docs/TUTORIAL.md §4). 1·8번은 세계관 문구라 기획이 고쳐 쓴다.
+            Row(builder, "tutorial.climb.why.title", "사슬", "THE CHAIN");
+            Row(builder, "tutorial.climb.why.body",
+                "너는 사슬의 맨 아래에 있다.\\n고리를 하나씩 끊으며 위로 오른다. 끝에 무엇이 있는지는 아무도 돌아와 말해 주지 않았다.",
+                "You stand at the bottom of the chain.\\nYou climb by breaking its links one by one. No one has come back to say what waits at the top.");
+            Row(builder, "tutorial.climb.match.title", "베어라", "STRIKE");
+            Row(builder, "tutorial.climb.match.body",
+                "빛나는 두 칸을 서로 바꿔라.\\n같은 몬스터 3개가 나란히 서면 베고 소울을 얻는다.",
+                "Swap the two lit tiles.\\nThree of the same monster in a row are slain — and they leave souls.");
+            Row(builder, "tutorial.climb.enrage.title", "성난 몬스터", "ENRAGED");
+            Row(builder, "tutorial.climb.enrage.body",
+                "붉게 물든 놈이 있다. 머리 위 숫자가 0이 되면 너를 때린다.\\n그 전에 매치로 없애면 그 공격은 없던 일이 된다.",
+                "One of them has turned red. When its counter reaches zero it strikes you.\\nMatch it away before then and the blow never lands.");
+            Row(builder, "tutorial.climb.boss.title", "내려오는 것", "IT DESCENDS");
+            Row(builder, "tutorial.climb.boss.body",
+                "보스 타일이 바닥에 닿으면 싸움이 시작된다.\\n퍼즐에서 깎인 체력은 돌아오지 않는다 — 준비는 여기서 끝난다.",
+                "When the boss tile reaches the bottom the fight begins.\\nWhat the puzzle took from you is not given back. Preparation ends here.");
+            Row(builder, "tutorial.climb.parry.title", "패링", "PARRY");
+            Row(builder, "tutorial.climb.parry.body",
+                "흰 원이 다가온다. 회색 띠에 겹치는 순간 왼쪽을 눌러라.\\n막을 때마다 보스의 체간이 무너진다.",
+                "A white ring closes in. Press left the moment it overlaps the grey band.\\nEvery parry breaks the boss's posture a little further.");
+            Row(builder, "tutorial.climb.whiff.title", "헛쳤다", "YOU MISSED");
+            Row(builder, "tutorial.climb.whiff.body",
+                "빗나갔다. 잠시 손이 굳고 보스는 체간을 되찾는다.\\n막 누르지 마라 — 기다리는 것이 실력이다.",
+                "The strike went wide. Your hand locks up and the boss recovers its posture.\\nDo not mash. Waiting is the skill.");
+            Row(builder, "tutorial.climb.execute.title", "인살", "DEATHBLOW");
+            Row(builder, "tutorial.climb.execute.body",
+                "보스의 체간이 무너졌다.\\n지금 오른쪽을 눌러 끝내라.",
+                "The boss's posture has shattered.\\nPress right now and end it.");
+            Row(builder, "tutorial.climb.chain.title", "끊어진 사슬", "THE BROKEN CHAIN");
+            Row(builder, "tutorial.climb.chain.body",
+                "죽어도 네가 얻은 힘은 남는다. 끊기는 것은 사슬뿐이다.\\n다시 아래에서 시작하되 전보다 강한 채로 오른다.",
+                "Death does not take the strength you earned. Only the chain breaks.\\nYou begin again at the bottom — but you climb it stronger.");
+            Row(builder, "tutorial.skip", "건너뛰기", "SKIP");
+
             // 공통
             Row(builder, "common.yes", "예", "YES");
             Row(builder, "common.no", "아니오", "NO");

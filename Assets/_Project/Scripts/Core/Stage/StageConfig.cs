@@ -45,6 +45,34 @@ namespace ChainRiposte.Core.Stage
         /// <summary>리필 시 타일 종류별 스폰 가중치.</summary>
         public IReadOnlyList<TileSpawnWeight> SpawnWeights = Array.Empty<TileSpawnWeight>();
 
+        /// <summary>
+        /// <b>보드가 정해져 있는 판인가</b> (<c>Docs/TUTORIAL.md</c> §4.3). 켜면 엔진이 배치를
+        /// 스스로 고치지 않는다 — 초기 배치의 <b>즉시 매치 재추첨</b>과 <b>데드락 리롤</b> 둘 다 끈다.
+        ///
+        /// <para>둘 다 "플레이어를 구해 주는" 장치인데, 대본으로 짠 판에서는 반대로 <b>대본을 망가뜨린다</b>:
+        /// 재추첨은 <see cref="ScriptedTileSpawner"/>의 다음 칸을 몰래 당겨 써서 그 뒤 전체를 한 칸씩
+        /// 밀어 버리고, 리롤은 애써 놓은 자리를 통째로 섞는다.</para>
+        ///
+        /// <para>대신 <b>판을 짠 쪽이 책임진다</b> — 시작부터 매치가 나거나 둘 수가 없으면 그대로 그렇게 된다.</para>
+        /// </summary>
+        public bool FixedBoard;
+
+        /// <summary>
+        /// 난수 씨앗. <b>0이면 매번 다른 판</b>(평소). 0이 아니면 초기 배치·리필·기믹이 전부
+        /// 같은 순서로 나와 <b>매번 같은 판</b>이 된다 — 튜토리얼이 "저 칸을 저기로"라고
+        /// 말할 수 있는 근거다.
+        /// </summary>
+        public int BoardSeed;
+
+        /// <summary>
+        /// <b>스폰 대본</b> — 이 순서대로 타일이 나온다(<see cref="ScriptedTileSpawner"/>).
+        /// 다 떨어지면 평소 가중치 추첨으로 돌아간다.
+        ///
+        /// <para>보드의 <c>ActivePositions</c> 순서대로 <b>초기 배치부터</b> 소비된다는 점에 주의 —
+        /// 앞쪽이 시작 보드이고 그 뒤가 리필이다.</para>
+        /// </summary>
+        public IReadOnlyList<TileDefinition> ScriptedSpawns = Array.Empty<TileDefinition>();
+
         // ── 보스 난입 (6단계에서 사용) ──
         /// <summary>x=누적 영혼석(점수) → y=보스 타일 스폰 확률(0~1).</summary>
         public Func<float, float> BossChanceByScore = _ => 0f;
