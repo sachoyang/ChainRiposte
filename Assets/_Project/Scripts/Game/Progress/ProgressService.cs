@@ -43,12 +43,20 @@ namespace ChainRiposte.Game.Progress
             PlayerPrefs.Save();
         }
 
-        /// <summary>세이브 삭제 (테스트/디버그용 — Tools ▸ ChainRiposte ▸ Progress).</summary>
+        /// <summary>
+        /// 세이브 삭제 (타이틀 ▸ 새 게임 · 옵션 ▸ 진행도 초기화 · Tools ▸ ChainRiposte ▸ Progress).
+        ///
+        /// <para><b>튜토리얼 기록도 같이 지운다</b> — 이 함수를 부르는 자리는 전부 "처음부터"라는 뜻이고,
+        /// 처음부터 하려고 눌렀는데 안내가 안 나오면 그건 처음이 아니다 (<c>Docs/TUTORIAL.md</c> §2.1).
+        /// 지우는 자리를 여기 하나로 모아 둔다 — 부르는 곳이 넷이라 각자 적으면 한 곳은 반드시 빠진다.
+        /// (<see cref="BeginNewGamePlus"/>는 반대로 안 건드린다: 2회차에 이미 배운 것을 다시 가르치면 방해다.)</para>
+        /// </summary>
         public static void ResetAll()
         {
             PlayerPrefs.DeleteKey(Key);
             PlayerPrefs.Save();
             _current = new StageProgress();
+            Tutorial.TutorialService.ResetAll();
         }
 
         /// <summary>

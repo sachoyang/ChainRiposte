@@ -652,6 +652,36 @@ namespace ChainRiposte.Editor
             Row(builder, "status.newgameplus", "{0}회차", "NG+{0}");
             Row(builder, "ending.skip", "아무 곳이나 눌러 넘기기", "TAP TO SKIP");
 
+            // 튜토리얼 — 기믹 소개 카드 (Docs/TUTORIAL.md §3).
+            // 어느 판에서 뜨는지는 여기 없다 — 스테이지 에셋의 Introduces 가 정한다.
+            Row(builder, "tutorial.card.next", "다음", "NEXT");
+            Row(builder, "tutorial.card.start", "시작", "BEGIN");
+            Row(builder, "tutorial.card.page", "{0} / {1}", "{0} / {1}");
+            Row(builder, "tutorial.basic.match.title", "처치", "MATCH THREE");
+            Row(builder, "tutorial.basic.match.body",
+                "같은 몬스터 3개를 나란히 맞추면 처치하고 소울을 얻는다.\\n소울은 레벨이 되고 레벨은 스탯이 된다.",
+                "Match three of the same monster to slay them and earn souls.\\nSouls become levels. Levels become stats.");
+            Row(builder, "tutorial.basic.enrage.title", "성난 몬스터", "ENRAGED");
+            Row(builder, "tutorial.basic.enrage.body",
+                "붉게 물든 놈은 머리 위 숫자가 0이 되면 때린다.\\n그 전에 매치해 없애면 취소된다.",
+                "A monster glowing red strikes when its counter hits zero.\\nMatch it away before then to cancel the blow.");
+            Row(builder, "tutorial.basic.boss.title", "보스 난입", "THE BOSS DESCENDS");
+            Row(builder, "tutorial.basic.boss.body",
+                "떨어지는 보스 타일이 바닥에 닿으면 전투가 시작된다.\\n퍼즐에서 깎인 체력은 그대로 이어진다.",
+                "When the boss tile reaches the bottom the fight begins.\\nWhatever health the puzzle cost you carries over.");
+            Row(builder, "tutorial.gimmick.chain.title", "사슬 결박", "CHAINED");
+            Row(builder, "tutorial.gimmick.chain.body",
+                "사슬에 묶인 타일은 움직이지도 사라지지도 않는다.\\n매치에 걸리면 사슬만 풀린다.",
+                "A chained tile will not move and will not clear.\\nMatch it and only the chain breaks.");
+            Row(builder, "tutorial.gimmick.bomb.title", "시한폭탄", "TICKING DEATH");
+            Row(builder, "tutorial.gimmick.bomb.body",
+                "폭탄은 직접 맞출 수 없다.\\n바로 옆에서 매치를 만들어 해체하라. 숫자가 0이 되면 터진다.",
+                "A bomb cannot be matched directly.\\nMake a match right beside it to defuse. At zero it detonates.");
+            Row(builder, "tutorial.gimmick.corruption.title", "전염", "CORRUPTION");
+            Row(builder, "tutorial.gimmick.corruption.body",
+                "부패는 매 턴 옆 몬스터로 번진다.\\n바로 옆에서 매치를 만들어 태워라.",
+                "Corruption spreads to a neighbouring monster every turn.\\nMake a match beside it to burn it away.");
+
             // 공통
             Row(builder, "common.yes", "예", "YES");
             Row(builder, "common.no", "아니오", "NO");

@@ -19,12 +19,13 @@ namespace ChainRiposte.Editor
         private static void Reset()
         {
             if (!EditorUtility.DisplayDialog("진행도 초기화",
-                    "저장된 클리어 기록을 모두 지웁니다. 1-1만 열린 상태가 됩니다.", "삭제", "취소"))
+                    "저장된 클리어 기록을 모두 지웁니다. 1-1만 열린 상태가 됩니다.\n" +
+                    "튜토리얼 「봤다」 기록도 같이 지워집니다.", "삭제", "취소"))
                 return;
 
             ProgressService.ResetAll();
             RunStateService.ResetCurrent();
-            Debug.Log("[Progress] 세이브를 삭제했습니다 (진행도 + 현재 캐릭터의 런).");
+            Debug.Log("[Progress] 세이브를 삭제했습니다 (진행도 + 현재 캐릭터의 런 + 튜토리얼 기록).");
         }
 
         [MenuItem("Tools/ChainRiposte/Progress/Reset Run Only (성장 캐리만 초기화)")]
@@ -32,6 +33,24 @@ namespace ChainRiposte.Editor
         {
             RunStateService.ResetCurrent();
             Debug.Log("[Run] 현재 캐릭터의 런(스탯·소울·기억·사슬)을 초기화했습니다.");
+        }
+
+        /// <summary>
+        /// 소개 카드만 다시 보게 만든다 — 진행도·런은 그대로다. 카드 문구·영상을 손볼 때
+        /// 판을 다시 깨지 않고 확인하기 위한 것이다(<c>Reset Progress</c>는 진행도까지 날린다).
+        /// </summary>
+        [MenuItem("Tools/ChainRiposte/Progress/Reset Tutorial (소개 카드 다시 보기)")]
+        private static void ResetTutorial()
+        {
+            Game.Tutorial.TutorialService.ResetAll();
+            Debug.Log("[Tutorial] 「봤다」 기록을 지웠습니다 — 소개 카드가 다시 뜹니다.");
+        }
+
+        [MenuItem("Tools/ChainRiposte/Progress/Log Tutorial (본 항목 출력)")]
+        private static void LogTutorial()
+        {
+            var seen = new List<string>(Game.Tutorial.TutorialService.SeenIds);
+            Debug.Log($"[Tutorial] 본 항목 {seen.Count}개: {Join(seen)}");
         }
 
         [MenuItem("Tools/ChainRiposte/Progress/Log Run (현재 런 출력)")]

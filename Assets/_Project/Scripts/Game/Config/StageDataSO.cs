@@ -86,6 +86,12 @@ namespace ChainRiposte.Game.Config
         // 보스의 캐릭터별 겉모습은 여기 없다 — 보스 에셋(BossDataSO)의 「캐릭터별 겉모습」이 맡는다.
         // 스테이지마다 적으면 같은 그림을 스테이지 수만큼 되풀이하게 되고, 한 곳만 빠뜨려도 보스가 달라진다.
 
+        [Header("튜토리얼 — 이 판에서 처음 소개할 것 (Docs/TUTORIAL.md §3.2)")]
+        [Tooltip("판이 시작되기 직전, 아직 안 본 항목만 카드로 뜬다. 둘 이상이면 순서대로 넘어간다.\n\n" +
+                 "트리거를 여기(데이터)에 두는 이유: 코드에 스테이지 이름을 적으면 스테이지를 재배치할 때마다 " +
+                 "규칙을 다시 적어야 한다.")]
+        [SerializeField] private TutorialTopicSO[] introduces = Array.Empty<TutorialTopicSO>();
+
         [Header("스테이지 기믹 on/off (GDD §3.6) — 목록에 넣은 것만 활성화, 조합 가능")]
         [SerializeField] private GimmickType[] gimmicks = Array.Empty<GimmickType>();
 
@@ -191,6 +197,12 @@ namespace ChainRiposte.Game.Config
 
         /// <summary>이 스테이지에 켜진 기믹 — 월드맵에서 '어떤 기믹이 나오는지' 표시에 쓴다.</summary>
         public IReadOnlyList<GimmickType> Gimmicks => gimmicks;
+
+        /// <summary>
+        /// 이 판이 처음 소개하는 것들 (<c>Docs/TUTORIAL.md</c> §3.2). 판 시작 직전에
+        /// <b>아직 안 본 것만</b> 카드로 뜬다 — 판정은 <c>TutorialService</c>가 한다.
+        /// </summary>
+        public IReadOnlyList<TutorialTopicSO> Introduces => introduces;
 
         public StageConfig ToConfig()
         {

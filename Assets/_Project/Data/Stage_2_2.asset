@@ -94,6 +94,8 @@ MonoBehaviour:
   bossData: {fileID: 11400000, guid: 736ae02691519a14da1aead03eb8f6e2, type: 2}
   battlePhaseLimit: 1
   isFinalLink: 0
+  introduces:
+  - {fileID: 11400000, guid: aab063b5b8e876a4abae6ecbc97320d4, type: 2}
   gimmicks: 0200000001000000
   gimmickTuning:
     corruptionSeeds: 2

@@ -1,3 +1,4 @@
+using System.Collections;
 using ChainRiposte.Core.Flow;
 using ChainRiposte.Core.Progress;
 using ChainRiposte.Core.Stage;
@@ -20,6 +21,9 @@ namespace ChainRiposte.Game
         [Tooltip("난이도 곡선(고리 깊이·NG+ 회차별 보스 배수). 비우면 배수 1 — 보스 에셋 값 그대로 싸운다.")]
         [SerializeField] private DifficultyCurveSO difficultyCurve;
         [SerializeField] private StageDataSO stageData;
+        [Tooltip("판 시작 직전에 뜨는 기믹 소개 카드. 비우면 씬에서 찾고, 그래도 없으면 카드 없이 바로 시작한다 " +
+                 "— 안내 자리가 아직 없다고 판에 못 들어가면 안 된다.")]
+        [SerializeField] private UI.TutorialCard tutorialCard;
 
         private RunEconomyConfig _economy;
         // 사슬 배수는 이 판에 들어온 시점 값으로 고정한다 — 판 도중에 바뀌지 않는다(승리 시에만 오른다).
@@ -137,6 +141,25 @@ namespace ChainRiposte.Game
 
         private void Start()
         {
+            StartCoroutine(BeginStage());
+        }
+
+        /// <summary>
+        /// 이 판이 처음 소개하는 기믹이 있으면 <b>퍼즐이 뜨기 전에</b> 카드로 보여 준다
+        /// (<c>Docs/TUTORIAL.md</c> §3.1). 대부분의 판에서는 큐가 비어 있어 한 프레임도 안 먹는다.
+        ///
+        /// <para>기믹이 보드에 실제로 나타나는 순간에 띄우지 않는 이유: 흐름을 끊고, "첫 사슬이 떨어지는
+        /// 순간"을 잡아내는 구현이 기믹마다 따로 필요하다. <b>판 시작 직전은 걸리는 지점이 한 곳</b>이라
+        /// 기믹이 늘어도 코드가 안 는다.</para>
+        /// </summary>
+        private IEnumerator BeginStage()
+        {
+            if (tutorialCard == null)
+                tutorialCard = FindFirstObjectByType<UI.TutorialCard>();
+
+            if (tutorialCard != null)
+                yield return tutorialCard.Show(stageData.Introduces);
+
             Session.StartPuzzle();
         }
 
