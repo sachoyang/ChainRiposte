@@ -15,8 +15,8 @@ MonoBehaviour:
   category: 0
   baseSouls: 10
   maxHp: 0
-  attackDamage: 0
-  attackBeats: 0
+  attackDamage: 5
+  attackBeats: 3
   placeholderColor: {r: 0.92, g: 0.9, b: 0.82, a: 1}
   sprite: {fileID: -697763020151794088, guid: b91cb13261d1c9a419d1873e4489ed7c, type: 3}
   backgroundSprite: {fileID: 4905458509517249742, guid: a37e8466236089c45b610370218b5353, type: 3}

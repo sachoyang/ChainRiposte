@@ -95,7 +95,7 @@ MonoBehaviour:
   bossData: {fileID: 11400000, guid: c227ecf42446f934788dc32872effdd2, type: 2}
   battlePhaseLimit: 0
   isFinalLink: 0
-  gimmicks: 
+  gimmicks: 02000000
   gimmickTuning:
     corruptionSeeds: 2
     corruptionSpreadEveryTurns: 1
@@ -103,6 +103,7 @@ MonoBehaviour:
     bombChance: 0.12
     bombTurns: 3
     bombDamage: 12
+    maxLiveBombs: 3
     chainInitialCount: 3
     chainChance: 0.08
     enrageBeatSeconds: 1.6

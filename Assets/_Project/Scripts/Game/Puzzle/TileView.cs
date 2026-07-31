@@ -25,6 +25,8 @@ namespace ChainRiposte.Game.Puzzle
         private bool _hasBombText;
         /// <summary>이 타일 자체가 폭탄인가 — 그러면 폭탄 뱃지를 겹쳐 그리지 않는다.</summary>
         private bool _isBombTile;
+        /// <summary>아이콘이 차지할 셀 기준 크기. 그림을 갈아 끼울 때 다시 맞추려고 들고 있는다.</summary>
+        private float _iconSize = 1f;
 
         // 이번 성남이 시작될 때의 숫자. 커지는 정도를 여기에 견주므로, 몇 박짜리 위협이든
         // "마지막 한 칸"에서 가장 크게 보인다 (박 수를 스테이지마다 바꿔도 연출이 안 깨진다).
@@ -131,6 +133,7 @@ namespace ChainRiposte.Game.Puzzle
             iconGo.transform.SetParent(go.transform, false);
             iconGo.transform.localScale = Vector3.one * ScaleToFit(sprite, visual.IconSize);
 
+            view._iconSize = visual.IconSize;
             view._renderer = iconGo.AddComponent<SpriteRenderer>();
             view._renderer.sprite = sprite;
             view._baseColor = visual.Color;
@@ -157,6 +160,17 @@ namespace ChainRiposte.Game.Puzzle
             renderer.sprite = visual.Background;
             renderer.color = visual.BackgroundColor;
             renderer.sortingOrder = -1;
+        }
+
+        /// <summary>
+        /// 아이콘 그림을 갈아 끼우고 <b>크기를 다시 맞춘다</b>. 그림마다 픽셀 크기가 달라서
+        /// 스케일은 그대로 두고 그림만 바꾸면 그 순간 타일이 커지거나 작아진다
+        /// (벽의 손상 단계처럼 도중에 그림이 바뀌는 경우가 정확히 그렇다).
+        /// </summary>
+        private void SetIconSprite(Sprite sprite)
+        {
+            _renderer.sprite = sprite;
+            _renderer.transform.localScale = Vector3.one * ScaleToFit(sprite, _iconSize);
         }
 
         /// <summary>
@@ -547,7 +561,7 @@ namespace ChainRiposte.Game.Puzzle
             {
                 float lost = 1f - (float)_remainingHp / _maxHp;
                 int index = Mathf.Clamp(Mathf.RoundToInt(lost * (_wallStages.Length - 1)), 0, _wallStages.Length - 1);
-                _renderer.sprite = _wallStages[index];
+                SetIconSprite(_wallStages[index]);
                 _renderer.color = Color.white;
                 return;
             }

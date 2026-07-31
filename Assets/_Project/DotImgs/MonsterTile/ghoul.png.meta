@@ -126,7 +126,7 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: bat_0
+      name: ghoul_0
       rect:
         serializedVersion: 2
         x: 1
@@ -161,7 +161,7 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      bat_0: -697763020151794088
+      ghoul_0: -697763020151794088
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

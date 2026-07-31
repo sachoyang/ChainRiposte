@@ -16,7 +16,7 @@ namespace ChainRiposte.Core.Stage
         /// <summary>부패 타일이 활성 칸 대비 이 비율을 넘으면 확산을 멈춘다 (완전 데드락 방지).</summary>
         public float MaxCorruptionRatio = 0.35f;
 
-        // ── 시한폭탄 몬스터 ──
+        // ── 시한폭탄 타일 ──
         /// <summary>새로 스폰되는 몬스터 타일이 폭탄이 될 확률 (0~1).</summary>
         public float BombChance = 0.12f;
 
@@ -25,6 +25,13 @@ namespace ChainRiposte.Core.Stage
 
         /// <summary>폭발 시 플레이어가 받는 HP 피해.</summary>
         public int BombDamage = 12;
+
+        /// <summary>
+        /// 보드에 동시에 존재할 수 있는 폭탄 수. 폭탄은 <b>매치도 스왑도 안 되는 타일</b>이라
+        /// 여러 개가 겹치면 매칭 공간이 말라붙어 수가 막힌다(부패의 <see cref="MaxCorruptionRatio"/>와 같은 이유).
+        /// 0 이하면 상한 없음.
+        /// </summary>
+        public int MaxLiveBombs = 3;
 
         // ── 사슬 결박 ──
         /// <summary>퍼즐 시작 시 결박된 채로 놓이는 타일 수.</summary>

@@ -102,6 +102,7 @@ MonoBehaviour:
     bombChance: 0.12
     bombTurns: 3
     bombDamage: 12
+    maxLiveBombs: 3
     chainInitialCount: 3
     chainChance: 0.08
     enrageBeatSeconds: 1.6

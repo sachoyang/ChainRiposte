@@ -118,6 +118,9 @@ namespace ChainRiposte.Game.Config
             [Min(1)] public int bombTurns = 3;
             [Tooltip("폭발 시 플레이어 HP 피해")]
             [Min(0)] public int bombDamage = 12;
+            [Tooltip("보드에 동시에 있을 수 있는 폭탄 수. 폭탄은 매치도 스왑도 안 되는 타일이라 " +
+                "여러 개가 겹치면 매칭 공간이 말라붙는다. 0이면 상한 없음")]
+            [Min(0)] public int maxLiveBombs = 3;
 
             [Header("사슬 결박")]
             [Tooltip("퍼즐 시작 시 결박된 채로 놓이는 타일 수")]
@@ -149,6 +152,7 @@ namespace ChainRiposte.Game.Config
                 BombChance = bombChance,
                 BombTurns = bombTurns,
                 BombDamage = bombDamage,
+                MaxLiveBombs = maxLiveBombs,
                 ChainInitialCount = chainInitialCount,
                 ChainChance = chainChance,
                 EnrageBeatSeconds = enrageBeatSeconds,

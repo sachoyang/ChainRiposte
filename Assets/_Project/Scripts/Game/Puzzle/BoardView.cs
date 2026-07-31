@@ -645,7 +645,13 @@ namespace ChainRiposte.Game.Puzzle
         {
             switch (tile.Category)
             {
-                case TileCategory.Wall: return wallSprite;
+                // 벽은 공용 그림이 비어 있어도 손상 단계 그림으로 그려진다. 그런데 크기는
+                // <b>여기서 돌려준 그림</b>으로 역산하므로, null 을 돌려주면 플레이스홀더 사각형(1×1)
+                // 기준으로 계산해 놓고 나중에 32×32 짜리로 갈아 끼우게 된다 — 벽만 셀의 3분의 1로
+                // 작게 그려지던 원인이 이것이었다. 실제로 그릴 그림을 돌려줘야 한다.
+                case TileCategory.Wall:
+                    return wallSprite != null ? wallSprite
+                        : wallDamageSprites.Length > 0 ? wallDamageSprites[0] : null;
                 case TileCategory.Boss: return bossSprite;
                 case TileCategory.Corruption: return corruptionSprite;
                 // 뱃지로 쓰던 그림을 그대로 타일 그림으로 쓴다 — 폭탄이 상태에서 타일이 됐을 뿐

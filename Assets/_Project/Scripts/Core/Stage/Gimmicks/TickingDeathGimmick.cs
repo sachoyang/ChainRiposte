@@ -29,8 +29,16 @@ namespace ChainRiposte.Core.Stage.Gimmicks
 
         public override void OnTilesSpawned(GimmickContext context, IReadOnlyList<TileSpawn> spawns)
         {
+            // 이미 깔린 폭탄을 세고 시작한다. 폭탄은 매치도 스왑도 안 되는 타일이라 여러 개가
+            // 겹치면 매칭 공간이 말라붙는다 — 확률만으로는 운 나쁜 판에서 보드가 잠긴다.
+            int cap = context.Settings.MaxLiveBombs;
+            int live = context.Collect(t => t.Category == TileCategory.Bomb).Count;
+
             foreach (TileSpawn spawn in spawns)
             {
+                if (cap > 0 && live >= cap)
+                    return;
+
                 // 갓 내려온 몬스터만 폭탄이 된다. 벽·보스·물약은 건드리지 않는다.
                 if (spawn.Tile.Category != TileCategory.Monster || spawn.Tile.Status.HasGimmick)
                     continue;
@@ -44,6 +52,7 @@ namespace ChainRiposte.Core.Stage.Gimmicks
                 bomb.ChangeDefinition(BombDefinition);
                 bomb.Status.BombTurnsRemaining = Math.Max(1, context.Settings.BombTurns);
                 _armedThisTurn.Add(bomb.InstanceId);
+                live++;
 
                 context.Report(new GimmickEvent(
                     GimmickEventType.BombArmed, spawn.Position, bomb, bomb.Status.BombTurnsRemaining));
