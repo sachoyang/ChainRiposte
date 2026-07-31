@@ -11,7 +11,7 @@ namespace ChainRiposte.Core.Stage.Gimmicks
         /// <summary>인접 매치로 부패 타일이 제거됐다.</summary>
         CorruptionCleared = 1,
 
-        /// <summary>새 타일이 폭탄으로 스폰됐다 (Value = 남은 턴).</summary>
+        /// <summary>그 칸이 <b>폭탄 타일로 교체</b>됐다 (Value = 남은 턴). 뷰는 타일을 다시 만든다.</summary>
         BombArmed = 2,
 
         /// <summary>폭탄 카운트가 줄었다 (Value = 남은 턴).</summary>
@@ -22,6 +22,13 @@ namespace ChainRiposte.Core.Stage.Gimmicks
 
         /// <summary>매치/인접 매치로 사슬이 풀렸다 (타일은 살아남는다).</summary>
         ChainBroken = 5,
+
+        /// <summary>
+        /// <b>인접 매치로 폭탄을 해체했다</b> — 타일은 사라지지만 피해는 없다.
+        /// <see cref="BombExploded"/>와 반드시 따로 둔다: 하나는 이득이고 하나는 손해인데
+        /// 같은 사건이면 화면에서 구분할 방법이 없다(폭발 연출이 붙는 쪽은 터진 쪽뿐이다).
+        /// </summary>
+        BombDefused = 10,
 
         /// <summary>몬스터가 성났다 — 공격 예고 (Value = 남은 턴).</summary>
         EnrageStarted = 6,

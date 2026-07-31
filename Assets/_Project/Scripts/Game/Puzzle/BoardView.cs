@@ -256,13 +256,17 @@ namespace ChainRiposte.Game.Puzzle
                             anims.Add(blown.ClearAndDestroy(clearDuration));
                         break;
 
+                    // 해체는 <b>폭발을 안 띄운다</b> — 터진 것(손해)과 해치운 것(이득)이
+                    // 같은 그림이면 플레이어가 자기가 잘한 건지 못한 건지 알 수 없다.
+                    case GimmickEventType.BombDefused:
                     case GimmickEventType.CorruptionCleared:
                         if (_views.Remove(gimmickEvent.Position, out TileView removed))
                             anims.Add(removed.ClearAndDestroy(clearDuration));
                         break;
 
                     case GimmickEventType.CorruptionSpread:
-                        // 감염된 칸의 타일이 통째로 교체된다 — 옛 뷰를 버리고 부패 타일로 다시 만든다
+                        // 감염된 칸의 타일이 통째로 교체된다 — 옛 뷰를 버리고 부패 타일로 다시 만든다.
+                        // (폭탄은 같은 타일의 종류만 바뀌므로 여기 없다 — 뷰가 저절로 따라온다.)
                         if (_views.Remove(gimmickEvent.Position, out TileView infected))
                             Destroy(infected.gameObject);
                         CreateTileView(gimmickEvent.Tile, gimmickEvent.Position);
@@ -620,6 +624,7 @@ namespace ChainRiposte.Game.Puzzle
                 case TileCategory.Wall: return wallColor;
                 case TileCategory.Boss: return bossColor;
                 case TileCategory.Corruption: return corruptionColor;
+                case TileCategory.Bomb: return Color.white; // 그림 본래 색 그대로
                 default:
                     return _colorByDefinition.TryGetValue(tile.Definition, out Color color) ? color : unknownColor;
             }
@@ -643,6 +648,9 @@ namespace ChainRiposte.Game.Puzzle
                 case TileCategory.Wall: return wallSprite;
                 case TileCategory.Boss: return bossSprite;
                 case TileCategory.Corruption: return corruptionSprite;
+                // 뱃지로 쓰던 그림을 그대로 타일 그림으로 쓴다 — 폭탄이 상태에서 타일이 됐을 뿐
+                // 플레이어에게 보이는 그림은 같아야 한다(배선도 이미 돼 있다).
+                case TileCategory.Bomb: return bombSprite;
                 default:
                     return _spriteByDefinition.TryGetValue(tile.Definition, out Sprite sprite) ? sprite : null;
             }

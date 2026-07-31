@@ -276,6 +276,51 @@ namespace ChainRiposte.Core.Tests
 
         // ── 시한폭탄 ──
 
+        /// <summary>
+        /// 타일을 폭탄으로 만든다. <b>카운트만 세워서는 폭탄이 아니다</b> — 폭탄은 이제
+        /// 몬스터에 붙는 상태가 아니라 제 종류를 가진 타일이고, 기믹도 종류로 찾는다.
+        /// </summary>
+        private static void Arm(Tile tile, int turns)
+        {
+            tile.ChangeDefinition(TickingDeathGimmick.BombDefinition);
+            tile.Status.BombTurnsRemaining = turns;
+        }
+
+        [Test]
+        public void 폭탄은_매치_대상이_아니라_인접_매치로_해체된다()
+        {
+            BoardGrid board = FilledBoard(Plain3x3, S);
+            Tile bomb = board.GetTile(new GridPos(1, 1));
+            Arm(bomb, 3);
+            GimmickContext context = Context(board, new GimmickSettings());
+            var cleared = new HashSet<GridPos> { new(1, 0) }; // 바로 아래 칸이 매치로 사라짐
+
+            new TickingDeathGimmick().OnMatchesResolving(context, cleared);
+
+            Assert.That(MatchFinder.IsMatchable(bomb), Is.False, "폭탄은 직접 매치할 수 없다");
+            Assert.That(MoveFinder.IsSwappable(bomb), Is.False, "스왑도 막힌다");
+            Assert.That(cleared, Does.Contain(new GridPos(1, 1)), "인접 매치가 폭탄을 파괴 목록에 넣는다");
+            Assert.That(context.PlayerDamage, Is.Zero, "해체는 피해가 없다");
+            Assert.That(context.Events,
+                Has.Some.Matches<GimmickEvent>(e => e.Type == GimmickEventType.BombDefused));
+            Assert.That(context.Events,
+                Has.None.Matches<GimmickEvent>(e => e.Type == GimmickEventType.BombExploded),
+                "해체는 폭발이 아니다 — 같은 사건이면 화면에서 구분할 수 없다");
+        }
+
+        [Test]
+        public void 떨어져_있는_매치는_폭탄을_해체하지_못한다()
+        {
+            BoardGrid board = FilledBoard(Plain3x3, S);
+            Arm(board.GetTile(new GridPos(0, 0)), 3);
+            GimmickContext context = Context(board, new GimmickSettings());
+            var cleared = new HashSet<GridPos> { new(2, 2) }; // 대각선 건너 — 인접이 아니다
+
+            new TickingDeathGimmick().OnMatchesResolving(context, cleared);
+
+            Assert.That(cleared, Has.Count.EqualTo(1), "인접하지 않으면 아무 일도 없다");
+        }
+
         [Test]
         public void 폭탄은_스폰된_턴에는_줄지_않고_다음_턴부터_카운트다운한다()
         {
@@ -303,7 +348,7 @@ namespace ChainRiposte.Core.Tests
             GimmickContext context = Context(board,
                 new GimmickSettings { BombTurns = 1, BombDamage = 7 });
             var pos = new GridPos(0, 0);
-            board.GetTile(pos).Status.BombTurnsRemaining = 1;
+            Arm(board.GetTile(pos), 1);
 
             new TickingDeathGimmick().OnTurnEnded(context);
 
@@ -318,7 +363,7 @@ namespace ChainRiposte.Core.Tests
             PuzzleEngine engine = CreateEngine(ConfigWith(GimmickType.TickingDeath,
                 new GimmickSettings { BombChance = 0f, BombTurns = 1, BombDamage = 9 }));
             // 매치와 무관한 칸의 타일을 폭발 직전 상태로 만든다
-            engine.Board.GetTile(new GridPos(0, 2)).Status.BombTurnsRemaining = 1;
+            Arm(engine.Board.GetTile(new GridPos(0, 2)), 1);
 
             SwapResult result = engine.TrySwap(new GridPos(2, 0), new GridPos(2, 1));
 

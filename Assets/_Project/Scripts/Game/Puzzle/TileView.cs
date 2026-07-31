@@ -23,6 +23,8 @@ namespace ChainRiposte.Game.Puzzle
         private Color _enrageTint = Color.white;
         // 폭탄 숫자가 카운트 자리를 쓰고 있는가 — 성남 표시가 그것을 덮지 않게 한다.
         private bool _hasBombText;
+        /// <summary>이 타일 자체가 폭탄인가 — 그러면 폭탄 뱃지를 겹쳐 그리지 않는다.</summary>
+        private bool _isBombTile;
 
         // 이번 성남이 시작될 때의 숫자. 커지는 정도를 여기에 견주므로, 몇 박짜리 위협이든
         // "마지막 한 칸"에서 가장 크게 보인다 (박 수를 스테이지마다 바꿔도 연출이 안 깨진다).
@@ -195,6 +197,7 @@ namespace ChainRiposte.Game.Puzzle
         public void ApplyStatus(Tile tile, StatusArt art, EnrageStyle enrage)
         {
             _art = art;
+            _isBombTile = tile.Category == TileCategory.Bomb;
             SetChained(tile.Status.Chained, art.Chain);
             SetBombTurns(tile.Status.BombTurnsRemaining);
             SetEnrageCountdown(tile.Status.EnrageCountdown, enrage);
@@ -204,7 +207,9 @@ namespace ChainRiposte.Game.Puzzle
         public void SetBombTurns(int turns)
         {
             _hasBombText = turns > 0;
-            ShowBadge(ref _bombBadge, "BombBadge", _art.Bomb, turns > 0);
+            // 폭탄이 <b>타일 자체</b>가 된 뒤로는 뱃지가 같은 그림을 한 번 더 그리는 일이 된다.
+            // 남은 턴 숫자만 얹는다 — 그게 뱃지가 못 하던 정보다.
+            ShowBadge(ref _bombBadge, "BombBadge", _art.Bomb, turns > 0 && !_isBombTile);
             if (turns <= 0)
             {
                 if (_countdownText != null)

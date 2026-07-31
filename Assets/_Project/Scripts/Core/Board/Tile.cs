@@ -12,7 +12,7 @@ namespace ChainRiposte.Core.Board
         private static long _nextInstanceId;
 
         public long InstanceId { get; }
-        public TileDefinition Definition { get; }
+        public TileDefinition Definition { get; private set; }
         public TileCategory Category => Definition.Category;
 
         /// <summary>내구도형 타일(벽 등)의 남은 HP. 일반 타일은 0.</summary>
@@ -28,6 +28,23 @@ namespace ChainRiposte.Core.Board
         {
             Definition = definition ?? throw new ArgumentNullException(nameof(definition));
             InstanceId = Interlocked.Increment(ref _nextInstanceId);
+            RemainingHp = definition.MaxHp;
+        }
+
+        /// <summary>
+        /// 같은 타일인 채로 <b>종류만</b> 바꾼다 (몬스터 → 폭탄 등).
+        ///
+        /// <para><see cref="InstanceId"/>는 그대로 둔다 — 이 값이 뷰와의 바인딩 키라서,
+        /// 새 <see cref="Tile"/>을 만들어 갈아 끼우면 <b>이미 기록된 낙하·스폰 기록이 옛 타일을 가리켜</b>
+        /// 보드와 화면이 어긋난다(리필 도중 종류가 바뀌는 경우가 정확히 그렇다).
+        /// 그래서 갈아 끼우지 않고 제자리에서 바꾼다.</para>
+        ///
+        /// <para>내구도는 새 종류의 값으로 다시 잡는다 — 벽이 아니게 된 타일이 옛 HP를 들고 있으면
+        /// 그 뒤의 판정이 종류와 안 맞는다.</para>
+        /// </summary>
+        public void ChangeDefinition(TileDefinition definition)
+        {
+            Definition = definition ?? throw new ArgumentNullException(nameof(definition));
             RemainingHp = definition.MaxHp;
         }
 
