@@ -20,6 +20,20 @@ namespace ChainRiposte.Game.Tutorial
         private const string Key = "ChainRiposte.Tutorial.v1";
         private const char Separator = ';';
 
+        /// <summary>
+        /// 튜토리얼 전체 on/off. <b>지금은 꺼 둔다</b> (2026-08-03, 사용자 지정 — 포트폴리오 시연에서 뺀다.
+        /// 구현은 다 끝나 있고 「future work」로 돌린 것뿐이다).
+        ///
+        /// <para><b>여기 하나로 끄는 이유</b>: 튜토리얼로 들어가는 문이 셋인데
+        /// (<c>TitleController</c> 새 게임 진입 · <c>TutorialDirector</c> 자가 활성 ·
+        /// <c>TutorialCard</c> 기믹 카드 큐) <b>셋 다 <see cref="HasSeen"/>를 지난다.</b>
+        /// 문마다 따로 끄면 하나는 반드시 빠뜨리고, 에셋·씬을 건드리면 되돌릴 때 배선이 샌다.</para>
+        ///
+        /// <para><b>다시 켜려면 이 값을 true로 되돌리면 끝이다.</b> 저장된 「본 것」 기록은
+        /// 건드리지 않으므로 켜는 순간 원래 상태 그대로 돌아온다.</para>
+        /// </summary>
+        public static bool Enabled;
+
         private static HashSet<string> _seen;
 
         private static HashSet<string> Seen => _seen ??= Load();
@@ -31,8 +45,12 @@ namespace ChainRiposte.Game.Tutorial
         /// <summary>지금까지 본 항목 id들 (디버그 출력용).</summary>
         public static IReadOnlyCollection<string> SeenIds => Seen;
 
+        /// <summary>
+        /// 이미 본 항목인가. 부르는 쪽은 전부 "안 봤으면 띄운다"라서,
+        /// <see cref="Enabled"/>가 꺼져 있으면 <b>전부 본 것으로 답한다</b> — 그것이 곧 전체 끄기다.
+        /// </summary>
         public static bool HasSeen(string topicId) =>
-            !string.IsNullOrWhiteSpace(topicId) && Seen.Contains(topicId);
+            !Enabled || (!string.IsNullOrWhiteSpace(topicId) && Seen.Contains(topicId));
 
         /// <summary>본 것으로 기록한다. 이미 본 것이면 false(저장도 안 한다).</summary>
         public static bool MarkSeen(string topicId)
