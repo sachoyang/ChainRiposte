@@ -1,32 +1,24 @@
 using System.Collections.Generic;
-using ChainRiposte.Game;
-using ChainRiposte.Game.Combat;
 using ChainRiposte.Game.Config;
-using ChainRiposte.Game.Flow;
-using ChainRiposte.Game.Puzzle;
-using ChainRiposte.Game.Tutorial;
-using ChainRiposte.Game.UI;
-using TMPro;
 using UnityEditor;
-using UnityEditor.SceneManagement;
 using UnityEngine;
-using UnityEngine.SceneManagement;
-using UnityEngine.UI;
 
 namespace ChainRiposte.Editor
 {
     /// <summary>
-    /// <b>첫 등반 튜토리얼</b>(<c>Docs/TUTORIAL.md</c> §4)의 에셋과 씬 배선을 깐다.
+    /// <b>첫 등반 튜토리얼</b>(<c>Docs/TUTORIAL.md</c> §4)의 에셋을 만든다.
     ///
-    /// <para>둘 다 <b>비어 있는 것만 채운다</b> — 손으로 고친 값(문구·영상·보드)을 덮어쓰지 않는다.
+    /// <para><b>비어 있는 것만 채운다</b> — 손으로 고친 값(문구·영상·보드)을 덮어쓰지 않는다.
     /// <c>Create Default Characters</c>·<c>Create Default Themes</c>와 같은 규칙이다.</para>
+    ///
+    /// <para>씬 쪽 배선(<c>TutorialDirector</c>·건너뛰기 버튼)은 이미 Main 씬에 실물로 있다.
+    /// 다시 까는 메뉴는 걷어냈다 — 손으로 맞춘 배선을 되돌릴 뿐이었다.</para>
     /// </summary>
     public static class TutorialClimbMenu
     {
         private const string TopicFolder = "Assets/_Project/Data/Tutorial";
         private const string StagePath = "Assets/_Project/Data/Stage_Tutorial.asset";
         private const string SourceStagePath = "Assets/_Project/Data/Stage_1_1.asset";
-        private const string DirectorName = "TutorialDirector";
 
         /// <summary>(에셋 이름, 세이브 id, 현지화 키 뿌리).</summary>
         private static readonly (string asset, string id, string key)[] Steps =
@@ -142,82 +134,6 @@ namespace ChainRiposte.Editor
             }
 
             return false;
-        }
-
-        // ── 씬 배선 ───────────────────────────────────────────────────
-
-        /// <summary>
-        /// <b>비파괴</b>다 — <c>TutorialDirector</c> 오브젝트 하나만 만들거나 다시 만든다.
-        /// 건너뛰기 버튼은 소개 카드 캔버스(정렬 19) 안에 둔다 — 카드보다 위에 있을 필요는 없고,
-        /// 오히려 카드가 떠 있는 동안에는 가려져야 한다(카드를 먼저 읽고 나서 넘길지 정한다).
-        /// </summary>
-        [MenuItem("Tools/ChainRiposte/Tutorial/Add Tutorial Director To Main")]
-        private static void AddDirector()
-        {
-            var manager = Object.FindFirstObjectByType<GameManager>();
-            var card = Object.FindFirstObjectByType<TutorialCard>(FindObjectsInactive.Include);
-            if (manager == null || card == null)
-            {
-                EditorUtility.DisplayDialog("튜토리얼 진행자 추가",
-                    "GameManager 또는 TutorialCard 를 찾지 못했습니다.\n" +
-                    "전투 씬(Main)을 열고, 먼저 Add Tutorial Card To Main 을 실행하세요.", "확인");
-                return;
-            }
-
-            var existing = GameObject.Find(DirectorName);
-            if (existing != null)
-                Undo.DestroyObjectImmediate(existing);
-
-            var go = new GameObject(DirectorName);
-            Undo.RegisterCreatedObjectUndo(go, "Add Tutorial Director");
-            var director = go.AddComponent<TutorialDirector>();
-
-            Button skip = BuildSkipButton(card);
-
-            var so = new SerializedObject(director);
-            so.FindProperty("gameManager").objectReferenceValue = manager;
-            so.FindProperty("puzzle").objectReferenceValue = Object.FindFirstObjectByType<PuzzleController>(FindObjectsInactive.Include);
-            so.FindProperty("combat").objectReferenceValue = Object.FindFirstObjectByType<CombatController>(FindObjectsInactive.Include);
-            so.FindProperty("boardView").objectReferenceValue = Object.FindFirstObjectByType<BoardView>(FindObjectsInactive.Include);
-            so.FindProperty("puzzleInput").objectReferenceValue = Object.FindFirstObjectByType<PuzzleInput>(FindObjectsInactive.Include);
-            so.FindProperty("combatInput").objectReferenceValue = Object.FindFirstObjectByType<CombatInput>(FindObjectsInactive.Include);
-            so.FindProperty("card").objectReferenceValue = card;
-            so.FindProperty("skipButton").objectReferenceValue = skip;
-
-            string[] fields = { "stepMatch", "stepEnrage", "stepBossTile", "stepParry", "stepWhiff", "stepExecute", "stepChain" };
-            for (int i = 0; i < fields.Length; i++)
-            {
-                // Steps[0] 은 판 시작 카드라 진행자가 안 든다 — 그래서 하나씩 밀어 읽는다.
-                var topic = AssetDatabase.LoadAssetAtPath<TutorialTopicSO>($"{TopicFolder}/{Steps[i + 1].asset}.asset");
-                so.FindProperty(fields[i]).objectReferenceValue = topic;
-            }
-
-            so.ApplyModifiedPropertiesWithoutUndo();
-
-            EditorSceneManager.MarkSceneDirty(SceneManager.GetActiveScene());
-            Selection.activeGameObject = go;
-            Debug.Log("[Tutorial] 진행자를 얹고 배선했습니다. 도는 조건은 " +
-                      "Stage_Tutorial ▸ 첫 등반 튜토리얼 + 아직 안 본 것 둘 다입니다. " +
-                      "다시 보려면 Tools ▸ ChainRiposte ▸ Progress ▸ Reset Tutorial.");
-        }
-
-        /// <summary>
-        /// 건너뛰기. <b>반드시 넣는다</b> — 없으면 개발자 자신이 매번 다시 본다(§4.7).
-        /// 카드 캔버스 안에 두므로 카드가 떠 있는 동안에는 딤 아래에 깔려 안 눌린다.
-        /// </summary>
-        private static Button BuildSkipButton(TutorialCard card)
-        {
-            Transform canvas = card.transform;
-            Transform old = canvas.Find("SkipTutorial");
-            if (old != null)
-                Undo.DestroyObjectImmediate(old.gameObject);
-
-            Button button = EditorUiFactory.Button(
-                canvas, "SkipTutorial", new Vector2(-40f, -40f), new Vector2(1f, 1f), new Vector2(1f, 1f),
-                new Vector2(260f, 90f), Color.white, string.Empty, 34f,
-                out Image _, out TextMeshProUGUI label);
-            EditorUiFactory.Localize(label, "tutorial.skip");
-            return button;
         }
 
         private static void Directory(string folder)
