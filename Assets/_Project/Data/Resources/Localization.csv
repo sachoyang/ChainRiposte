@@ -66,19 +66,19 @@ common.back,뒤로,BACK
 language.Korean,한국어,Korean
 language.English,English,English
 intermission.title,보스 돌입 준비,BOSS INCOMING
-intermission.points,"남은 포인트 {0}점 — 지금 분배하세요","{0} POINT(S) TO SPEND"
+intermission.points,남은 포인트 {0}점 — 지금 분배하세요,{0} POINT(S) TO SPEND
 intermission.nopoints,준비되면 시작하세요,READY WHEN YOU ARE
 intermission.fight,전투 시작,FIGHT
 puzzle.banner.intermission,보스 돌입 준비,BOSS INCOMING
-intermission.warning,"위에서 보스가 다가오고 있습니다!\n필요한 능력치를 올리세요","THE BOSS IS CLOSING IN!\nSpend your points now"
+intermission.warning,위에서 보스가 다가오고 있습니다!\n필요한 능력치를 올리세요,THE BOSS IS CLOSING IN!\nSpend your points now
 intermission.npc.saint,성녀,SAINT
 intermission.npc.blacksmith,대장장이,BLACKSMITH
 character.select.title,캐릭터 선택,CHOOSE YOUR CHARACTER
 character.select.confirm,이 캐릭터로 시작,START AS THIS ONE
 character.knight,기사,KNIGHT
-character.knight.desc,"체력과 방어가 조금 더 높다. 성녀가 곁을 지킨다.","A little more health and defense. A saint watches over them."
+character.knight.desc,체력과 방어가 조금 더 높다. 성녀가 곁을 지킨다.,A little more health and defense. A saint watches over them.
 character.sekiro,낭인,WANDERER
-character.sekiro.desc,"공격과 패링 판정이 조금 더 넓다. 무녀가 곁을 지킨다.","A little more attack and a wider parry. A shrine maiden watches over them."
+character.sekiro.desc,공격과 패링 판정이 조금 더 넓다. 무녀가 곁을 지킨다.,A little more attack and a wider parry. A shrine maiden watches over them.
 boss.irithyll.01,설리번의 짐승,Sulyvahn's Beast
 boss.irithyll.02,법왕 설리번,Pontiff Sulyvahn
 boss.ashina.01,목없는 사자원숭이,Headless Ape
