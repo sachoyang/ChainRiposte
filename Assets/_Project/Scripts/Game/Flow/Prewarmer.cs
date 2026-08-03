@@ -13,9 +13,12 @@ namespace ChainRiposte.Game.Flow
     /// <para>여기 있는 것들은 전부 "언젠가는 어차피 만들어지는 것"이다. 미리 굽는다고 메모리가
     /// 더 드는 게 아니라 <b>만들어지는 시점만</b> 옮기는 것이다 — 플레이 도중이 아니라 로딩 중으로.</para>
     ///
-    /// <para><b>빗나가도 무해하다</b>는 것이 이 클래스의 성질이다. 캐시를 데워 두는 일이라
-    /// 잘못 짚으면 그냥 도움이 안 될 뿐 고장 나지 않는다. 그래서 아래 수치들이
-    /// 원본과 느슨하게 묶여 있어도 된다 — 어긋나면 성능이 예전으로 돌아갈 뿐이다.</para>
+    /// <para>노트 원처럼 <b>순수한 캐시</b>는 빗나가도 무해하다 — 잘못 짚으면 도움이 안 될 뿐이다.
+    /// 그래서 그쪽 수치는 원본과 느슨하게 묶여 있어도 된다.</para>
+    ///
+    /// <para>⚠ <b>폰트는 다르다.</b> 아틀라스 한 장에 안 들어갈 만큼 구우면 넘친 글자가
+    /// 기기에서 안 그려진다 — 미리 굽는 행위 자체가 <b>고장을 만든다</b>.
+    /// 실제로 여기서 한 번 화면의 글씨를 통째로 날렸다(<see cref="WarnIfAtlasOverflowed"/>).</para>
     /// </summary>
     public static class Prewarmer
     {
@@ -102,7 +105,31 @@ namespace ChainRiposte.Game.Flow
                     onProgress?.Invoke(Mathf.Lerp(0.05f, 0.85f, done / (float)total), "loading.font");
                     yield return null;
                 }
+
+                WarnIfAtlasOverflowed(font);
             }
+        }
+
+        /// <summary>
+        /// 아틀라스가 <b>두 장 이상</b>으로 넘어갔는지 본다.
+        ///
+        /// <para>여기서 한 번 크게 데였다: 미리 굽는 것이 "빗나가도 무해하다"고 봤는데 아니었다.
+        /// 아틀라스 한 장에 안 들어갈 만큼 구우면 넘친 글자들이 <b>기기에서 안 그려진다</b>.
+        /// 에디터에서는 멀쩡해서 실기 빌드로만 드러난다 — 그래서 조용히 넘어가면 안 된다.</para>
+        ///
+        /// <para>고치는 법은 <b>폰트 에셋의 Atlas Width/Height를 키우는 것</b>이다(넉넉하면 한 장에 다 든다).
+        /// 굽는 양을 줄이는 쪽으로 대응하면 그 글자들이 플레이 도중에 구워질 뿐 문제가 안 사라진다.</para>
+        /// </summary>
+        private static void WarnIfAtlasOverflowed(TMP_FontAsset font)
+        {
+            int textures = font.atlasTextures == null ? 0 : font.atlasTextures.Length;
+            if (textures <= 1)
+                return;
+
+            Debug.LogError(
+                $"[Prewarm] '{font.name}' 아틀라스가 {textures}장으로 넘쳤습니다 " +
+                $"({font.atlasWidth}x{font.atlasHeight}, 글리프 {font.glyphTable.Count}자). " +
+                "넘친 글자는 기기에서 안 그려집니다 — 폰트 에셋의 Atlas Width/Height 를 키우세요.");
         }
 
         /// <summary>CSV의 모든 문구 + 항상 필요한 글자를 <b>중복 없이</b> 모은다.</summary>
