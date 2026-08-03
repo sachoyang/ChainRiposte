@@ -92,8 +92,9 @@ namespace ChainRiposte.Game.Flow
                 return;
             }
 
-            if (confirmText != null)
-                confirmText.text = Loc.GetText("title.newgame.confirm");
+            // 대화창은 셋이 나눠 쓰는 프리팹이라 LocalizedText 가 붙어 있다 — 키로 갈아 끼워야
+            // 패널이 켜질 때 그 컴포넌트가 제 키로 덮어쓰지 않는다.
+            LocalizedText.SetKey(confirmText, "title.newgame.confirm");
 
             confirmYesButton.onClick.RemoveAllListeners();
             confirmYesButton.onClick.AddListener(AfterNewGameConfirmed);

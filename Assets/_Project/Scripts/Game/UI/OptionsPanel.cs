@@ -113,8 +113,8 @@ namespace ChainRiposte.Game.UI
                 return;
             }
 
-            if (confirmText != null)
-                confirmText.text = Loc.GetText("options.reset.confirm");
+            // 위와 같은 이유 — 프리팹의 LocalizedText 가 켜질 때 덮어쓰므로 키로 갈아 끼운다.
+            LocalizedText.SetKey(confirmText, "options.reset.confirm");
 
             confirmYesButton.onClick.RemoveAllListeners();
             confirmYesButton.onClick.AddListener(() =>
