@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using ChainRiposte.Core.Board;
 
@@ -11,7 +12,15 @@ namespace ChainRiposte.Core.Match
     ///     ②벽에 얹혀 직선 낙하가 막힌 타일(보스 포함)은 대각선 아래 빈 칸으로 미끄러져 내려간다.
     ///  3) 리필 — 각 열 최상단의 연속된 빈 칸만 새 타일로 채운다 (기둥 중간 빈 칸은 다음 웨이브 낙하 몫).
     /// 1~3을 웨이브(FallPhase)로 반복해 빈 칸이 없어질 때까지 정착시킨다.
-    /// 결과: 직접 배치한 벽과 비활성(X) 셀 이외의 모든 칸이 항상 채워진다.
+    ///
+    /// <para>4) <b>갇힌 칸 채우기</b> — 1~3이 전부 멈췄는데도 빈 활성 칸이 남을 수 있다.
+    /// 대각선 슬라이드는 <b>한 칸짜리 이동</b>이라 출처가 정확히 대각선 위여야 하는데,
+    /// 그 자리가 벽·보드 밖·빈 구멍이면 어떤 타일도 그 칸에 닿지 못한다(부서진 벽 자리도 마찬가지).
+    /// 중력만으로는 판을 꽉 채울 수 없으므로 마지막에
+    /// <see cref="BoardRefiller.FillSealedPockets"/>가 그 자리에서 채운다.</para>
+    ///
+    /// <para><b>불변식(무조건 성립)</b>: 정착이 끝나면 비활성(X) 셀 이외의 모든 칸이 채워져 있다.
+    /// 벽도 타일이므로 여기 포함된다 — 즉 <b>보이는 빈칸은 의도한 구멍뿐</b>이다.</para>
     /// </summary>
     public static class GravityResolver
     {
@@ -30,7 +39,19 @@ namespace ChainRiposte.Core.Match
                 IReadOnlyList<TileSpawn> spawns = BoardRefiller.Refill(board, spawner);
 
                 if (moves.Count == 0 && spawns.Count == 0)
-                    break;
+                {
+                    // 아무도 못 움직이고 새로 들어온 것도 없는데 빈 활성 칸이 남았다면,
+                    // 그 칸은 <어떤 타일도 도달할 수 없는> 갇힌 칸이다(위는 벽, 대각선은 닫힘).
+                    // 여기까지 와서야 그 자리에서 채운다 — 더 일찍 채우면 내려오는 중인 타일의
+                    // 자리를 가로채므로, "이번 웨이브에 아무 일도 없었다"가 확인된 뒤여야 한다.
+                    spawns = BoardRefiller.FillSealedPockets(board, spawner);
+                    if (spawns.Count == 0)
+                        break;
+
+                    // 갇힌 칸이 채워지면 그 타일이 또 낙하·슬라이드를 부를 수 있으므로 웨이브를 계속 돈다.
+                    phases.Add(new FallPhase(Array.Empty<TileMove>(), spawns));
+                    continue;
+                }
 
                 phases.Add(new FallPhase(Coalesce(moves), spawns));
             }

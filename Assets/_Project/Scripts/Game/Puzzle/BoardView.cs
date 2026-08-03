@@ -117,6 +117,9 @@ namespace ChainRiposte.Game.Puzzle
         [SerializeField, Min(0f)] private float stepPause = 0.05f;
         [Tooltip("데드락 리롤 — 타일이 새 자리로 날아가는 시간")]
         [SerializeField, Min(0.01f)] private float shuffleDuration = 0.45f;
+        [Tooltip("갇힌 칸(위가 벽, 대각선도 닫힘)이 메워지는 시간. 떨어뜨리면 벽을 뚫고 오는 것처럼 " +
+                 "보여서 그 자리에서 커지며 나타난다. 0이면 즉시.")]
+        [SerializeField, Min(0f)] private float sealedPocketAppearSeconds = 0.16f;
 
         [Header("튜토리얼 스포트라이트")]
         [Tooltip("지금 만질 수 없는 타일의 밝기 (1 = 그대로). 너무 어두우면 보드가 안 읽히고, " +
@@ -574,6 +577,16 @@ namespace ChainRiposte.Game.Puzzle
                 var stackByColumn = new Dictionary<int, int>();
                 foreach (TileSpawn spawn in SpawnsBottomUp(phase.Spawns))
                 {
+                    // 갇힌 칸은 위가 벽으로 막혀 있다 — 평소처럼 보드 위에서 떨어뜨리면
+                    // <벽을 뚫고 내려오는> 것처럼 보인다. 그 자리에서 나타나게 한다.
+                    if (spawn.Sealed)
+                    {
+                        TileView sealedView = CreateTileView(spawn.Tile, spawn.Position);
+                        sealedView.transform.localPosition = GridToLocal(spawn.Position);
+                        anims.Add(sealedView.AppearInPlace(sealedPocketAppearSeconds));
+                        continue;
+                    }
+
                     stackByColumn.TryGetValue(spawn.Position.X, out int stack);
                     stackByColumn[spawn.Position.X] = stack + 1;
 

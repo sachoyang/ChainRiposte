@@ -358,6 +358,35 @@ namespace ChainRiposte.Game.Puzzle
             _countPopRoutine = null;
         }
 
+        /// <summary>
+        /// <b>갇힌 칸</b>에 그 자리에서 나타난다 (<c>TileSpawn.Sealed</c>).
+        ///
+        /// <para>위가 벽으로 막힌 칸이라 평소 리필처럼 보드 위에서 떨어뜨리면 <b>벽을 뚫고
+        /// 내려오는 것처럼</b> 보인다. 대신 살짝 작은 상태에서 제 크기로 커지며 나타난다 —
+        /// 낙하와 <b>다른 동작</b>이어야 "떨어진 것"이 아니라 "메워진 것"으로 읽힌다.</para>
+        ///
+        /// <para>커지는 폭을 크게 잡으면 폭발 연출과 헷갈리므로 작게 둔다.</para>
+        /// </summary>
+        public IEnumerator AppearInPlace(float seconds)
+        {
+            Vector3 baseScale = transform.localScale;
+            if (seconds <= 0f)
+            {
+                transform.localScale = baseScale;
+                yield break;
+            }
+
+            const float startScale = 0.72f;
+            for (float t = 0f; t < seconds; t += Time.deltaTime)
+            {
+                float k = Mathf.SmoothStep(startScale, 1f, t / seconds);
+                transform.localScale = baseScale * k;
+                yield return null;
+            }
+
+            transform.localScale = baseScale;
+        }
+
         /// <summary>성난 몬스터가 때린 순간 한 번 튄다 — HP가 왜 깎였는지가 보드에서 읽혀야 한다.</summary>
         public IEnumerator PunchOnce()
         {

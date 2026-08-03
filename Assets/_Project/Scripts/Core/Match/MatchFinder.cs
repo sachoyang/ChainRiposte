@@ -7,9 +7,16 @@ namespace ChainRiposte.Core.Match
     /// <summary>보드 전체에서 가로/세로 3개 이상 매치를 찾는다.</summary>
     public static class MatchFinder
     {
-        /// <summary>매치에 참여할 수 있는 카테고리인가 (벽·보스는 불가).</summary>
-        public static bool IsMatchable(Tile tile) =>
-            tile != null && (tile.Category == TileCategory.Monster || tile.Category == TileCategory.Potion);
+        /// <summary>매치에 참여할 수 있는 카테고리인가 (벽·보스·부패는 불가).</summary>
+        public static bool IsMatchable(Tile tile) => tile != null && IsMatchable(tile.Definition);
+
+        /// <summary>
+        /// 타일을 만들기 <b>전에</b> 같은 것을 묻는다 — 스포너가 내놓은 종류를 걸러낼 때 쓴다.
+        /// 규칙을 두 곳에 적지 않으려고 위 판정이 이것을 거쳐 간다.
+        /// </summary>
+        public static bool IsMatchable(TileDefinition definition) =>
+            definition != null &&
+            (definition.Category == TileCategory.Monster || definition.Category == TileCategory.Potion);
 
         public static IReadOnlyList<MatchGroup> FindAll(BoardGrid board)
         {

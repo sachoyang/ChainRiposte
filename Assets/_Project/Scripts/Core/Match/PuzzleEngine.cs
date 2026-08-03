@@ -242,9 +242,15 @@ namespace ChainRiposte.Core.Match
             if (_gimmicks == null || _gimmicks.Count == 0 || phases.Count == 0)
                 return phases;
 
+            // 갇힌 칸을 메운 타일에는 기믹을 안 붙인다.
+            // 그 칸은 중력이 닿지 않는 자리라, 사슬(결박 → 고정)이나 폭탄처럼 <특정 조작을 요구하는>
+            // 기믹이 걸리면 플레이어가 손쓸 방법이 없는 상태가 나올 수 있다.
+            // 이 타일이 하는 일은 "구멍처럼 보이지 않게 자리를 메우는 것"뿐이다.
             var spawns = new List<TileSpawn>();
             foreach (FallPhase phase in phases)
-                spawns.AddRange(phase.Spawns);
+                foreach (TileSpawn spawn in phase.Spawns)
+                    if (!spawn.Sealed)
+                        spawns.Add(spawn);
 
             if (spawns.Count == 0)
                 return phases;
