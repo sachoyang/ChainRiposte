@@ -72,6 +72,11 @@ namespace ChainRiposte.Game.Tutorial
             if (!ShouldRun())
             {
                 // 이미 봤거나 튜토리얼 판이 아니다 — 아무 일도 없다.
+                // 단 건너뛰기 버튼은 <b>다른 캔버스에 산다</b>(TutorialCanvas/SkipTutorial).
+                // 자기만 꺼서는 그 버튼이 화면에 남으므로 여기서 같이 내린다.
+                if (skipButton != null)
+                    skipButton.gameObject.SetActive(false);
+
                 gameObject.SetActive(false);
                 return;
             }
