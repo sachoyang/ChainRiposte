@@ -181,6 +181,11 @@ MonoBehaviour:
   tintTarget: {fileID: 3431633}
   animator: {fileID: 0}
   animatorTrigger: React
+  reactSprite: {fileID: 0}
+  spriteTarget: {fileID: 0}
+  swapInAt: 0.15
+  swapOutAt: 0.75
+  matchPixelScale: 1
   duration: 0.45
   punchScale: 1.22
   hopHeight: 26
@@ -15468,6 +15473,11 @@ MonoBehaviour:
   tintTarget: {fileID: 2091861255}
   animator: {fileID: 0}
   animatorTrigger: React
+  reactSprite: {fileID: -8263944520183177894, guid: 0fc884d0cd1dbbd45a1b46f68ed33a69, type: 3}
+  spriteTarget: {fileID: 2091861255}
+  swapInAt: 0.15
+  swapOutAt: 0.75
+  matchPixelScale: 1
   duration: 0.45
   punchScale: 1.22
   hopHeight: 26
@@ -15519,7 +15529,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 0}
+  m_Sprite: {fileID: -8337281393119725202, guid: 307c6800a98bc40488e74e76fc7b8da6, type: 3}
   m_Type: 0
   m_PreserveAspect: 1
   m_FillCenter: 1

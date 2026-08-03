@@ -187,9 +187,12 @@ namespace ChainRiposte.Game.UI
             if (image != null)
             {
                 image.color = image.sprite != null ? Color.white : npcPlaceholderColor;
-                // 반응이 되돌아갈 '쉬는 색'도 같이 옮겨 준다 — 안 하면 번쩍인 뒤 옛 색으로 돌아간다.
+                // 반응이 되돌아갈 '쉬는 색·그림'도 같이 옮겨 준다 — 안 하면 번쩍인 뒤 옛 것으로 돌아간다.
                 if (reaction != null)
+                {
                     reaction.ResetRestColor(image.color);
+                    reaction.ResetRestSprite(image.sprite);
+                }
             }
 
             if (label != null)
