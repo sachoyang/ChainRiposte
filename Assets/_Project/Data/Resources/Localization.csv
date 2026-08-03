@@ -134,3 +134,7 @@ tutorial.climb.execute.title,인살,DEATHBLOW
 tutorial.climb.execute.body,보스의 체간이 무너졌습니다.\n지금 오른쪽을 눌러 끝내 주세요.,The boss's posture has shattered.\nPress right now and end it.
 tutorial.climb.chain.title,끊어진 사슬,THE BROKEN CHAIN
 tutorial.climb.chain.body,죽어도 당신이 얻은 힘은 남습니다. 끊기는 것은 사슬뿐입니다.\n다시 아래에서 시작하되 전보다 강한 채로 오르게 됩니다.,Death does not take the strength you earned. Only the chain breaks.\nYou begin again at the bottom — but you climb it stronger.
+loading.text,문구를 읽는 중,Loading text
+loading.font,글꼴을 준비하는 중,Preparing fonts
+loading.combat,전투를 준비하는 중,Preparing combat
+loading.done,준비 완료,Ready
