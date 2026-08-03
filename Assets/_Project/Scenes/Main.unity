@@ -5475,6 +5475,7 @@ MonoBehaviour:
   explosionSize: 1.35
   explosionDuration: 0.34
   explosionGrowRatio: 0.28
+  explosionClip: {fileID: 8300000, guid: 7e26c9daf4c32483b9c2790e662d3f1b, type: 3}
   tileFillRatio: 0.9
   wallFillRatio: 1
   bossFillRatio: 1

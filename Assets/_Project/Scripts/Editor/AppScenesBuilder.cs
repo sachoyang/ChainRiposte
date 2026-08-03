@@ -409,7 +409,9 @@ namespace ChainRiposte.Editor
         /// <summary>카메라 + 이벤트시스템 + 캔버스 — 어느 씬이든 필요한 최소 구성.</summary>
         private static void CreateCommon(Scene scene, out Transform canvas)
         {
-            var cameraGo = new GameObject("Main Camera", typeof(Camera));
+            // AudioListener를 같이 단다 — 없으면 그 씬에서 소리가 통째로 안 난다
+            // ("There are no audio listeners in the scene"). 씬마다 하나여야 하므로 카메라에 붙인다.
+            var cameraGo = new GameObject("Main Camera", typeof(Camera), typeof(AudioListener));
             cameraGo.tag = "MainCamera";
             var camera = cameraGo.GetComponent<Camera>();
             camera.clearFlags = CameraClearFlags.SolidColor;

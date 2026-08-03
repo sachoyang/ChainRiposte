@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using ChainRiposte.Core.Board;
 using ChainRiposte.Core.Match;
 using ChainRiposte.Core.Stage.Gimmicks;
+using ChainRiposte.Game.Audio;
 using ChainRiposte.Game.Config;
 using UnityEngine;
 
@@ -80,6 +81,9 @@ namespace ChainRiposte.Game.Puzzle
         [SerializeField, Min(0.05f)] private float explosionDuration = 0.34f;
         [Tooltip("전체 시간 중 커지는 데 쓰는 비율. 작을수록 「펑」에 가깝다.")]
         [SerializeField, Range(0.05f, 0.9f)] private float explosionGrowRatio = 0.28f;
+        [Tooltip("터지는 소리. 비우면 소리만 안 나고 연출은 그대로 돈다. " +
+                 "여기 두는 이유: 「펑」의 주인이 이 클래스라 그림과 소리가 한 자리에서 갈린다.")]
+        [SerializeField] private AudioClip explosionClip;
 
         [Header("타일 크기 — 셀 1칸 기준. 그림의 픽셀 크기·PPU와 무관하게 여기에 맞춰진다")]
         [Tooltip("일반 몬스터 타일이 셀에서 차지하는 비율. 1보다 작아야 타일 사이가 벌어져 개수가 읽힌다.")]
@@ -353,6 +357,10 @@ namespace ChainRiposte.Game.Puzzle
         /// </summary>
         private void PlayExplosion(GridPos position)
         {
+            // 소리가 그림보다 먼저다 — 그림을 안 꽂아도 소리는 나야 한다(둘은 따로 채운다).
+            // AudioService를 거치므로 옵션의 SFX 슬라이더를 탄다.
+            AudioService.PlaySfx(explosionClip);
+
             if (explosionSprite == null)
                 return;
 
