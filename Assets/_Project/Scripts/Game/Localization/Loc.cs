@@ -114,6 +114,30 @@ namespace ChainRiposte.Game.Localization
             return !string.IsNullOrEmpty(key) && _table.ContainsKey(key);
         }
 
+        /// <summary>
+        /// 표에 실린 <b>모든 언어의 모든 문구</b>. 폰트 아틀라스를 미리 구울 때 쓴다 —
+        /// 화면에 나오는 글씨의 원천이 이 CSV 한 장뿐이라, 여기 없는 글자는 게임에도 안 나온다.
+        ///
+        /// <para>지금 언어만 훑지 않는 이유: 언어는 옵션에서 <b>중간에 바뀐다.</b>
+        /// 그때 안 구워 둔 글자를 만나면 그 화면에서 끊긴다.</para>
+        /// </summary>
+        public static IEnumerable<string> AllDisplayValues()
+        {
+            EnsureInit();
+
+            foreach (Dictionary<string, string> row in _table.Values)
+            {
+                foreach (KeyValuePair<string, string> cell in row)
+                {
+                    // 키 자체는 화면에 안 나온다 (못 찾았을 때의 폴백일 뿐이다).
+                    if (cell.Key == KeyColumn || string.IsNullOrEmpty(cell.Value))
+                        continue;
+
+                    yield return cell.Value;
+                }
+            }
+        }
+
         /// <summary>지연 초기화. 로딩 화면에서 파싱 비용을 미리 치르고 싶을 때만 직접 부른다.</summary>
         public static void EnsureInit()
         {

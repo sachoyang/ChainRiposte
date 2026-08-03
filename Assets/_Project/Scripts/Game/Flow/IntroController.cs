@@ -16,6 +16,8 @@ namespace ChainRiposte.Game.Flow
         [Header("씬 참조 (빌더가 자동 배선)")]
         [Tooltip("로고 이미지. 스프라이트를 갈아 끼우면 그대로 반영된다.")]
         [SerializeField] private Image logo;
+        [Tooltip("시작 로딩. 비워 두면 곧장 타이틀로 간다 — 인트로는 단독으로도 돌아야 한다.")]
+        [SerializeField] private LoadingScreen loadingScreen;
 
         [Header("타이밍(초)")]
         [SerializeField, Min(0f)] private float fadeInSeconds = 0.8f;
@@ -93,7 +95,13 @@ namespace ChainRiposte.Game.Flow
                 return;
 
             _leaving = true;
-            SceneRouter.GoTitle();
+
+            // 굽는 일이 남았으면 로딩 화면이 바를 띄우고 기다린 뒤 넘겨 준다.
+            // 로고가 도는 동안 이미 끝났으면 그 자리에서 바로 넘어간다(대개 이쪽이다).
+            if (loadingScreen != null)
+                loadingScreen.LeaveWhenReady(SceneRouter.GoTitle);
+            else
+                SceneRouter.GoTitle();
         }
     }
 }
