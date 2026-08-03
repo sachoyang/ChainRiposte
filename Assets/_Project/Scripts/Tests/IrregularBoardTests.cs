@@ -162,6 +162,37 @@ namespace ChainRiposte.Core.Tests
             Assert.That(board.GetTile(pocket), Is.Not.Null, "갇힌 칸이 여전히 비어 있다");
         }
 
+        /// <summary>
+        /// 끌어오기가 <b>대각선 슬라이드와 싸워 무한 루프</b>가 되던 배치.
+        ///
+        /// <para>(4,1)은 위가 벽·오른쪽이 보드 끝이라 갇힌 칸인데, 그 타일은 <b>벽에 얹혀 있어</b>
+        /// 슬라이드 규칙이 (3,0)으로 빼내려 한다. 끌어오기는 도로 당긴다 → 타일 하나가
+        /// 두 칸 사이를 영원히 오가며 웨이브 상한(200)을 태웠다.</para>
+        ///
+        /// <para>같은 구멍을 한 정착에 한 번만 당기게 해서 끊었다. 퍼즈가 잡아낸 실제 사고다.</para>
+        /// </summary>
+        [Test]
+        public void 끌어오기가_슬라이드와_핑퐁하지_않는다()
+        {
+            (bool[,] mask, List<GridPos> walls) = TestUtils.ParseRows("OOOXW", "OOOXO", "OOOOW");
+            var board = new BoardGrid(mask);
+            var wallDef = new TileDefinition("Wall", TileCategory.Wall, maxHp: 3);
+            foreach (GridPos w in walls)
+                board.PlaceTile(w, new Tile(wallDef));
+
+            foreach (GridPos pos in board.ActivePositions())
+                if (!board.IsOccupied(pos))
+                    board.PlaceTile(pos, new Tile(TestUtils.Skull));
+            board.RemoveTile(new GridPos(3, 0));
+
+            var rng = new Random(1);
+            IReadOnlyList<FallPhase> phases = GravityResolver.Settle(board, new RandomSpawner(rng));
+
+            Assert.That(phases.Count, Is.LessThan(20),
+                $"웨이브가 {phases.Count}개 — 끌어오기와 슬라이드가 서로를 되돌리고 있다");
+            AssertNoEmptyCell(board, "핑퐁 배치");
+        }
+
         /// <summary>보스 타일만 내놓는 스포너 — 재추첨으로는 절대 못 빠져나간다.</summary>
         private sealed class BossOnlySpawner : ITileSpawner
         {

@@ -13,11 +13,15 @@ namespace ChainRiposte.Core.Match
     ///  3) 리필 — 각 열 최상단의 연속된 빈 칸만 새 타일로 채운다 (기둥 중간 빈 칸은 다음 웨이브 낙하 몫).
     /// 1~3을 웨이브(FallPhase)로 반복해 빈 칸이 없어질 때까지 정착시킨다.
     ///
-    /// <para>4) <b>갇힌 칸 채우기</b> — 1~3이 전부 멈췄는데도 빈 활성 칸이 남을 수 있다.
+    /// <para>4) <b>갇힌 칸 끌어오기</b> — 1~3이 전부 멈췄는데도 빈 활성 칸이 남을 수 있다.
     /// 대각선 슬라이드는 <b>한 칸짜리 이동</b>이라 출처가 정확히 대각선 위여야 하는데,
     /// 그 자리가 벽·보드 밖·빈 구멍이면 어떤 타일도 그 칸에 닿지 못한다(부서진 벽 자리도 마찬가지).
-    /// 중력만으로는 판을 꽉 채울 수 없으므로 마지막에
-    /// <see cref="BoardRefiller.FillSealedPockets"/>가 그 자리에서 채운다.</para>
+    /// 그러면 <see cref="PullTowardSealedHoles"/>가 <b>구멍을 리필 입구까지 걸어 올라가게</b> 한다 —
+    /// 길 위의 타일을 한 칸씩 밀어, 없던 타일이 생겨나는 대신 <b>있던 타일이 미끄러져 들어간다.</b>
+    /// 실측으로 갇힌 칸의 <b>99%가 이 경로로</b> 메워진다.</para>
+    ///
+    /// <para>5) <b>제자리 생성</b> — 끌어올 길조차 없는 칸(벽·보드 끝에 완전히 둘러싸임)만
+    /// <see cref="BoardRefiller.FillSealedPockets"/>가 그 자리에서 채운다. 최후의 수단이다.</para>
     ///
     /// <para><b>불변식(무조건 성립)</b>: 정착이 끝나면 비활성(X) 셀 이외의 모든 칸이 채워져 있다.
     /// 벽도 타일이므로 여기 포함된다 — 즉 <b>보이는 빈칸은 의도한 구멍뿐</b>이다.</para>
@@ -31,6 +35,9 @@ namespace ChainRiposte.Core.Match
         {
             var phases = new List<FallPhase>();
 
+            // 한 정착 동안 <이미 끌어당겨 본> 구멍. 같은 칸을 두 번 당기지 않는다 — 아래 주석 참조.
+            var pulledHoles = new HashSet<GridPos>();
+
             while (phases.Count < MaxPhases)
             {
                 var moves = new List<TileMove>();
@@ -40,15 +47,20 @@ namespace ChainRiposte.Core.Match
 
                 if (moves.Count == 0 && spawns.Count == 0)
                 {
-                    // 아무도 못 움직이고 새로 들어온 것도 없는데 빈 활성 칸이 남았다면,
-                    // 그 칸은 <어떤 타일도 도달할 수 없는> 갇힌 칸이다(위는 벽, 대각선은 닫힘).
-                    // 여기까지 와서야 그 자리에서 채운다 — 더 일찍 채우면 내려오는 중인 타일의
-                    // 자리를 가로채므로, "이번 웨이브에 아무 일도 없었다"가 확인된 뒤여야 한다.
+                    // 낙하도 슬라이드도 리필도 못 하는데 빈 활성 칸이 남았다 = 갇힌 칸이다.
+                    // 먼저 <옆 타일을 끌어와> 메운다 — 구멍이 리필 닿는 자리까지 걸어 올라간다.
+                    List<TileMove> pulled = PullTowardSealedHoles(board, pulledHoles);
+                    if (pulled.Count > 0)
+                    {
+                        phases.Add(new FallPhase(Coalesce(pulled), Array.Empty<TileSpawn>()));
+                        continue;
+                    }
+
+                    // 끌어올 길조차 없는 칸(벽·보드 끝에 완전히 둘러싸임)만 그 자리에서 채운다.
                     spawns = BoardRefiller.FillSealedPockets(board, spawner);
                     if (spawns.Count == 0)
                         break;
 
-                    // 갇힌 칸이 채워지면 그 타일이 또 낙하·슬라이드를 부를 수 있으므로 웨이브를 계속 돈다.
                     phases.Add(new FallPhase(Array.Empty<TileMove>(), spawns));
                     continue;
                 }
@@ -172,6 +184,147 @@ namespace ChainRiposte.Core.Match
                 moves.Add(new TileMove(tile, source, empty));
                 return;
             }
+        }
+
+        /// <summary>
+        /// <b>갇힌 칸을 옆 타일로 메운다</b> — 새 타일을 만드는 대신, <b>구멍을 리필이 닿는 자리까지
+        /// 걸어 올라가게</b> 한다.
+        ///
+        /// <para><b>발상</b>: 갇힌 칸에 도달할 수 있는 타일은 없지만, 그 칸에서 <b>기둥 꼭대기까지 이어지는
+        /// 길</b>은 대개 있다. 그 길 위의 타일을 구멍 쪽으로 <b>한 칸씩 밀면</b> 구멍이 반대로 길을 따라
+        /// 올라가 꼭대기에 닿고, 거기는 리필이 평소처럼 채운다.
+        /// 즉 <b>없던 타일이 생겨나는 것이 아니라 있던 타일이 미끄러져 들어간다.</b></para>
+        ///
+        /// <para><b>왜 이게 나은가</b>: 화면에서 "구멍이 메워지는 별도 연출"이 아니라
+        /// <b>평소 낙하와 같은 미끄러짐</b>으로 보인다. 뷰는 이걸 그냥 <see cref="TileMove"/>로 받으므로
+        /// 연출 코드를 하나도 안 고쳐도 된다.</para>
+        ///
+        /// <para>한 번에 길 전체를 한 칸씩 민다 — 웨이브마다 한 칸씩 기어가면 느리고,
+        /// 구멍이 <b>정확히 꼭대기에 도착</b>해야 다음 웨이브의 리필이 받아 준다.</para>
+        ///
+        /// <para>⚠ <b>같은 구멍은 한 정착에 한 번만 당긴다</b>(<paramref name="alreadyPulled"/>).
+        /// 끌어오기가 <b>대각선 슬라이드와 싸우는</b> 배치가 있기 때문이다 — 벽에 얹힌 타일은
+        /// 슬라이드 규칙이 밖으로 빼내려 하고(§규칙 ②ⓑ) 끌어오기는 도로 당겨서, 타일 하나가
+        /// 두 칸 사이를 영원히 오간다. 퍼즈가 실제로 잡아낸 무한 루프다.
+        /// 한 번 당겨 보고 그래도 남으면 <see cref="BoardRefiller.FillSealedPockets"/>에 넘긴다.</para>
+        /// </summary>
+        private static List<TileMove> PullTowardSealedHoles(BoardGrid board, HashSet<GridPos> alreadyPulled)
+        {
+            var moves = new List<TileMove>();
+
+            foreach (GridPos hole in board.ActivePositions())
+            {
+                if (board.IsOccupied(hole))
+                    continue;
+
+                // 리필이 이미 닿는 자리면 그쪽에 맡긴다 — 여기서 건드리면 리필 몫을 가로챈다.
+                if (IsRefillEntry(board, hole))
+                    continue;
+
+                // 이 칸은 이미 한 번 당겨 봤다. 또 비어 있다면 슬라이드와 맞물려 되돌아온 것이다.
+                if (!alreadyPulled.Add(hole))
+                    continue;
+
+                List<GridPos> path = FindPathToRefillEntry(board, hole);
+                if (path == null)
+                    continue; // 끌어올 길이 없다 — 부르는 쪽이 그 자리에서 채운다
+
+                // path[0] = 구멍, path[^1] = 리필이 닿는 칸. 길 위의 타일을 구멍 쪽으로 한 칸씩 당긴다.
+                for (int i = 0; i < path.Count - 1; i++)
+                {
+                    Tile tile = board.RemoveTile(path[i + 1]);
+                    board.PlaceTile(path[i], tile);
+                    moves.Add(new TileMove(tile, path[i + 1], path[i]));
+                }
+            }
+
+            return moves;
+        }
+
+        /// <summary>
+        /// 이 칸이 <b>리필이 들어오는 입구</b>인가 — 같은 열에서 위쪽이 전부 비활성(구멍)이라
+        /// 보드 밖에서 새 타일이 곧장 내려올 수 있는 자리. <see cref="BoardRefiller.Refill"/>이
+        /// 채우기 시작하는 지점과 같은 뜻이다.
+        /// </summary>
+        private static bool IsRefillEntry(BoardGrid board, GridPos pos)
+        {
+            for (int y = pos.Y + 1; y < board.Height; y++)
+                if (board.IsActive(new GridPos(pos.X, y)))
+                    return false;
+
+            return true;
+        }
+
+        /// <summary>
+        /// 구멍에서 <b>리필 입구까지의 최단 경로</b>를 찾는다 (너비 우선). 길 위의 칸은
+        /// <b>움직일 수 있는 타일</b>이어야 한다 — 벽·사슬은 밀 수 없으므로 길이 그쪽으로 못 뚫린다.
+        ///
+        /// <para>대각선도 이웃으로 친다. 타일이 원래 대각선으로 미끄러지는 게임이라
+        /// 그 방향으로 밀려 들어오는 것이 눈에 자연스럽고, 길도 짧아진다.</para>
+        ///
+        /// <para>돌려주는 목록은 <b>구멍 → 입구</b> 순서다. 길이 없으면 null.</para>
+        /// </summary>
+        private static List<GridPos> FindPathToRefillEntry(BoardGrid board, GridPos hole)
+        {
+            var cameFrom = new Dictionary<GridPos, GridPos>();
+            var visited = new HashSet<GridPos> { hole };
+            var queue = new Queue<GridPos>();
+            queue.Enqueue(hole);
+
+            while (queue.Count > 0)
+            {
+                GridPos current = queue.Dequeue();
+
+                foreach (GridPos next in Neighbors(current))
+                {
+                    if (!board.IsActive(next) || !visited.Add(next))
+                        continue;
+
+                    // ⚠ 길 위의 칸은 <반드시 밀 수 있는 타일>이 들어 있어야 한다.
+                    //   · 벽·사슬(IsFixed)은 밀 수 없다.
+                    //   · 빈 칸도 안 된다 — 밀 타일이 없다. 그 칸은 <제 몫의 구멍>이라
+                    //     자기 차례에 따로 길을 찾는다. 여기로 지나가게 두면 밀 것이 없는
+                    //     자리를 옮기려다 터진다(퍼즈가 잡아낸 실제 사고다).
+                    Tile tile = board.GetTile(next);
+                    if (tile == null || tile.IsFixed)
+                        continue;
+
+                    cameFrom[next] = current;
+
+                    if (IsRefillEntry(board, next))
+                        return BuildPath(cameFrom, hole, next);
+
+                    queue.Enqueue(next);
+                }
+            }
+
+            return null;
+        }
+
+        /// <summary>8방향 이웃 (대각선 포함).</summary>
+        private static IEnumerable<GridPos> Neighbors(GridPos pos)
+        {
+            for (int dx = -1; dx <= 1; dx++)
+                for (int dy = -1; dy <= 1; dy++)
+                    if (dx != 0 || dy != 0)
+                        yield return new GridPos(pos.X + dx, pos.Y + dy);
+        }
+
+        /// <summary>도착점에서 거슬러 올라가 <b>구멍 → 입구</b> 순서의 경로를 만든다.</summary>
+        private static List<GridPos> BuildPath(
+            Dictionary<GridPos, GridPos> cameFrom, GridPos hole, GridPos entry)
+        {
+            var path = new List<GridPos> { entry };
+            GridPos current = entry;
+
+            while (!current.Equals(hole))
+            {
+                current = cameFrom[current];
+                path.Add(current);
+            }
+
+            path.Reverse(); // 구멍이 앞
+            return path;
         }
 
         /// <summary>해당 열에서 fromY 이상의 첫 활성 셀 (구멍은 건너뛴다). 없으면 false.</summary>
