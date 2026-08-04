@@ -73,3 +73,6 @@ crashlytics-build.properties
 # Temporary auto-generated Android Assets
 /[Aa]ssets/[Ss]treamingAssets/aa.meta
 /[Aa]ssets/[Ss]treamingAssets/aa/*
+
+# Core 퍼즈 하네스 빌드 산출물 (Tools/CoreFuzz/run.ps1 이 다시 만든다)
+/Tools/CoreFuzz/bin/
