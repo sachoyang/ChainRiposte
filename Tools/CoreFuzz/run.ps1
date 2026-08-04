@@ -11,6 +11,10 @@
 
 param(
     [int]$Boards = 6000,
+    # 벽 비율 고정 (0~1). 안 주면 보드마다 무작위 — 갇힌 칸 빈도를 재는 실험용 손잡이다.
+    [double]$WallRatio = -1,
+    # 구멍(비정형 보드) 비율 고정 (0~1). 안 주면 보드마다 무작위.
+    [double]$HoleRatio = -1,
     [string]$UnityRoot = "E:\Unity\2022.3.62f3\Editor\Data"
 )
 
@@ -50,5 +54,13 @@ $config = '{ "runtimeOptions": { "tfm": "net8.0", "framework": { "name": "Micros
 # BOM 이 붙으면 런타임이 "빈 문서"로 읽는다 — BOM 없는 UTF-8 로 쓴다
 [System.IO.File]::WriteAllText((Join-Path $outDir "CoreFuzz.runtimeconfig.json"), $config, (New-Object System.Text.UTF8Encoding $false))
 
-& dotnet "$outDir\CoreFuzz.dll" --boards $Boards
+$runArgs = @("--boards", $Boards)
+if ($WallRatio -ge 0) {
+    $runArgs += @("--wall-ratio", $WallRatio.ToString([System.Globalization.CultureInfo]::InvariantCulture))
+}
+if ($HoleRatio -ge 0) {
+    $runArgs += @("--hole-ratio", $HoleRatio.ToString([System.Globalization.CultureInfo]::InvariantCulture))
+}
+
+& dotnet "$outDir\CoreFuzz.dll" $runArgs
 exit $LASTEXITCODE

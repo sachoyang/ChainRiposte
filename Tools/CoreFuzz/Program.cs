@@ -25,6 +25,15 @@ namespace ChainRiposte.Tools.CoreFuzz
         private const int DefaultBoards = 6000;
         private const int MaxTurnsPerBoard = 40;
 
+        /// <summary>
+        /// 벽 비율 고정값 (0~1). 음수면 보드마다 무작위로 뽑는다(평소).
+        /// <b>갇힌 칸이 생기는 빈도를 사실상 이 값 하나가 정한다</b> — 벽이 없으면 갇힐 일도 없다.
+        /// </summary>
+        private static double _wallRatio = -1;
+
+        /// <summary>구멍(비활성 칸) 비율 고정값 (0~1). 음수면 보드마다 무작위로 뽑는다(평소).</summary>
+        private static double _holeRatio = -1;
+
         // ── 타일 팔레트 (Game 레이어의 TileDefinitionSO 대신 여기서 직접 만든다) ──
         private static readonly TileDefinition[] Monsters =
         {
@@ -175,6 +184,7 @@ namespace ChainRiposte.Tools.CoreFuzz
             }
 
             stats.Boards++;
+            stats.RecordShape(shape);
             stats.SealedObserved += context.SealedObserved;
             stats.CaptureSample(board, shape, rng);
             return null;
@@ -437,7 +447,9 @@ namespace ChainRiposte.Tools.CoreFuzz
                 var walls = new HashSet<GridPos>();
 
                 // 구멍(비정형 보드) — 하트·해골 같은 손그림 모양을 흉내 낸다
-                double holeChance = rng.Next(3) == 0 ? 0.0 : rng.NextDouble() * 0.18;
+                double holeChance = _holeRatio >= 0
+                    ? _holeRatio
+                    : (rng.Next(3) == 0 ? 0.0 : rng.NextDouble() * 0.18);
                 int active = 0;
 
                 for (int y = 0; y < height; y++)
@@ -452,7 +464,9 @@ namespace ChainRiposte.Tools.CoreFuzz
                 }
 
                 // 벽 — 부서지면 그 자리가 '갇힌 칸'이 되는 주범이라 넉넉히 뿌린다
-                int wallCount = rng.Next(0, Math.Max(1, active / 8));
+                int wallCount = _wallRatio >= 0
+                    ? (int)Math.Round(active * _wallRatio)
+                    : rng.Next(0, Math.Max(1, active / 8));
                 for (int i = 0; i < wallCount; i++)
                 {
                     var pos = new GridPos(rng.Next(width), rng.Next(1, height));
@@ -550,12 +564,23 @@ namespace ChainRiposte.Tools.CoreFuzz
             public long TilesCleared;
             public long FallPhases;
             public long Spawns;
-            public long SealedSpawns;   // 갇힌 칸에 제자리 생성된 타일
-            public long PulledHoles;    // 끌어오기로 메워진 갇힌 칸
+            public long SealedSpawns;   // 갇힌 칸에 제자리 생성된 타일 (TileSpawn.Sealed — 정확한 값)
             public long WallsDestroyed;
             public long Shuffles;
             public long NoMoveBoards;
             public long SealedObserved;
+
+            // 실제로 만들어진 보드의 밀도 — 갇힌 칸 비율이 여기에 딸려 움직인다
+            public long GridCells;
+            public long ActiveCells;
+            public long WallCells;
+
+            public void RecordShape(BoardShape shape)
+            {
+                GridCells += shape.Width * shape.Height;
+                ActiveCells += shape.ActiveCells;
+                WallCells += shape.Walls.Count;
+            }
             public int MaxCombo;
             public string[] SampleRows;
 
@@ -595,10 +620,6 @@ namespace ChainRiposte.Tools.CoreFuzz
                 foreach (FallPhase phase in phases)
                 {
                     FallPhases++;
-
-                    // 이동만 있고 스폰이 없는 웨이브 = 구멍을 끌어올린 웨이브
-                    if (phase.Spawns.Count == 0 && phase.Moves.Count > 0)
-                        PulledHoles++;
 
                     foreach (TileSpawn spawn in phase.Spawns)
                     {
@@ -784,9 +805,9 @@ namespace ChainRiposte.Tools.CoreFuzz
 
         private static void StatsBlock(Stats stats, TimeSpan elapsed, int boards)
         {
-            long sealedTotal = stats.SealedSpawns + stats.PulledHoles;
-            double pulledRatio = sealedTotal > 0 ? stats.PulledHoles * 100.0 / sealedTotal : 0;
-            double sealedRatio = sealedTotal > 0 ? stats.SealedSpawns * 100.0 / sealedTotal : 0;
+            long normalSpawns = stats.Spawns - stats.SealedSpawns;
+            double normalRatio = stats.Spawns > 0 ? normalSpawns * 100.0 / stats.Spawns : 0;
+            double sealedRatio = stats.Spawns > 0 ? stats.SealedSpawns * 100.0 / stats.Spawns : 0;
 
             Color(ConsoleColor.Cyan);
             Console.WriteLine(" 실측");
@@ -796,13 +817,17 @@ namespace ChainRiposte.Tools.CoreFuzz
             Row("사라진 타일", $"{stats.TilesCleared:N0}개", $"부서진 벽 {stats.WallsDestroyed:N0}개");
             Row("낙하 웨이브", $"{stats.FallPhases:N0}회", $"새로 생긴 타일 {stats.Spawns:N0}개");
             Row("불변식 검사", $"{stats.Steps:N0}스텝", $"{elapsed.TotalSeconds:F1}초 · 보드당 {elapsed.TotalMilliseconds / Math.Max(1, boards):F2}ms");
+
+            double wallPercent = stats.ActiveCells > 0 ? stats.WallCells * 100.0 / stats.ActiveCells : 0;
+            double holePercent = stats.GridCells > 0 ? (stats.GridCells - stats.ActiveCells) * 100.0 / stats.GridCells : 0;
+            Row("보드 밀도", $"벽 {wallPercent:F1}%", $"구멍 {holePercent:F1}% · 활성 칸 평균 {(double)stats.ActiveCells / Math.Max(1, stats.Boards):F0}개");
             Console.WriteLine();
 
             Color(ConsoleColor.Cyan);
-            Console.WriteLine($" 갇힌 칸이 메워진 경로   (관측 {sealedTotal:N0}회)");
+            Console.WriteLine($" 새 타일이 들어온 경로   (총 {stats.Spawns:N0}개)");
             Reset();
-            Bar("끌어오기 (타일이 미끄러져 들어감)", pulledRatio, stats.PulledHoles, ConsoleColor.Green);
-            Bar("제자리 생성 (완전히 둘러싸인 칸)", sealedRatio, stats.SealedSpawns, ConsoleColor.Yellow);
+            Bar("위에서 떨어짐 (평범한 리필)", normalRatio, normalSpawns, ConsoleColor.Green);
+            Bar("제자리 생성 (갇힌 칸 · 최후의 수단)", sealedRatio, stats.SealedSpawns, ConsoleColor.Yellow);
         }
 
         private static void Row(string key, string value, string note)
@@ -947,11 +972,25 @@ namespace ChainRiposte.Tools.CoreFuzz
 
         private static int ParseBoards(string[] args)
         {
-            for (int i = 0; i < args.Length - 1; i++)
-                if (args[i] == "--boards" && int.TryParse(args[i + 1], out int value) && value > 0)
-                    return value;
+            int boards = DefaultBoards;
 
-            return DefaultBoards;
+            for (int i = 0; i < args.Length - 1; i++)
+            {
+                if (args[i] == "--boards" && int.TryParse(args[i + 1], out int value) && value > 0)
+                    boards = value;
+
+                if (args[i] == "--wall-ratio" &&
+                    double.TryParse(args[i + 1], System.Globalization.NumberStyles.Float,
+                        System.Globalization.CultureInfo.InvariantCulture, out double wall))
+                    _wallRatio = wall;
+
+                if (args[i] == "--hole-ratio" &&
+                    double.TryParse(args[i + 1], System.Globalization.NumberStyles.Float,
+                        System.Globalization.CultureInfo.InvariantCulture, out double hole))
+                    _holeRatio = hole;
+            }
+
+            return boards;
         }
     }
 }
