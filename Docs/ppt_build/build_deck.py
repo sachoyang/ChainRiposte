@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-ChainRiposte 포트폴리오 PPT 생성기 (14장)
+ChainRiposte 포트폴리오 PPT 생성기 (17장)
 
-- 원본 ChainRiposte.pptx를 복사해 슬라이드만 전부 지우고 새로 짓는다.
+- _theme_base.pptx(테마 원본)를 복사해 슬라이드만 전부 지우고 새로 짓는다.
   → 임베드된 Pretendard 폰트 · 슬라이드 마스터 · 테마가 그대로 살아 있다.
 - 내용은 Docs/ppt대본.md 대본을 그대로 따른다(문장을 지어내지 않는다).
 - 세로 배치는 V 배분기가 잡는다. 크기가 음수가 되면 그 자리에서 빌드가 죽는다
@@ -20,9 +20,14 @@ from pptx.oxml.ns import qn
 from lxml import etree
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-SRC = r"C:\Study\Unity\ChainRiposte\Docs\ChainRiposte.pptx"
+
+# 테마·슬라이드 마스터·임베드 폰트(Pretendard)를 물려받는 원본. 26.67 x 15 inch 캔버스다.
+# ⚠ 완성본(Docs/ChainRiposte.pptx)을 여기에 쓰지 말 것 — 구글 슬라이드를 한 번 거치면
+#    캔버스가 10 x 5.625 로 줄고 도형 이름이 바뀌어, 아래 레이아웃 수치(inch)가 전부 어긋난다.
+SRC = os.path.join(HERE, "_theme_base.pptx")
 BASE = os.path.join(HERE, "_theme_src.pptx")
 TMP = os.path.join(HERE, "_build.pptx")
+OUT = os.path.join(os.path.dirname(HERE), "ChainRiposte.pptx")
 
 # ─────────────────────────────────────────── 디자인 토큰 (원본 실측값)
 INK    = RGBColor(0x00, 0x00, 0x00)
@@ -357,6 +362,113 @@ def cols2(v, h, gap=0.55):
     return [(CX, y, w, h), (CX + w + gap, y, w, h)], y
 
 
+def codebox(sl, x, y, w, h, lines, size=23, fill=DARK):
+    """코드/의사코드 상자. 넘침 자동 축소 대상에서 빼려면 호출부에서 높이를 넉넉히 준다."""
+    rect(sl, x, y, w, h, fill=fill, radius=0.10)
+    paras = []
+    for ln in lines:
+        item = dict(ln) if isinstance(ln, dict) else {"t": ln}
+        item.setdefault("font", F_C)
+        item.setdefault("color", RGBColor(0xDC, 0xE6, 0xF5))
+        item.setdefault("size", size)
+        paras.append(item)
+    text(sl, x + 0.55, y + 0.26, w - 1.1, h - 0.52, paras, size=size, font=F_C,
+         color=RGBColor(0xDC, 0xE6, 0xF5), spacing=1.34, em=BLUE_L)
+
+
+class Column:
+    """본문 폭(CW)을 잠시 좁힌다 — 오른쪽 미디어 레일을 깔 때 왼쪽 칼럼용."""
+
+    def __init__(self, width):
+        self.width = width
+
+    def __enter__(self):
+        global CW
+        self._prev = CW
+        CW = self.width
+        return self
+
+    def __exit__(self, *exc):
+        global CW
+        CW = self._prev
+        return False
+
+
+def rail(sl, v, caption, sub=None, width=8.60, gap=0.55):
+    """
+    오른쪽에 <b>본문 높이를 통째로 쓰는</b> 스크린샷/영상 자리를 깔고,
+    남은 왼쪽 폭으로 CW를 좁힌 컨텍스트를 돌려준다.
+
+    작은 자리를 아래에 붙이면 도판이 장식이 된다 — 발표에서 실제로 보여 줄 것은
+    화면이므로 자리부터 크게 잡고 글을 그 옆에 맞춘다.
+    """
+    top = v.y
+    media(sl, CX + CW - width, top, width, BOTTOM - top, caption, sub)
+    return Column(CW - width - gap)
+
+
+def lean_card(sl, x, y, w, h, title, lines, size_title=30, size_body=24, fill=SOFT):
+    """제목 한 줄 + 본문. col_card보다 여백이 얇아 좁은 칼럼에서 본문 자리가 남는다."""
+    pad = 0.40
+    rect(sl, x, y, w, h, fill=fill, radius=0.13, line=LINE, lw=0.75)
+    text(sl, x + pad, y + pad, w - 2 * pad, 0.56, title, size=size_title, color=INK)
+    text(sl, x + pad, y + pad + 0.62, w - 2 * pad, h - 2 * pad - 0.62, lines,
+         size=size_body, color=BODY, spacing=1.28, space_after=7)
+
+
+def stack(v, h, gap=0.30):
+    """왼쪽 칼럼에 카드를 한 장 쌓을 자리 (x, y, w, h)."""
+    return CX, v.take(h, gap), CW, h
+
+
+def index_grid(sl, x, y, cols, rows, hot=None, cell=0.62, gap=0.07, size=20):
+    """행 우선 평탄화(index = row × width + x)를 눈으로 보여 주는 번호 격자."""
+    step = cell + gap
+    for r in range(rows):
+        for c in range(cols):
+            i = r * cols + c
+            on = (hot is not None and i == hot)
+            s = rect(sl, x + c * step, y + r * step, cell, cell,
+                     fill=(BLUE if on else CARD), line=(None if on else LINE), lw=0.7,
+                     radius=0.06, shape=MSO_SHAPE.RECTANGLE)
+            label_in(s, str(i), size, F_B, WHITE if on else MUTED, pad=0.0)
+    return cols * step - gap, rows * step - gap
+
+
+# 미니 보드 도식 — 알고리즘을 말로만 적으면 안 읽힌다
+CELL_TILE, CELL_WALL, CELL_HOLE, CELL_PATH, CELL_SKIP = "o", "W", ".", "*", " "
+
+
+def mini_board(sl, x, y, rows, cell=0.44, gap=0.05, caption=None, cap_size=21):
+    """문자 격자를 도형으로 그린다. o=타일 · W=벽 · .=빈 칸 · *=밀려날 타일 · 공백=없음."""
+    step = cell + gap
+    for r, row in enumerate(rows):
+        for c, ch in enumerate(row):
+            if ch == CELL_SKIP:
+                continue
+            cx, cy = x + c * step, y + r * step
+            if ch == CELL_WALL:
+                s = rect(sl, cx, cy, cell, cell, fill=DARK, radius=0.05,
+                         shape=MSO_SHAPE.RECTANGLE)
+                label_in(s, "벽", 14, F_B, WHITE, pad=0.0)
+            elif ch == CELL_HOLE:
+                rect(sl, cx, cy, cell, cell, fill=RED_T, line=RED, lw=1.6, radius=0.05,
+                     shape=MSO_SHAPE.RECTANGLE, dash=True)
+            elif ch == CELL_PATH:
+                rect(sl, cx, cy, cell, cell, fill=BLUE_L, line=BLUE, lw=1.2, radius=0.05,
+                     shape=MSO_SHAPE.RECTANGLE)
+            else:
+                rect(sl, cx, cy, cell, cell, fill=CARD, line=LINE, lw=0.7, radius=0.05,
+                     shape=MSO_SHAPE.RECTANGLE)
+
+    w = len(rows[0]) * step - gap
+    h = len(rows) * step - gap
+    if caption:
+        text(sl, x - 0.3, y + h + 0.14, w + 0.6, 0.42, caption, size=cap_size, font=F_L,
+             color=MUTED, align=PP_ALIGN.CENTER)
+    return w, h
+
+
 # ═══════════════════════════════════════════ 슬라이드
 def s01_cover(prs):
     sl = prs.slides.add_slide(prs.slide_layouts[6])
@@ -374,11 +486,10 @@ def s01_cover(prs):
     hline(sl, 2.79, 1.39, 20.29, RULE, 1.1)
     badge(sl, 23.20, 1.06, 1.90, 0.66, "1", size=20, fill=DARK)
 
-    text(sl, 4.6, 2.35, 18.6, 0.5, "신입 게임 클라이언트 프로그래머 포트폴리오",
-         size=22, font=F_L, color=MUTED, align=PP_ALIGN.CENTER)
+    # 표지 문구는 사용자가 직접 고친 것을 그대로 따른다 (이름 40pt, 부제 없음).
     text(sl, 4.4, 4.18, 19.0, 2.30, "ChainRiposte", size=110, font=F_L, color=INK,
          align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE, fit=False)
-    text(sl, 4.4, 6.08, 19.0, 2.30, "고쳐도 안 무너지는 구조", size=100, font=F_EB,
+    text(sl, 4.4, 6.08, 19.0, 2.30, "양평화", size=40, font=F_EB,
          color=INK, align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE, fit=False)
     hline(sl, 12.51, 8.75, 2.87, BLUE, 3.0)
     chips(sl, 9.45, 1.05, ["Unity 6", "C#", "1인 개발", "3주 (2026.07.14 ~ 08.03)"], size=27)
@@ -400,205 +511,288 @@ def s02_game(prs):
     sl = chrome(prs, 2)
     v = head(sl, "두 장르를 한 자원으로 묶었다", "퍼즐은 준비 구간, 보스전은 실력 구간.")
 
-    y = v.take(0.42, 0.12)
-    text(sl, CX, y, CW, 0.42, "한 판의 흐름", size=26, color=BLUE)
-    y = v.take(0.95, 0.34)
-    chips(sl, y, 0.95, ["월드맵", "퍼즐 (매치3)", "준비 (스탯 분배)", "보스전 (패링)", "다음 고리"],
-          arrows=True, size=24, accent_last=True)
+    with rail(sl, v, "스크린샷 — 퍼즐 화면 + 보스전 화면",
+              "세로 화면 2장을 위아래 또는 나란히", width=8.80):
+        y = v.take(0.42, 0.10)
+        text(sl, CX, y, CW, 0.42, "한 판의 흐름", size=25, color=BLUE)
+        y = v.take(0.92, 0.34)
+        chips(sl, y, 0.92, ["월드맵", "퍼즐", "준비", "보스전", "다음 고리"],
+              arrows=True, size=22, accent_last=True)
 
-    boxes, y = cols2(v, 2.85, 0.55)
-    col_card(sl, *boxes[0], None, "퍼즐 → 보스전",
-             ["퍼즐에서 캔 소울로 레벨업하고, **퍼즐에서 맞은 HP가 그대로 보스전으로 넘어간다.**"],
-             size_title=38, size_body=27)
-    col_card(sl, *boxes[1], None, "성장은 남는다",
-             ["죽으면 **사슬만 끊기고 성장은 남는다.** 빌드를 잃지 않으므로 다시 도전할 이유가 생긴다."],
-             size_title=38, size_body=27)
+        lean_card(sl, *stack(v, 3.20), "두 장르가 이어지는 지점",
+                  ["퍼즐에서 캔 소울로 레벨업하고, **퍼즐에서 맞은 HP가 그대로 보스전으로 넘어간다.**",
+                   "죽으면 **사슬만 끊기고 성장은 남는다** — 빌드를 잃지 않으므로 다시 도전할 이유가 생긴다."],
+                  size_title=33, size_body=25)
 
-    y = v.take(1.60, 0.30)
-    callout(sl, y, 1.60,
-            "난이도는 **실행(패링)**에서 오고, 성장은 **모서리만 깎는다.**",
-            "성장이 난이도를 지우면 퍼즐이 무의미해지고, 아무것도 안 하면 성장이 무의미해진다.",
-            size_q=34, size_n=25)
-
-    y, h = v.take_rest()
-    media(sl, CX, y, CW, h, "스크린샷 — 퍼즐 화면 + 보스전 화면 나란히")
+        y, h = v.take_rest()
+        callout(sl, y, h,
+                "난이도는 **실행(패링)**에서 오고, 성장은 **모서리만 깎는다.**",
+                "성장이 난이도를 지우면 퍼즐이 무의미해지고, 아무것도 안 하면 성장이 무의미해진다.",
+                size_q=30, size_n=24)
 
 
-def s03_layers(prs):
+def s03_data(prs):
     sl = chrome(prs, 3)
-    v = head(sl, "의존 방향을 컴파일러가 강제한다",
-             "`noEngineReferences: true` 한 줄이 「약속」을 「빌드 에러」로 만들었다.")
+    v = head(sl, "판 하나 = 에셋 하나",
+             "밸런스 수치는 코드에 없다. 전부 ScriptableObject 에셋이고, 인스펙터에서 고친다.")
 
-    y = v.take(6.06, 0.36)
-    table(sl, y, 6.06, [1.35, 1.7, 4.2], ["계층", "규모", "무엇"],
-          [["Editor", "19파일 / 4,920줄", "채보 · 보드 · 현지화 툴 (커스텀 메뉴 34종)"],
-           ["Game (어댑터)", "74파일 / 12,464줄", "MonoBehaviour · UI · VFX · Audio"],
-           ["Core (순수 C#)", "59파일 / 5,025줄", "★ **UnityEngine 참조 불가 — 컴파일 강제** ★"],
-           ["Core.Tests", "18파일 / 3,137줄", "EditMode 167개 · 에디터 없이 실행"]],
-          highlight=2)
+    with rail(sl, v, "스크린샷 — StageDataSO 인스펙터 전체",
+              "접힌 곳 없이 펼쳐서 · Project 창의 Data 폴더도 함께", width=9.20):
+        dh = 2.05
+        y = v.take(dh, 0.30)
+        rect(sl, CX, y, CW, dh, fill=SOFT, radius=0.13, line=LINE, lw=0.75)
+        bw, bh, ar = 3.45, 0.95, 0.62
+        bx = CX + 0.42
+        b = rect(sl, bx, y + 0.28, bw, bh, fill=WHITE, radius=0.10, line=BLUE, lw=1.8)
+        label_in(b, "StageDataSO", 22, F_C, BLUE_D, pad=0.10)
+        text(sl, bx + bw, y + 0.28, ar, bh, "→", size=28, color=BLUE,
+             align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
+        bx2 = bx + bw + ar
+        b = rect(sl, bx2, y + 0.28, bw, bh, fill=BLUE, radius=0.10)
+        label_in(b, "ToConfig()", 22, F_C, WHITE, pad=0.10)
+        text(sl, bx2 + bw, y + 0.28, ar, bh, "→", size=28, color=BLUE,
+             align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
+        b = rect(sl, bx2 + bw + ar, y + 0.28, bw, bh, fill=WHITE, radius=0.10, line=BLUE, lw=1.8)
+        label_in(b, "퍼즐 · 전투 엔진", 22, F_B, BLUE_D, pad=0.10)
+        text(sl, CX + 0.42, y + 1.36, CW - 0.84, 0.50,
+             "인스펙터가 다루기 좋은 값을 **엔진이 쓰는 형태로 번역하는 창구가 하나**다.",
+             size=23, color=BODY)
 
-    y, h = v.take_rest()
-    rect(sl, CX, y, CW, h, fill=SOFT, radius=0.13, line=LINE, lw=0.75)
-    text(sl, CX + 0.85, y + 0.22, CW - 1.7, h - 0.44,
-         [{"t": "왜 규칙을 코드로 강제했나", "size": 30, "color": INK},
-          {"t": "\"Core에 Unity를 쓰지 말자\"는 **지켜지지 않는다.** 그것이 컴파일 에러가 된 순간부터 규칙이 진짜가 됐다. → 이 결정이 값을 한 순간은 **10장**에 있다.",
-           "size": 26, "color": BODY, "space_before": 9}],
-         anchor=MSO_ANCHOR.MIDDLE)
+        lean_card(sl, *stack(v, 2.85), "번역은 한 곳에서만",
+                  ["보드는 `\"OOWOO\"` 문자열로 그린다 — git diff에 모양이 그대로 보인다.",
+                   "마스크와 벽 좌표로 바꾸면서 **위아래를 뒤집는 곳이 딱 한 군데**다. 두 곳에서 뒤집으면 제자리다."],
+                  size_title=31, size_body=24)
+
+        y, h = v.take_rest()
+        lean_card(sl, CX, y, CW, h, "늘리는 비용이 에셋 1개",
+                  ["스테이지 · 캐릭터 · 보스 · 타일 — 전부 **에셋 하나 추가**로 붙는다.",
+                   "SO **10종** · 데이터 에셋 **20여 개** · 코드에 상수로 박힌 밸런스 **0개**."],
+                  size_title=31, size_body=24)
 
 
-def s04_boundary(prs):
+def s04_puzzle_flow(prs):
     sl = chrome(prs, 4)
-    v = head(sl, "경계를 넘는 방법이 3가지뿐이다",
-             "배선이 전부 같은 패턴을 따르면, 새 기능도 그 패턴에 붙는다.")
+    v = head(sl, "퍼즐 엔진 — 한 번의 스왑",
+             "핵심 구현 ① — 엔진이 결과를 <b>한 번에 끝까지</b> 계산하고, 화면은 그 기록을 재생만 한다.")
 
-    for tag, title, desc in [
-        ("규칙 1", "ScriptableObject",
-         "밸런스 수치는 전부 SO. 코드에 상수로 박힌 밸런스가 **0**이다 (SO 10종)."),
-        ("규칙 2", "Func<> 로 감싼다",
-         "`AnimationCurve` → `Func<float,float>`. Core는 커브를 \"값을 돌려주는 함수\"로만 안다."),
-        ("규칙 3", "C# event 25종",
-         "Core는 이벤트로만 말한다. **역방향 참조 없이** 화면이 반응한다."),
-    ]:
-        row_card(sl, v.take(1.30, 0.22), 1.30, tag, title, desc)
-    v.y += 0.08
+    with rail(sl, v, "▶ 영상 5초 — 매치 → 연쇄 → 낙하",
+              "한 번의 스왑이 끝까지 이어지는 장면", width=8.20):
+        y = v.take(0.40, 0.10)
+        text(sl, CX, y, CW, 0.40, "`TrySwap(a, b)` 안에서 도는 순서", size=24, color=BLUE)
+        y = v.take(0.92, 0.32)
+        chips(sl, y, 0.92, ["교환", "매치 찾기", "파괴", "중력 · 리필", "연쇄"],
+              arrows=True, size=21, accent_last=True)
 
-    y = v.take(1.85, 0.28)
-    callout(sl, y, 1.85, "코드에 고유명사를 적지 않는다",
-            "`if (stageName == \"2-1\")` 같은 코드가 없다. 난이도도 표가 아니라 **고리 깊이 × 증가율로 계산**한다 — 표였다면 갱신을 잊어 **새 판만 조용히 물렁해진다.**",
-            size_q=31, size_n=25)
+        lean_card(sl, *stack(v, 2.75), "매치 찾기 — 런을 모아 합친다",
+                  ["가로 · 세로를 훑어 **3칸 이상 이어진 런**을 모으고, 겹치면 합친다(ㄱ자 · T자).",
+                   "파괴 목록은 `HashSet`이라 **교차점이 두 번 세어지지 않는다.**"],
+                  size_title=31, size_body=24)
 
-    y, h = v.take_rest()
-    row_card(sl, y, h, "확장 비용", "붙이는 값이 1개다",
-             "스테이지 = 에셋 1개  ·  캐릭터 = 에셋 1개  ·  기믹 = `StageGimmick` 상속 1개  ·  언어 = CSV 열 1개",
-             tag_w=3.4, title_w=5.4)
+        y, h = v.take_rest()
+        lean_card(sl, CX, y, CW, h, "모델 / 뷰 — 완결된 기록을 넘긴다",
+                  ["매치가 없으면 **그 자리에서 되돌리고 턴도 안 센다** — 그래서 수가 없으면 판이 멈춘다(다음 장).",
+                   "`SwapResult` 하나에 **연쇄 · 낙하 · 기믹**이 전부 담긴다. 연출 중에도 **모델은 이미 최종 상태**라 건너뛰어도 결과가 같다."],
+                  size_title=31, size_body=24)
 
 
-def s05_combat(prs):
+def s05_deadlock(prs):
     sl = chrome(prs, 5)
-    v = head(sl, "어필 기술 ① 리듬 패링 전투",
-             "프레임레이트와 무관하게, 같은 입력이면 같은 결과가 나온다.")
+    v = head(sl, "둘 수 있는 수를 전부 센다",
+             "핵심 구현 ② — 매치 없는 스왑은 턴을 안 먹으므로, 수가 0이면 판이 영영 멈춘다.")
 
-    boxes, y = cols3(v, 4.60, 0.36)
-    col_card(sl, *boxes[0], "채보 기반", "박(beat) 단위 노트",
-             ["보스 공격을 타격 시점 · 예비동작 길이 · 피해 배율로 찍는다.",
-              "**연속기는 별도 타입이 아니다** — 노트를 촘촘히 찍으면 그게 연속기다."])
-    col_card(sl, *boxes[1], "판정 = 뷰", "보이는 것이 곧 판정",
-             ["다가오는 흰 원의 **안쪽 테두리**가 노트의 위치이고, 회색 띠의 두께가 **판정 폭 그 자체**다.",
-              "로직과 뷰가 같은 수치에서 파생되므로 어긋날 수 없다."])
-    col_card(sl, *boxes[2], "결정적", "경계까지만 진행",
-             ["프레임 단위로 흘리지 않고 **다음 상태 경계**(타격 시점 · 윈도우 만료)까지만 진행한다.",
-              "→ 엔진 없이 순수 C#으로 **전투 전체를 테스트**할 수 있다."])
-
-    y = v.take(1.40, 0.30)
-    callout(sl, y, 1.40, "PARRY 스탯을 올리면 띠가 **눈에 띄게 굵어진다.**", size_q=32)
-
-    y, h = v.take_rest()
-    media(sl, CX, y, CW, h, "▶ 영상 5초 — 패링 판정 링",
-          "정지 이미지로는 설명이 안 된다 · 인살 컷씬도 함께")
-
-
-def s06_puzzle(prs):
-    sl = chrome(prs, 6)
-    v = head(sl, "어필 기술 ② 퍼즐 엔진",
-             "모델은 완결된 결과를 한 번에 내고, 뷰는 그 기록을 재생만 한다.")
-
-    dh = 2.15
-    y = v.take(dh, 0.34)
-    rect(sl, CX, y, CW, dh, fill=SOFT, radius=0.13, line=LINE, lw=0.75)
-    bw, bh, ar = 6.30, 1.10, 1.15
-    bx = CX + 0.70
-    b = rect(sl, bx, y + 0.32, bw, bh, fill=WHITE, radius=0.10, line=BLUE, lw=1.8)
-    label_in(b, "PuzzleEngine.Swap(a, b)", 25, F_C, BLUE_D)
-    text(sl, bx + bw, y + 0.32, ar, bh, "→", size=32, color=BLUE,
-         align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
-    bx2 = bx + bw + ar
-    b = rect(sl, bx2, y + 0.32, bw, bh, fill=BLUE, radius=0.10)
-    label_in(b, "SwapResult", 25, F_C, WHITE)
-    text(sl, bx2 + bw, y + 0.32, ar, bh, "→", size=32, color=BLUE,
-         align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
-    b = rect(sl, bx2 + bw + ar, y + 0.32, bw, bh, fill=WHITE, radius=0.10, line=BLUE, lw=1.8)
-    label_in(b, "BoardView 재생", 25, F_C, BLUE_D)
-    text(sl, CX + 0.70, y + 1.52, CW - 1.4, 0.50,
-         "**SwapResult** = 캐스케이드 · 낙하 · 기믹이 전부 담긴 완결 기록. 연출이 도는 **중에도 모델은 이미 최종 상태**다.",
-         size=25, color=BODY)
-
-    boxes, y = cols2(v, 3.35, 0.50)
-    col_card(sl, *boxes[0], None, "비정형 보드를 버티는 규칙",
-             ["하트 · 해골 모양 보드 · 중력 + 대각 슬라이드 · **데드락 검출 후 턴 미소모 리롤**",
-              "매치 없는 스왑은 턴을 안 먹으므로, 수가 없으면 게임이 그냥 멈춘다."],
-             size_title=35, size_body=25)
-    x2, y2, w2, h2 = boxes[1]
-    rect(sl, x2, y, w2, 3.35, fill=BLUE_T, radius=0.13)
-    rect(sl, x2, y, 0.17, 3.35, fill=BLUE, shape=MSO_SHAPE.RECTANGLE)
-    text(sl, x2 + 0.80, y + 0.40, w2 - 1.55, 2.55,
-         [{"t": "핵심 불변식", "size": 23, "color": BLUE},
-          {"t": "화면에 보이는 빈칸은 **의도한 구멍뿐**이다.", "size": 33, "color": BLUE_D,
-           "space_before": 6},
-          {"t": "갇힌 칸은 옆 타일이 미끄러져 들어와 메운다 — 실측 **99.08%.**",
-           "size": 25, "color": BODY, "space_before": 10}], anchor=MSO_ANCHOR.MIDDLE)
-
-    y, h = v.take_rest()
-    media(sl, CX, y, CW, h, "▶ 영상 5초 — 퍼즐 낙하 · 연쇄",
-          "대각 슬라이드 · 캐스케이드가 한눈에 보인다")
-
-
-def s07_tools(prs):
-    sl = chrome(prs, 7)
-    v = head(sl, "어필 기술 ③ 에디터 툴 34종",
-             "기획 · 아트 반복 작업을 코드로 지웠다. 전체 코드의 19%가 툴이다.")
-
-    y = v.take(4.70, 0.30)
-    table(sl, y, 4.70, [2.0, 5.0], ["툴", "해결한 것"],
-          [["채보 에디터", "타임라인 클릭 / 드래그 · 스냅(1 · 1/2 · 1/4박) · 예비동작 시각화 · **▶ 미리듣기**"],
-           ["보드 그리드 에디터", "문자열 대신 **칠하는 격자.** 인스펙터 + 전용 창"],
-           ["현지화 툴", "구글 시트 → CSV 동기화 · **씬 내 누락 키 검사**"],
-           ["지도 노드 편집", "씬 뷰 핸들 드래그 · 테마별 레이아웃 저장 / 불러오기"]],
-          hdr_h=0.78, gap=0.12, size_r=26)
-
-    y = v.take(2.05, 0.26)
-    rect(sl, CX, y, CW, 2.05, fill=SOFT, radius=0.13, line=LINE, lw=0.75)
-    text(sl, CX + 0.85, y + 0.18, CW - 1.7, 1.69,
-         ["**툴도 데이터 주도다** — 눌림 스프라이트 배선은 목록을 코드에 적지 않고 **이름 규칙**(`btn_wide` → `btn_wide_pressed`)으로 찾는다. 아트가 늘어도 툴은 안 고친다.",
-          "**에셋 생성 툴은 빈 슬롯만 채운다** — 다시 눌러도 손으로 고쳐 둔 값이 안 지워진다. 사람은 반드시 두 번 누른다."],
-         size=25, color=BODY, spacing=1.26, space_after=5, anchor=MSO_ANCHOR.MIDDLE)
-
-    y, h = v.take_rest()
-    media(sl, CX, y, CW, h, "스크린샷 — 채보 에디터 타임라인")
-
-
-def s08_toolrules(prs):
-    sl = chrome(prs, 8)
-    v = head(sl, "툴을 만들며 세운 규칙", "계속 쓸 도구여야 하므로, 툴에도 설계가 필요했다.")
-
-    def block(h, num, title, lines, gap=0.30):
-        y = v.take(h, gap)
-        rect(sl, CX, y, CW, h, fill=SOFT, radius=0.13, line=LINE, lw=0.75)
-        badge(sl, CX + 0.55, y + 0.34, 0.68, 0.68, num, size=25)
-        text(sl, CX + 1.45, y + 0.28, CW - 2.2, 0.58, title, size=30, color=INK)
-        text(sl, CX + 1.45, y + 0.94, CW - 2.2, h - 1.24, lines, size=25,
-             color=BODY, spacing=1.26, space_after=6)
-
-    block(2.35, "①", "미리듣기가 아낀 시간",
-          ["없을 때: 찍기 → 플레이 → 퍼즐 클리어 → 보스전 도달 → 확인 **(2~3분)**",
-           "있을 때: 찍기 → **▶ 클릭 (2초).** 채보 튜닝은 수십 번 반복하는 일이라 여기서 시간이 가장 많이 샌다."])
-    block(3.45, "②", "그리는 코드는 한 벌, 편집 상태는 호스트마다",
-          ["보드 편집은 **인스펙터**와 **전용 창** 두 곳에서 한다(인스펙터는 폭이 좁아 20×20이 잘린다). 그리는 코드를 각자 들면 브러시 하나 늘릴 때 두 곳을 고쳐야 하고 **한쪽은 반드시 잊는다** → `BoardGridGUI` 한 벌.",
-           "반대로 편집 상태를 static으로 두면 **둘을 같이 열었을 때 서로 덮어써 드래그가 끊긴다** → 호스트마다 하나씩.",
-           {"t": "공유할 것(그리는 방법)과 나눌 것(지금 누가 끌고 있는가)을 가르는 것이 툴 코드의 절반이다.",
-            "size": 26, "color": BLUE_D, "space_before": 8}])
+    boxes, y = cols2(v, 4.90, 0.35)
+    col_card(sl, *boxes[0], None, "전수 조사 — 스왑 → 판정 → 되돌리기",
+             ["후보는 **인접한 두 칸**뿐이다. 각 칸에서 **오른쪽 · 위 두 방향만** 보면 모든 쌍을 정확히 한 번 센다.",
+              "실제로 바꿔 보고 판정한 뒤 **원래대로 되돌린다** — 탐색이 보드를 남기지 않는다.",
+              "판정 기준을 엔진의 실제 스왑과 **같은 함수 하나**로 공유한다. 따로 적으면 «둘 수 있다고 했는데 못 두는» 유령 수가 생긴다."],
+             size_title=33, size_body=24)
+    col_card(sl, *boxes[1], None, "핵심 최적화 — 전체를 다시 훑지 않는다",
+             ["**전제**: 정착이 끝난 보드에는 매치가 하나도 없다.",
+              "그러면 새 매치는 반드시 **바뀐 두 칸 중 하나를 지난다** → 보드 전체 스캔 대신 그 칸에서 **네 방향으로 같은 종류를 세는** 국소 검사면 충분하다.",
+              "**O(W²H²) → O(W·H·(W+H)).** 9×7 보드에서 약 **8,000 → 2,000 연산**이고, 매 스왑 끝마다 도는 검사다."],
+             size_title=33, size_body=24)
 
     y, h = v.take_rest()
     rect(sl, CX, y, CW, h, fill=SOFT, radius=0.13, line=LINE, lw=0.75)
-    badge(sl, CX + 0.55, y + 0.34, 0.68, 0.68, "③", size=25)
-    text(sl, CX + 1.45, y + 0.28, CW - 2.2, 0.58, "두 번 돌려도 무해해야 한다", size=30, color=INK)
-    text(sl, CX + 1.45, y + 0.94, CW - 2.2, h - 1.24,
-         "일괄 교체 툴이 두 번째 실행에서 껍데기를 한 겹 더 씌운 버그를 겪고, **조상 노드 제외 + 이미 처리된 것 건너뛰기** 2중 방어를 넣었다.",
-         size=25, color=BODY, spacing=1.26)
+    text(sl, CX + 0.55, y + 0.24, CW - 1.1, 0.52,
+         "수가 0이면 — 섞는다 (턴은 소모하지 않는다)", size=29, color=INK)
+    text(sl, CX + 0.55, y + 0.90, CW - 1.1, h - 1.20,
+         ["**움직일 수 있는 타일만** 모아(벽 · 보스 · 부패 · 사슬은 제자리) **Fisher–Yates**로 O(n) 균등 셔플한다. 난수를 주입받으므로 같은 씨앗이면 그대로 재현된다.",
+          "섞자마자 매치가 터져 있으면 **공짜 콤보**가 되므로 될 때까지 **다시 뽑는다**(거부 표본추출, 최대 32회). 값이 아니라 **`Tile` 객체째** 옮기므로 폭탄 카운트가 따라간다."],
+         size=24, color=BODY, spacing=1.26, space_after=6)
 
 
-def s09_loc(prs):
+def s06_gravity(prs):
+    sl = chrome(prs, 6)
+    v = head(sl, "빈칸을 남기지 않는 중력",
+             "핵심 구현 ③ — 벽과 구멍이 뚫린 비정형 보드에서도 성립해야 하는 규칙.")
+
+    y = v.take(1.22, 0.28)
+    callout(sl, y, 1.22,
+            "불변식 — 정착이 끝나면 **구멍(X) 이외의 모든 칸이 채워져 있다.**", size_q=31)
+
+    ch = 4.40
+    y = v.take(ch, 0.28)
+    rect(sl, CX, y, CW, ch, fill=SOFT, radius=0.13, line=LINE, lw=0.75)
+
+    bx, by = CX + 0.62, y + 0.42
+    before = ["*ooooo", "*ooooo", "*WWWoo", "o*.ooo", "oooooo"]
+    after = [".ooooo", "oooooo", "oWWWoo", "oooooo", "oooooo"]
+    bw, bh = mini_board(sl, bx, by, before, caption="① 갇힌 칸 + 길")
+    text(sl, bx + bw + 0.12, by, 0.86, bh, "→", size=34, color=BLUE,
+         align=PP_ALIGN.CENTER, anchor=MSO_ANCHOR.MIDDLE)
+    mini_board(sl, bx + bw + 0.98, by, after, caption="② 한 칸씩 밀었다")
+
+    tx = bx + bw * 2 + 1.60
+    text(sl, tx, y + 0.40, CX + CW - 0.7 - tx, ch - 0.8,
+         ["**① 직선 낙하** — 열 안에서 아래로 압축한다. 구멍은 통과하고 벽 위에는 쌓인다.",
+          "**② 대각선 슬라이드** — 벽 그늘에 든 칸은 대각선 위에서 끌어내리고, 벽에 얹혀 못 내려가는 타일은 대각선 아래로 흘려보낸다.",
+          "**③ 리필** — 각 열 꼭대기의 **연속된** 빈 칸만 새 타일로 채운다(중간 빈 칸은 다음 웨이브의 낙하 몫이다).",
+          "**④ 갇힌 칸 끌어오기** — ①~③이 전부 멈췄는데 빈 칸이 남으면, 그 칸에서 **리필이 닿는 자리까지 8방향 너비 우선 탐색**으로 최단 경로를 찾아 길 위의 타일을 한 칸씩 민다. **구멍이 반대로 꼭대기까지 걸어 올라간다.**"],
+         size=24, color=BODY, spacing=1.28, space_after=8)
+
+    y, h = v.take_rest()
+    row_card(sl, y, h, "실측", "99.08%",
+             "갇힌 칸의 **99.08%가 끌어오기로** 메워진다 · 제자리 생성은 **0.92%**(벽 · 보드 끝에 완전히 둘러싸여 길조차 없는 칸)  ·  경로 탐색은 `Queue` + 「어디서 왔는가」 사전으로 되짚어 만든다",
+             tag_w=2.2, title_w=4.0, size_desc=24)
+
+
+def s07_board_data(prs):
+    sl = chrome(prs, 7)
+    v = head(sl, "2차원 격자를 저장하는 법",
+             "핵심 구현 ④ — 유니티는 `bool[,]`를 직렬화하지 못한다. 그래서 <b>눕혀야</b> 한다.")
+
+    ch = 4.35
+    y = v.take(ch, 0.30)
+    rect(sl, CX, y, CW, ch, fill=SOFT, radius=0.13, line=LINE, lw=0.75)
+
+    gx, gy = CX + 0.70, y + 0.55
+    gw, gh = index_grid(sl, gx, gy, 5, 3, hot=7)
+    text(sl, gx - 1.0, gy + gh + 0.18, gw + 2.0, 0.50,
+         "width = 5 · `boardRows[1][2]` → **7**", size=21, font=F_L, color=MUTED,
+         align=PP_ALIGN.CENTER)
+
+    tx = gx + gw + 1.10
+    text(sl, tx, y + 0.42, CX + CW - 0.7 - tx, ch - 0.84,
+         ["**문제** — 유니티 직렬화기는 다차원 배열도 중첩 배열도 저장하지 못한다. 인스펙터에 격자를 띄우려면 **데이터가 먼저 저장 가능**해야 한다.",
+          "**표준 해법(평탄화)** — 2차원을 1차원으로 눕히고 번호로 좌표를 되찾는다. **행 우선**으로 `index = row × width + x`, 역산은 `row = i / width` · `x = i % width` — 그래서 **가로 크기를 반드시 같이 저장**해야 한다.",
+          "**이 프로젝트** — 행마다 문자열 하나(`string[] boardRows`). `boardRows[row][x]`는 **같은 행 우선 배치**이고, 다만 그 곱셈을 **문자열 컨테이너가 대신 들고 있다.**"],
+         size=24, color=BODY, spacing=1.28, space_after=8)
+
+    boxes, y = cols2(v, 3.40, 0.40)
+    col_card(sl, *boxes[0], None, "왜 리스트가 아니라 문자열인가",
+             ["칸이 **3상태**(O · X · W)라 `List<bool>`로는 못 담는다.",
+              "git diff에 **`\"OOWOO\"`로 사람이 읽힌다.** 원소 63개 리스트는 안 읽힌다.",
+              "만들어 둔 **스테이지 8개를 옮기지 않아도** 된다."],
+             size_title=33, size_body=24)
+    col_card(sl, *boxes[1], None, "번호는 이럴 때 쓴다",
+             ["드래그로 칠할 때 **마지막에 칠한 칸**을 번호 하나로 비교한다.",
+              "런타임은 반대로 편다 — 엔진은 순수 C#이라 **진짜 2차원 `bool[x, y]`**다."],
+             size_title=33, size_body=24)
+
+
+def s08_board_gui(prs):
+    sl = chrome(prs, 8)
+    v = head(sl, "격자를 그리고 칠하기",
+             "핵심 구현 ⑤ — 인스펙터의 격자는 위젯이 아니라 <b>직접 그린 사각형</b>이다.")
+
+    with rail(sl, v, "스크린샷 — 인스펙터 격자 + Board Editor 창",
+              "같은 스테이지를 두 곳에서 편집하는 화면", width=9.20):
+        lean_card(sl, *stack(v, 2.55), "그리기 — 즉시 모드 GUI",
+                  ["`GetRect`로 자리 하나를 받고, 칸의 사각형을 **직접 계산해 채운다.**",
+                   "버튼 63개를 만드는 게 아니라 **이벤트마다 다시 그린다.**"],
+                  size_title=30, size_body=24)
+        lean_card(sl, *stack(v, 2.55), "칠하기 — 좌표를 번호로",
+                  ["마우스가 어느 칸인지는 같은 식의 **역산**이다.",
+                   "**같은 칸은 한 드래그에서 한 번만** 처리한다 — 안 막으면 Undo 기록이 수십 개 쌓인다."],
+                  size_title=30, size_body=24)
+
+        y, h = v.take_rest()
+        callout(sl, y, h, "그리는 코드는 한 벌, 편집 상태는 각자",
+                "인스펙터와 전용 창이 **같은 그리기 코드**를 부르고, 「어느 칸을 칠하는 중인가」만 **창마다 하나씩** 들고 넘긴다 — `static`이면 서로 덮어써 드래그가 끊긴다.",
+                size_q=28, size_n=23)
+
+
+def s09_combat_chart(prs):
     sl = chrome(prs, 9)
-    v = head(sl, "어필 기술 ④ 현지화", "원천을 한 곳으로 묶으면, 성능 최적화까지 정확해진다.")
+    v = head(sl, "리듬 패링 전투 — 채보와 판정",
+             "핵심 구현 ⑥ — 보스 공격은 애니메이션이 아니라 <b>악보</b>다.")
+
+    with rail(sl, v, "▶ 영상 5초 — 패링 판정 링",
+              "+ 인살 컷씬 · 정지 이미지로는 설명이 안 된다", width=8.20):
+        lean_card(sl, *stack(v, 2.50, 0.26), "데이터 — 노트 = 값 3개",
+                  ["**타격 시점(박) · 예비동작 길이(박) · 피해.** 패턴 = BPM + 길이 + 노트 목록.",
+                   "**연속기는 별도 타입이 아니라 촘촘히 찍은 노트**다."],
+                  size_title=30, size_body=24)
+        lean_card(sl, *stack(v, 2.55, 0.26), "판정 — 누른 순간 결판",
+                  ["`[타격 − 윈도우, 타격 + 유예]` 안의 노트 중 **가장 임박한 하나**를 그 자리에서 지운다.",
+                   "밖에서 누르면 **헛침** — 잠기고 **보스가 체간을 되찾는다.**"],
+                  size_title=30, size_body=24)
+
+        y, h = v.take_rest()
+        lean_card(sl, CX, y, CW, h, "표시 — 거리 = 남은 시간",
+                  ["반지름을 **`1 + 남은시간 × 접근속도`**로 정한다 → 회색 띠의 **두께가 곧 판정 폭**이다.",
+                   "**흰 원의 안쪽 테두리가 노트의 위치**이고, 띠에 겹친 동안이 성공 구간이다."],
+                  size_title=30, size_body=24)
+
+
+def s10_deterministic(prs):
+    sl = chrome(prs, 10)
+    v = head(sl, "프레임에 기대지 않는 시간",
+             "핵심 구현 ⑦ — 같은 입력이면 프레임레이트가 달라도 <b>같은 결과</b>가 나온다.")
+
+    y = v.take(1.85, 0.26)
+    rect(sl, CX, y, CW, 1.85, fill=RED_T, radius=0.13)
+    rect(sl, CX, y, 0.17, 1.85, fill=RED, shape=MSO_SHAPE.RECTANGLE)
+    text(sl, CX + 0.90, y + 0.20, CW - 1.8, 1.45,
+         [{"t": "문제 — 매 프레임 `dt`만큼 통째로 굴리면", "size": 30, "color": RED},
+          {"t": "타격 · 판정 만료 · 예비동작 시작이 **한 프레임 안에 뭉쳐** 순서가 뒤바뀌고, 처리도 최대 한 프레임 늦는다.",
+           "size": 25, "color": BODY, "space_before": 8}],
+         anchor=MSO_ANCHOR.MIDDLE, em=RED)
+
+    y = v.take(2.62, 0.26)
+    codebox(sl, CX, y, CW, 2.62,
+            ["while (remaining > 0) {",
+             "    step = min(remaining, 다음_사건까지, 플레이어_타이머);",
+             "    Advance(step);        // 경계까지만 시간을 흘린다",
+             "    remaining -= step;",
+             "}"], size=21)
+
+    boxes, y = cols2(v, 3.05, 0.40)
+    col_card(sl, *boxes[0], None, "방법 — 사건 경계까지만",
+             ["`dt`를 통째로 흘리지 않고 **다음 사건**(예비동작 시작 · 타격 · 유예 만료 · 패턴 종료) **직전까지만** 잘라 진행한다."],
+             size_title=33, size_body=24)
+    col_card(sl, *boxes[1], None, "효과 — 전투를 테스트한다",
+             ["시간이 `Tick(초)`로만 흐르고 `UnityEngine`을 안 쓰므로, 패링 · 헛침 · 인살 · 페이즈 전환을 **엔진 없이** 검증한다."],
+             size_title=33, size_body=24)
+
+
+def s11_chart_editor(prs):
+    sl = chrome(prs, 11)
+    v = head(sl, "리듬(채보) 에디터",
+             "핵심 구현 ⑧ — 보스 공격을 <b>그려서</b> 만들고, 플레이하지 않고 <b>들어 본다.</b>")
+
+    with rail(sl, v, "스크린샷 — 채보 타임라인 + ▶ 미리듣기 무대",
+              "가능하면 영상 5초 (재생 줄이 흐르고 원이 다가오는 장면)", width=9.20):
+        lean_card(sl, *stack(v, 2.55), "타임라인 — 클릭해서 찍는다",
+                  ["클릭 = 추가, 드래그 = 이동, 우클릭 = 삭제. 스냅 **1 · ½ · ¼박**.",
+                   "예비동작은 **왼쪽으로 뻗는 막대** — 언제부터 보이는지가 읽힌다."],
+                  size_title=30, size_body=24)
+        lean_card(sl, *stack(v, 2.85), "▶ 미리듣기 — 플레이 없이 돌린다",
+                  ["`EditorApplication.update`로 **에디터 시간**을 굴려 원 · 판정 띠 · 타격음을 재생한다.",
+                   "판정 폭은 **`PlayerStatsConfigSO`의 실제 값**을 읽는다 — 제 숫자를 들면 채보가 게임에서 어긋난다."],
+                  size_title=30, size_body=24)
+
+        y, h = v.take_rest()
+        callout(sl, y, h, "확인에 드는 시간: **2~3분 → 2초**",
+                "없을 때는 찍기 → 플레이 → 퍼즐 클리어 → 보스전 도달까지 가야 한 번 들었다. 채보 튜닝은 **수십 번 반복하는 일**이다.",
+                size_q=29, size_n=23)
+
+
+def s12_loc(prs):
+    sl = chrome(prs, 12)
+    v = head(sl, "현지화 — 원천은 한 장",
+             "원천을 한 곳으로 묶으면, 성능 최적화까지 정확해진다.")
 
     boxes, y = cols3(v, 4.75, 0.36)
     col_card(sl, *boxes[0], "구조", "CSV 한 장이 원천",
@@ -607,9 +801,9 @@ def s09_loc(prs):
     col_card(sl, *boxes[1], "함정", "값이 아니라 키를 바꾼다",
              ["동적 문구에 바인더를 붙이면 언어 전환 시 **코드와 컴포넌트가 서로 덮어쓴다.**",
               "같은 칸을 여러 문구가 돌려 쓸 때는 값이 아니라 **키를 갈아 끼운다**(`SetKey`)."])
-    col_card(sl, *boxes[2], "성능", "구울 글자를 안다",
-             ["화면 글씨의 원천이 CSV 한 장뿐이라 **거기 없는 글자는 게임에도 안 나온다.**",
-              "실측 **343자**(한글 274)를 시작 로딩에서 한 번에 구워 런타임 끊김을 없앴다."])
+    col_card(sl, *boxes[2], "툴", "빠진 키를 찾아 준다",
+             ["**CSV에 없는 키**를 쓰는 텍스트를 씬에서 훑어 잡는 메뉴.",
+              "원천이 한 장뿐이라 **없는 글자는 게임에도 안 나온다** → 미리 구울 글자를 정확히 센다(**343자**)."])
 
     y, h = v.take_rest()
     gap, gw = 0.44, (CW - 0.88) / 3
@@ -618,89 +812,87 @@ def s09_loc(prs):
     stat(sl, CX + (gw + gap) * 2, y, gw, h, "343자", "시작 로딩에 미리 굽는 글자")
 
 
-def s10_hero(prs):
-    sl = chrome(prs, 10)
-    v = head(sl, "아키텍처 결정이 3주 뒤에 값을 한 순간",
-             "Core에 UnityEngine이 없어서, 에디터를 켜지 않고 보드 60,000개를 검증할 수 있었다.")
+def s13_fuzz(prs):
+    sl = chrome(prs, 13)
+    v = head(sl, "보드 60,000개를 자동 검증했다",
+             "엔진 규칙에 `UnityEngine`이 없어서, 유니티를 켜지 않고 검사할 수 있었다.")
 
-    boxes, y = cols3(v, 5.55, 0.40)
-    col_card(sl, *boxes[0], "상황", "불변식이 거짓이었다",
-             ["코드 주석은 \"벽과 구멍 이외의 모든 칸이 항상 채워진다\"고 **주장**했고, 비정형 보드 퍼즈를 포함한 **테스트 166개가 통과 중이었다.**",
-              "그런데 실기에서 벽 밑에 빈 칸이 남았다."], size_body=25)
-    col_card(sl, *boxes[1], "방법", "Unity 없이 돌린다",
-             ["`.csproj`에 Core 소스를 넣는 **한 줄** → Unity 없이 콘솔 앱으로 컴파일.",
-              "무작위 보드 **60,000개**를 훑어 반례를 수집했다. 같은 방식으로 테스트도 **`dotnet test` 0.3초** 완주."], size_body=25)
-    col_card(sl, *boxes[2], "결과", "퍼즈가 전부 잡았다",
-             ["이번에 나온 버그 **3개를 전부 퍼즈가 잡았다.**",
-              "손으로 짠 테스트 166개는 **하나도 못 잡았다.**"], size_body=25)
+    with rail(sl, v, "스크린샷 — 퍼즈 콘솔 출력",
+              "+ Test Runner 167개 전부 초록", width=9.40):
+        lean_card(sl, *stack(v, 4.90), "상황 → 방법 → 결과",
+                  ["**상황** — 주석은 \"구멍 이외의 모든 칸이 항상 채워진다\"고 **주장**했고 **테스트 166개가 통과 중**이었다. 그런데 실제로는 벽 밑에 빈 칸이 남았다.",
+                   "**방법** — 엔진 규칙이 **순수 C#**이라 콘솔 프로젝트에 소스를 그대로 물려 컴파일된다. 무작위 보드 **60,000개**를 돌려 반례를 모았다(테스트도 **`dotnet test` 0.3초** 완주).",
+                   "**결과** — 이번 버그 **3개를 전부 퍼즈가 잡았다**(무한 루프 · 널 참조 · 빈 칸). 손으로 짠 테스트 166개는 **하나도 못 잡았다.**"],
+                  size_title=31, size_body=24)
 
-    y, h = v.take_rest()
-    rect(sl, CX, y, CW, h, fill=DARK, radius=0.13)
-    rect(sl, CX, y, 0.17, h, fill=BLUE, shape=MSO_SHAPE.RECTANGLE)
-    text(sl, CX + 0.90, y + 0.20, CW - 1.8, h - 0.40,
-         [{"t": "**불변식은 주장이지 보장이 아니다.** 테스트가 있다는 사실이 오히려 안심시켰다.",
-           "size": 32, "color": WHITE, "em": BLUE_L},
-          {"t": "`noEngineReferences` 한 줄이 없었다면 이 반례를 찾을 방법 자체가 없었다.",
-           "size": 25, "color": RGBColor(0xC9, 0xC9, 0xC9), "space_before": 8}],
-         anchor=MSO_ANCHOR.MIDDLE)
+        y, h = v.take_rest()
+        rect(sl, CX, y, CW, h, fill=DARK, radius=0.13)
+        rect(sl, CX, y, 0.17, h, fill=BLUE, shape=MSO_SHAPE.RECTANGLE)
+        text(sl, CX + 0.80, y + 0.20, CW - 1.6, h - 0.40,
+             [{"t": "**불변식은 주장이지 보장이 아니다.**", "size": 30, "color": WHITE, "em": BLUE_L},
+              {"t": "손으로 짠 예제는 «내가 생각한 판»만 검사한다. 생각하지 못한 판은 기계가 찾아야 했다.",
+               "size": 24, "color": RGBColor(0xC9, 0xC9, 0xC9), "space_before": 7}],
+             anchor=MSO_ANCHOR.MIDDLE)
 
 
-def s11_trouble(prs):
-    sl = chrome(prs, 11)
+def s14_trouble(prs):
+    sl = chrome(prs, 14)
     v = head(sl, "트러블슈팅 대표 3건", "재발하는 버그는 주의가 아니라 코드로 막는다.")
 
     h = v.rest()
     boxes, y = cols3(v, h, 0.44)
-    col_card(sl, *boxes[0], "① 3번 재발", "게이지가 안 줄어든다",
+    col_card(sl, *boxes[0], "① 확률의 단위", "보스 타일이 보드를 도배",
+             ["난입 확률이 **리필 타일 하나하나에** 굴려지고 있었다. 한 웨이브에 10칸이 채워지면 주사위를 10번 던진다.",
+              "**\"5%\"가 실제로는 `1 − 0.95¹⁰ ≈ 40%`였다.**",
+              "→ 보드 위 동시 상한 + **웨이브 단위 누적 카운터**로 바꿨다.",
+              "**확률은 \"무엇 당(per)\"인지 반드시 같이 적는다.**"],
+             size_body=24)
+    col_card(sl, *boxes[1], "② 모델은 맞고 뷰가 틀림", "타일이 옆 열을 가로질렀다",
+             ["한 웨이브에서 두 번 움직인 타일(낙하 → 벽에서 대각 슬라이드)의 기록을 **`From → To` 하나로 합쳐** 뷰에 넘긴다 — 중간 좌표가 남으면 뷰가 칸을 잘못 추적하기 때문이다.",
+              "그런데 뷰가 그 두 점을 **직선으로 이어** 타일이 벽을 뚫고 대각선으로 날았다.",
+              "→ 뷰가 **꺾인 경로**로 재생하되, 속도가 꺾이는 지점에서 0이 되지 않게 **경로 전체 길이를 하나의 자**로 쓴다."],
+             size_body=24)
+    col_card(sl, *boxes[2], "③ 3번 재발", "게이지가 안 줄어든다",
              ["`Image.type`이 `Filled`가 아니면 `fillAmount`가 **아무 일도 안 한다.**",
               "UI 스프라이트를 꽂을 때 Unity가 9슬라이스를 감지해 `Sliced`로 되돌려 놓고 있었다.",
-              "→ `Awake`에서 게이지 3종을 강제. **세 번 재발했다는 것은 코드 레벨 방어가 필요했다는 뜻이다.**"],
-             size_body=25)
-    col_card(sl, *boxes[1], "② 불변식 위반", "벽 밑에 빈 칸",
-             ["대각 슬라이드는 **한 칸짜리 이동**이라 출처가 정확히 대각선 위여야 하는데,",
-              "그 자리가 벽 · 보드 밖 · 구멍이면 **도달 가능한 타일이 물리적으로 없다**(가장 흔한 경우는 부서진 벽이 남긴 자리).",
-              "→ 구멍을 리필 입구까지 **걸어 올라가게** 해 옆 타일로 메운다. **뷰는 한 줄도 안 고쳤다.**"],
-             size_body=25)
-    col_card(sl, *boxes[2], "③ 확률의 단위", "보스 타일이 도배된다",
-             ["확률이 **리필 타일 하나하나에** 굴려지고 있었다. 한 웨이브 10칸이면 주사위를 10번 던진다.",
-              "**\"5%\"가 실제로는 `1 − 0.95¹⁰ = 40%`였다.** → 동시 상한 + 웨이브 누적 카운터.",
-              "**확률은 \"무엇 당(per)\"인지 같이 적는다.**"],
-             size_body=25)
+              "→ `Awake`에서 게이지 3종의 타입을 강제한다. **세 번 재발했다는 것은 「주의」로는 안 된다는 뜻이었다.**"],
+             size_body=24)
 
 
-def s12_opt(prs):
-    sl = chrome(prs, 12)
-    v = head(sl, "최적화 & 런타임 안정성", "설정 하나가 게임의 핵심 손맛을 갉아먹고 있었다.")
+def s15_opt(prs):
+    sl = chrome(prs, 15)
+    v = head(sl, "최적화 & 런타임 안정성",
+             "최적화가 오히려 화면의 글자를 날린 사고 — 에디터에서는 멀쩡했다.")
 
-    y = v.take(2.05, 0.34)
-    rect(sl, CX, y, CW, 2.05, fill=RED_T, radius=0.13)
-    rect(sl, CX, y, 0.17, 2.05, fill=RED, shape=MSO_SHAPE.RECTANGLE)
-    text(sl, CX + 0.90, y + 0.22, CW - 1.8, 1.61,
-         [{"t": "30fps 상한 — 성능만의 문제가 아니었다", "size": 32, "color": RED},
-          {"t": "아무도 `Application.targetFrameRate`를 안 정했다. 기본값 −1 = 플랫폼 기본값이고 **모바일에서 그건 30**이다.",
-           "size": 25, "color": BODY, "space_before": 8},
-          {"t": "한 프레임 33ms는 **Lv0 패링 판정 폭(0.25초)의 13%** — 정확히 눌러도 프레임 경계에 걸려 놓친다. → **60 고정.**",
-           "size": 25, "color": BODY, "space_before": 5}],
+    y = v.take(2.58, 0.28)
+    rect(sl, CX, y, CW, 2.58, fill=RED_T, radius=0.13)
+    rect(sl, CX, y, 0.17, 2.58, fill=RED, shape=MSO_SHAPE.RECTANGLE)
+    text(sl, CX + 0.90, y + 0.20, CW - 1.8, 2.18,
+         [{"t": "글자를 미리 굽게 했더니, 실기에서 일부가 안 보였다", "size": 30, "color": RED},
+          {"t": "런타임 끊김을 없애려고 시작 로딩에서 폰트 글자를 **한 번에 구웠다.** 그런데 아틀라스가 **1024 한 장**이라 386자가 **두 장째로 넘어갔고**, 넘친 글자가 기기에서 안 그려졌다.",
+           "size": 24, "color": BODY, "space_before": 8},
+          {"t": "그전에는 **화면에 실제로 뜬 글자만** 조금씩 구워져 우연히 한 장에 들어 있었다 — **미리 굽는 행위 자체가 방아쇠**였다. → 아틀라스 **2048**로, 그리고 **두 장을 넘으면 에러 로그**를 남긴다.",
+           "size": 24, "color": BODY, "space_before": 5}],
          anchor=MSO_ANCHOR.MIDDLE, em=RED)
 
-    y = v.take(3.66, 0.32)
-    table(sl, y, 3.66, [1.6, 2.0, 3.4], ["항목", "조치", "이유"],
-          [["BGM 6곡", "Streaming / Vorbis", "원본 PCM이 통째로 빌드에 들어가던 것 차단"],
+    y = v.take(3.05, 0.28)
+    table(sl, y, 3.05, [1.6, 2.0, 3.4], ["항목", "조치", "이유"],
+          [["BGM 6곡", "Streaming / Vorbis", "원본 PCM 20MB × 6이 통째로 빌드에 들어가던 것 차단"],
            ["단발 효과음", "DecompressOnLoad", "스트리밍하면 **눌린 뒤에** 소리가 난다"],
-           ["도트 스프라이트", "Point · 무압축 · 밉맵 끔", "이중선형 필터로 흐려지는 것 방지"]],
-          hdr_h=0.76, gap=0.12, size_r=25.5)
+           ["도트 스프라이트", "Point · 무압축 · 밉맵 끔", "이중선형 필터로 옆 타일보다 흐려 보이는 것 방지"]],
+          hdr_h=0.74, gap=0.12, size_r=24.5)
 
     y, h = v.take_rest()
     rect(sl, CX, y, CW, h, fill=SOFT, radius=0.13, line=LINE, lw=0.75)
     text(sl, CX + 0.85, y + 0.18, CW - 1.7, h - 0.36,
-         [{"t": "1인 개발에 특히 필요했던 안정성", "size": 29, "color": INK},
-          {"t": "**널 세이프 슬롯**(클립 · 스프라이트가 비어도 안 멈춘다)  ·  **도메인 리로드 OFF 대응** `ResetStatics()`  ·  세이브 **v1→v2→v3** 마이그레이션  ·  정적 서비스 19종이 `static class`라 **`DontDestroyOnLoad`가 단 2개**",
-           "size": 24.5, "color": BODY, "space_before": 7}],
+         [{"t": "1인 개발에 특히 필요했던 안정성", "size": 28, "color": INK},
+          {"t": "**널 세이프 슬롯**(클립 · 그림이 비어도 안 멈춘다)  ·  **도메인 리로드 OFF 대응** `ResetStatics()`  ·  세이브 **v1→v3** 마이그레이션  ·  정적 서비스 19종 · **`DontDestroyOnLoad` 2개**",
+           "size": 24, "color": BODY, "space_before": 6}],
          anchor=MSO_ANCHOR.MIDDLE)
 
 
-def s13_future(prs):
-    sl = chrome(prs, 13)
+def s16_future(prs):
+    sl = chrome(prs, 16)
     v = head(sl, "Future Work: 정직하게 남은 것", "시스템은 완성했고, 콘텐츠와 검증이 남았다.")
 
     y = v.take(4.95, 0.30)
@@ -725,8 +917,8 @@ def s13_future(prs):
             size_q=30)
 
 
-def s14_retro(prs):
-    sl = chrome(prs, 14)
+def s17_retro(prs):
+    sl = chrome(prs, 17)
     v = head(sl, "회고: 가장 크게 배운 것 3가지")
 
     def block(num, title, lines):
@@ -738,10 +930,10 @@ def s14_retro(prs):
         text(sl, CX + 1.65, y + 0.96, CW - 2.4, h - 1.26, lines, size=25,
              color=BODY, spacing=1.26, space_after=5)
 
-    block("①", "아키텍처는 약속이 아니라 강제여야 한다",
-          ["\"Core에 Unity를 쓰지 말자\"는 지켜지지 않는다. `noEngineReferences: true` 한 줄이 그것을 **컴파일 에러**로 만든 순간부터 규칙이 진짜가 됐다. → 그 덕에 **10장의 반례**를 찾았다."])
-    block("②", "같은 숫자를 두 곳에 적으면 반드시 어긋난다",
-          ["패링 띠(로직 vs 뷰) · 튜토리얼의 밝은 칸과 누를 수 있는 칸 · 지도의 길 두께와 노드 크기 — 전부 같은 원인이었다. **한 곳에서 파생시키면 어긋날 수가 없다.**"])
+    block("①", "같은 숫자를 두 곳에 적으면 반드시 어긋난다",
+          ["패링 판정과 그것을 그리는 띠 · 채보 미리듣기와 실제 전투 · 튜토리얼의 밝은 칸과 누를 수 있는 칸 — 전부 같은 원인이었다. **한 곳에서 파생시키면 어긋날 수가 없다.**"])
+    block("②", "불변식은 주장이지 보장이 아니다",
+          ["\"모든 칸이 항상 채워진다\"는 주석과 통과 중인 테스트 166개가 오히려 안심시켰다. 규칙이 복잡해질수록 **사람이 짠 예제는 자기가 생각한 판만 검사한다** — 생각하지 못한 판은 기계(퍼즈)가 찾아야 했다."])
     block("③", "기획 의도를 코드가 배신하는 지점을 찾는 것이 진짜 일",
           ["잡몹 위협을 **턴**으로 세었더니 가만히 있는 것이 최적해가 됐다 → 실시간으로 변경.",
            "소울을 **클리어한 판에서 0**으로 했더니 빨리 깬 사람이 손해를 봤다 → 스테이지별 매장량으로."])
@@ -788,9 +980,12 @@ def strip_unused_fonts(prs):
     return n
 
 
-SLIDES = [s01_cover, s02_game, s03_layers, s04_boundary, s05_combat, s06_puzzle,
-          s07_tools, s08_toolrules, s09_loc, s10_hero, s11_trouble, s12_opt,
-          s13_future, s14_retro]
+SLIDES = [s01_cover, s02_game, s03_data,
+          s04_puzzle_flow, s05_deadlock, s06_gravity,
+          s07_board_data, s08_board_gui,
+          s09_combat_chart, s10_deterministic, s11_chart_editor,
+          s12_loc, s13_fuzz, s14_trouble, s15_opt,
+          s16_future, s17_retro]
 
 
 def fit_text(prs, floor=21.0, tol=1.02):
@@ -844,4 +1039,8 @@ def build(out=TMP, slides=None, verbose=True):
 
 
 if __name__ == "__main__":
-    print("built:", build(), f"({len(SLIDES)}장)")
+    out = build()
+    if "--deploy" in sys.argv:
+        shutil.copyfile(out, OUT)
+        out = OUT
+    print("built:", out, f"({len(SLIDES)}장)")
