@@ -1,4 +1,6 @@
 using System.Collections.Generic;
+using ChainRiposte.Game.Cheats;
+using ChainRiposte.Game.Flow;
 using ChainRiposte.Game.Localization;
 using ChainRiposte.Game.Options;
 using ChainRiposte.Game.Progress;
@@ -27,6 +29,8 @@ namespace ChainRiposte.Game.UI
         [Tooltip("복제 원본. 시작할 때 꺼진다.")]
         [SerializeField] private Button languageButtonTemplate;
         [SerializeField] private Button resetProgressButton;
+        [Tooltip("치트 — Resources/CheatConfig 에셋이 없으면 스스로 숨는다(출시 빌드에서 빼는 방법).")]
+        [SerializeField] private Button cheatButton;
         [SerializeField] private Button closeButton;
 
         [Header("확인 대화상자")]
@@ -65,6 +69,14 @@ namespace ChainRiposte.Game.UI
 
             if (resetProgressButton != null)
                 resetProgressButton.onClick.AddListener(RequestResetProgress);
+
+            if (cheatButton != null)
+            {
+                // 설정 에셋이 없으면 치트 자체가 없는 것이다 — 눌러도 아무 일 없는 버튼은 고장으로 읽힌다.
+                cheatButton.gameObject.SetActive(CheatService.IsAvailable);
+                cheatButton.onClick.AddListener(RequestCheat);
+            }
+
             if (confirmNoButton != null)
                 confirmNoButton.onClick.AddListener(() => SetActive(confirmPanel, false));
 
@@ -124,6 +136,42 @@ namespace ChainRiposte.Game.UI
             });
 
             SetActive(confirmPanel, true);
+        }
+
+        /// <summary>
+        /// 치트 — 적용한 뒤 <b>타이틀로 돌아간다.</b> 세이브만 바꿔 놓고 그 자리에 남으면
+        /// 지도는 옛 잠금 상태 그대로, 전투 중이면 이미 시작된 런과 어긋난다.
+        /// 되짚어 다시 그리는 코드를 화면마다 다는 것보다 한 번 처음부터 읽게 하는 편이 정확하다.
+        /// </summary>
+        private void RequestCheat()
+        {
+            if (confirmPanel == null)
+            {
+                ApplyCheat();
+                return;
+            }
+
+            // 프리팹의 LocalizedText 가 켜질 때 덮어쓰므로 문자열이 아니라 키를 갈아 끼운다.
+            LocalizedText.SetKey(confirmText, "options.cheat.confirm");
+
+            confirmYesButton.onClick.RemoveAllListeners();
+            confirmYesButton.onClick.AddListener(() =>
+            {
+                SetActive(confirmPanel, false);
+                ApplyCheat();
+            });
+
+            SetActive(confirmPanel, true);
+        }
+
+        private void ApplyCheat()
+        {
+            if (!CheatService.Apply(out _))
+                return;
+
+            // 일시정지 중에 눌렀을 수 있다 — 멈춘 채 씬을 넘기면 다음 씬이 얼어붙는다.
+            Time.timeScale = 1f;
+            SceneRouter.GoTitle();
         }
 
         private void Refresh()

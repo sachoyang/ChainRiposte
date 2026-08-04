@@ -14,6 +14,8 @@ options.orientation.landscape,가로 고정,LANDSCAPE
 options.language,언어,LANGUAGE
 options.reset,진행도 초기화,RESET PROGRESS
 options.reset.confirm,저장된 진행도를 모두 지웁니다.\n되돌릴 수 없습니다. 계속할까요?,This erases all saved progress.\nThis cannot be undone.
+options.cheat,치트 — 최종 직전까지,CHEAT — SKIP TO FINALE
+options.cheat.confirm,스탯을 상한까지 올리고 기억을 모두 얻은 뒤\n최종 판 직전까지 클리어 처리합니다.\n진행도를 덮어쓰고 타이틀로 돌아갑니다. 계속할까요?,Maxes your stats and grants every memory\nthen clears everything up to the final stage.\nThis overwrites your progress and returns to the title. Continue?
 map.start,시작,START
 map.title,스테이지 {0},STAGE {0}
 map.title.clear,스테이지 {0}  - 클리어,STAGE {0}  - CLEAR

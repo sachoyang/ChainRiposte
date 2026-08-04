@@ -5496,6 +5496,7 @@ MonoBehaviour:
   fallAccelPower: 2
   stepPause: 0.05
   shuffleDuration: 0.45
+  sealedPocketAppearSeconds: 0.16
   spotlightDim: 0.35
 --- !u!4 &732617165
 Transform:

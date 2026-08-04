@@ -1,0 +1,24 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9c41f6a2b73d40e4a9d1c05e7b8f2a31, type: 3}
+  m_Name: CheatConfig
+  m_EditorClassIdentifier: ChainRiposte.Game::ChainRiposte.Game.Cheats.CheatConfigSO
+  statsConfig: {fileID: 11400000, guid: 1883bb283f8c36a4997c3546bd217d03, type: 2}
+  orderedStages:
+  - {fileID: 11400000, guid: d3ad744a33aaed5439a6a208f855287f, type: 2}
+  - {fileID: 11400000, guid: ea8ebbad7055d824a8cc80b9944558af, type: 2}
+  - {fileID: 11400000, guid: 5646ddd971be6e744bdd4379e2de6eca, type: 2}
+  - {fileID: 11400000, guid: 6b32152b8ce1ba64cb17a44f56b306ca, type: 2}
+  - {fileID: 11400000, guid: f6ca82208df61344d95ffd5e93470d36, type: 2}
+  - {fileID: 11400000, guid: d6bb7ed6f24e925489fc980ff9ad55b1, type: 2}
+  uncappedStatLevel: 10
+  sparePoints: 5
